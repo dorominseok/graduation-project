@@ -1,0 +1,30 @@
+﻿# Java / Gradle
+backend/build/
+backend/.gradle/
+backend/out/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/dev-dist/
+*.local
+
+# 환경변수
+.env
+*.env
+!.env.example
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+Thumbs.db
+desktop.ini
+
+# 로그
+*.log
