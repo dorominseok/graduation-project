@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: fitness-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/fitness
+    username: fitness
+    password: devpassword123
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  jackson:
+    time-zone: Asia/Seoul
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.hibernate.SQL: debug
