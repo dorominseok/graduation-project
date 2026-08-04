@@ -1,0 +1,19 @@
+.health-check {
+  max-width: 480px;
+  margin: 4rem auto;
+  padding: 1.5rem;
+  font-family: monospace;
+  text-align: left;
+}
+
+.result {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.error {
+  color: #e5484d;
+}
