@@ -1,0 +1,110 @@
+name_ko,name_en,body_part,primary_muscle,push_pull,measure_type,equipment
+디클라인 바벨 벤치프레스,Decline Barbell Bench Press,CHEST,chest,PUSH,WEIGHT_REPS,BARBELL
+디클라인 덤벨 벤치프레스,Decline Dumbbell Bench Press,CHEST,chest,PUSH,WEIGHT_REPS,DUMBBELL
+디클라인 스미스머신 프레스,Decline Smith Press,CHEST,chest,PUSH,WEIGHT_REPS,MACHINE
+딥스: 가슴,Dips - Chest Version,CHEST,chest,PUSH,BODYWEIGHT_REPS,PULLUP_BAR
+바벨 벤치프레스,Barbell Bench Press - Medium Grip,CHEST,chest,PUSH,WEIGHT_REPS,BARBELL
+푸시업,Pushups,CHEST,chest,PUSH,BODYWEIGHT_REPS,BODYWEIGHT
+케이블 체스트프레스,Cable Chest Press,CHEST,chest,PUSH,WEIGHT_REPS,CABLE
+덤벨 벤치프레스,Dumbbell Bench Press,CHEST,chest,PUSH,WEIGHT_REPS,DUMBBELL
+머신 체스트프레스,Machine Bench Press,CHEST,chest,PUSH,WEIGHT_REPS,MACHINE
+인클라인 바벨 벤치프레스,Barbell Incline Bench Press - Medium Grip,CHEST,chest,PUSH,WEIGHT_REPS,BARBELL
+인클라인 푸시업,Incline Push-Up,CHEST,chest,PUSH,BODYWEIGHT_REPS,BODYWEIGHT
+인클라인 케이블 체스트프레스,Incline Cable Chest Press,CHEST,chest,PUSH,WEIGHT_REPS,CABLE
+인클라인 덤벨 프레스,Incline Dumbbell Press,CHEST,chest,PUSH,WEIGHT_REPS,DUMBBELL
+인클라인 머신 체스트프레스,Leverage Incline Chest Press,CHEST,chest,PUSH,WEIGHT_REPS,MACHINE
+덤벨 풀오버,Bent-Arm Dumbbell Pullover,CHEST,chest,PUSH,WEIGHT_REPS,DUMBBELL
+케이블 크로스오버,Cable Crossover,CHEST,chest,PUSH,WEIGHT_REPS,CABLE
+덤벨 플라이,Dumbbell Flyes,CHEST,chest,PUSH,WEIGHT_REPS,DUMBBELL
+펙덱 플라이,Butterfly,CHEST,chest,PULL,WEIGHT_REPS,MACHINE
+친업,Chin-Up,BACK,lats,PULL,BODYWEIGHT_REPS,BODYWEIGHT
+랫풀다운: 와이드 그립,Wide-Grip Lat Pulldown,BACK,lats,PULL,WEIGHT_REPS,CABLE
+머슬업,Muscle Up,BACK,lats,PULL,BODYWEIGHT_REPS,PULLUP_BAR
+중량 풀업,Weighted Pull Ups,BACK,lats,PULL,WEIGHTED_BODYWEIGHT,PULLUP_BAR
+바벨 로우,Bent Over Barbell Row,BACK,middle back,PULL,WEIGHT_REPS,BARBELL
+시티드 케이블 로우,Seated Cable Rows,BACK,middle back,PULL,WEIGHT_REPS,CABLE
+원암 덤벨 로우,One-Arm Dumbbell Row,BACK,middle back,PULL,WEIGHT_REPS,DUMBBELL
+티바 로우,Lying T-Bar Row,BACK,middle back,PULL,WEIGHT_REPS,MACHINE
+바벨 슈러그,Barbell Shrug,BACK,traps,PULL,WEIGHT_REPS,BARBELL
+케이블 슈러그,Cable Shrugs,BACK,traps,PULL,WEIGHT_REPS,CABLE
+덤벨 슈러그,Dumbbell Shrug,BACK,traps,PULL,WEIGHT_REPS,DUMBBELL
+머신 슈러그,Leverage Shrug,BACK,traps,PULL,WEIGHT_REPS,MACHINE
+바벨 데드리프트,Barbell Deadlift,BACK,lower back,PULL,WEIGHT_REPS,BARBELL
+백 익스텐션: 맨몸,Hyperextensions With No Hyperextension Bench,BACK,lower back,PULL,BODYWEIGHT_REPS,BODYWEIGHT
+루마니안 데드리프트,Romanian Deadlift,LEGS,hamstrings,PULL,WEIGHT_REPS,BARBELL
+글루트 킥백,Glute Kickback,LEGS,glutes,PUSH,BODYWEIGHT_REPS,BODYWEIGHT
+케이블 데드리프트,Cable Deadlifts,LEGS,quadriceps,PULL,WEIGHT_REPS,CABLE
+스티프레그 덤벨 데드리프트,Stiff-Legged Dumbbell Deadlift,LEGS,hamstrings,PULL,WEIGHT_REPS,DUMBBELL
+리버스 하이퍼익스텐션,Reverse Hyperextension,LEGS,hamstrings,PULL,WEIGHT_REPS,MACHINE
+케이블 힙 어덕션,Cable Hip Adduction,LEGS,quadriceps,PULL,WEIGHT_REPS,CABLE
+아웃타이 머신,Thigh Abductor,LEGS,abductors,PUSH,WEIGHT_REPS,MACHINE
+바벨 런지,Barbell Lunge,LEGS,quadriceps,PUSH,WEIGHT_REPS,BARBELL
+스텝업,Step-up with Knee Raise,LEGS,glutes,PUSH,BODYWEIGHT_REPS,BODYWEIGHT
+덤벨 런지,Dumbbell Lunges,LEGS,quadriceps,PUSH,WEIGHT_REPS,DUMBBELL
+스미스머신 스플릿 스쿼트,Smith Single-Leg Split Squat,LEGS,quadriceps,PUSH,WEIGHT_REPS,MACHINE
+글루트 햄 레이즈,Natural Glute Ham Raise,LEGS,hamstrings,PULL,BODYWEIGHT_REPS,BODYWEIGHT
+라잉 레그컬,Lying Leg Curls,LEGS,hamstrings,PULL,WEIGHT_REPS,MACHINE
+레그 익스텐션,Leg Extensions,LEGS,quadriceps,PUSH,WEIGHT_REPS,MACHINE
+바벨 스쿼트,Barbell Squat,LEGS,quadriceps,PUSH,WEIGHT_REPS,BARBELL
+맨몸 스쿼트,Bodyweight Squat,LEGS,quadriceps,PUSH,BODYWEIGHT_REPS,BODYWEIGHT
+덤벨 스쿼트,Dumbbell Squat,LEGS,quadriceps,PUSH,WEIGHT_REPS,DUMBBELL
+핵 스쿼트,Hack Squat,LEGS,quadriceps,PUSH,WEIGHT_REPS,MACHINE
+바벨 시티드 카프레이즈,Barbell Seated Calf Raise,LEGS,calves,PUSH,WEIGHT_REPS,BARBELL
+덤벨 카프레이즈,Standing Dumbbell Calf Raise,LEGS,calves,PUSH,WEIGHT_REPS,DUMBBELL
+스탠딩 카프레이즈,Standing Calf Raises,LEGS,calves,PUSH,WEIGHT_REPS,MACHINE
+바벨 업라이트 로우,Upright Barbell Row,SHOULDERS,shoulders,PULL,WEIGHT_REPS,BARBELL
+케이블 업라이트 로우,Upright Cable Row,SHOULDERS,traps,PULL,WEIGHT_REPS,CABLE
+덤벨 업라이트 로우,Standing Dumbbell Upright Row,SHOULDERS,traps,PULL,WEIGHT_REPS,DUMBBELL
+스미스머신 업라이트 로우,Smith Machine Upright Row,SHOULDERS,traps,PULL,WEIGHT_REPS,MACHINE
+밀리터리 프레스,Standing Military Press,SHOULDERS,shoulders,PUSH,WEIGHT_REPS,BARBELL
+케이블 숄더프레스,Cable Shoulder Press,SHOULDERS,shoulders,PUSH,WEIGHT_REPS,CABLE
+덤벨 숄더프레스,Dumbbell Shoulder Press,SHOULDERS,shoulders,PUSH,WEIGHT_REPS,DUMBBELL
+머신 숄더프레스,Machine Shoulder (Military) Press,SHOULDERS,shoulders,PUSH,WEIGHT_REPS,MACHINE
+바벨 프론트 레이즈,Standing Front Barbell Raise Over Head,SHOULDERS,shoulders,PUSH,WEIGHT_REPS,BARBELL
+케이블 프론트 레이즈,Front Cable Raise,SHOULDERS,shoulders,PUSH,WEIGHT_REPS,CABLE
+덤벨 프론트 레이즈,Front Dumbbell Raise,SHOULDERS,shoulders,PUSH,WEIGHT_REPS,DUMBBELL
+케이블 레터럴 레이즈,Cable Seated Lateral Raise,SHOULDERS,shoulders,PULL,WEIGHT_REPS,CABLE
+덤벨 사이드 레터럴 레이즈,Side Lateral Raise,SHOULDERS,shoulders,PUSH,WEIGHT_REPS,DUMBBELL
+바벨 리어델트 로우,Barbell Rear Delt Row,SHOULDERS,shoulders,PULL,WEIGHT_REPS,BARBELL
+페이스풀,Face Pull,SHOULDERS,shoulders,PULL,WEIGHT_REPS,CABLE
+덤벨 리어델트 플라이,Reverse Flyes,SHOULDERS,shoulders,PULL,WEIGHT_REPS,DUMBBELL
+벤치 딥스,Bench Dips,ARMS,triceps,PUSH,BODYWEIGHT_REPS,BODYWEIGHT
+중량 벤치 딥스,Weighted Bench Dip,ARMS,triceps,PUSH,WEIGHTED_BODYWEIGHT,BODYWEIGHT
+머신 딥스,Dip Machine,ARMS,triceps,PUSH,WEIGHT_REPS,MACHINE
+평행봉 딥스,Parallel Bar Dip,ARMS,triceps,PUSH,BODYWEIGHT_REPS,PULLUP_BAR
+이지바 스컬크러셔,EZ-Bar Skullcrusher,ARMS,triceps,PUSH,WEIGHT_REPS,BARBELL
+케이블 트라이셉스 익스텐션,Cable Incline Triceps Extension,ARMS,triceps,PUSH,WEIGHT_REPS,CABLE
+덤벨 오버헤드 익스텐션,Seated Triceps Press,ARMS,triceps,PUSH,WEIGHT_REPS,DUMBBELL
+머신 트라이셉스 익스텐션,Machine Triceps Extension,ARMS,triceps,PUSH,WEIGHT_REPS,MACHINE
+바벨 핑거컬,Finger Curls,ARMS,forearms,PULL,WEIGHT_REPS,BARBELL
+케이블 리스트컬,Cable Wrist Curl,ARMS,forearms,PULL,WEIGHT_REPS,CABLE
+덤벨 리스트컬,Seated Dumbbell Palms-Up Wrist Curl,ARMS,forearms,PULL,WEIGHT_REPS,DUMBBELL
+바벨 컬,Barbell Curl,ARMS,biceps,PULL,WEIGHT_REPS,BARBELL
+케이블 컬,High Cable Curls,ARMS,biceps,PULL,WEIGHT_REPS,CABLE
+덤벨 컬,Dumbbell Bicep Curl,ARMS,biceps,PULL,WEIGHT_REPS,DUMBBELL
+머신 컬,Machine Bicep Curl,ARMS,biceps,PULL,WEIGHT_REPS,MACHINE
+클로즈그립 벤치프레스,Close-Grip EZ-Bar Press,ARMS,triceps,PUSH,WEIGHT_REPS,BARBELL
+클로즈그립 인클라인 푸시업,Incline Push-Up Close-Grip,ARMS,triceps,PUSH,BODYWEIGHT_REPS,BODYWEIGHT
+클로즈그립 덤벨 프레스,Close-Grip Dumbbell Press,ARMS,triceps,PUSH,WEIGHT_REPS,DUMBBELL
+스미스머신 클로즈그립 벤치프레스,Smith Machine Close-Grip Bench Press,ARMS,triceps,PUSH,WEIGHT_REPS,MACHINE
+덤벨 킥백,Tricep Dumbbell Kickback,ARMS,triceps,PUSH,WEIGHT_REPS,DUMBBELL
+케이블 푸시다운,Triceps Pushdown,ARMS,triceps,PUSH,WEIGHT_REPS,CABLE
+바벨 리버스컬,Reverse Barbell Curl,ARMS,biceps,PULL,WEIGHT_REPS,BARBELL
+케이블 리버스컬,Reverse Cable Curl,ARMS,biceps,PULL,WEIGHT_REPS,CABLE
+해머컬,Hammer Curls,ARMS,biceps,PULL,WEIGHT_REPS,DUMBBELL
+바벨 롤아웃,Barbell Ab Rollout,CORE,abdominals,PULL,WEIGHT_REPS,BARBELL
+플랭크,Plank,CORE,abdominals,NONE,TIME,BODYWEIGHT
+팔로프 프레스,Pallof Press,CORE,abdominals,PULL,WEIGHT_REPS,CABLE
+바벨 사이드밴드,Barbell Side Bend,CORE,abdominals,PULL,WEIGHT_REPS,BARBELL
+디클라인 오블리크 크런치,Decline Oblique Crunch,CORE,abdominals,PULL,BODYWEIGHT_REPS,BODYWEIGHT
+케이블 사이드밴드,One-Arm High-Pulley Cable Side Bends,CORE,abdominals,PULL,WEIGHT_REPS,CABLE
+덤벨 사이드밴드,Dumbbell Side Bend,CORE,abdominals,PULL,WEIGHT_REPS,DUMBBELL
+싯업,3/4 Sit-Up,CORE,abdominals,PULL,BODYWEIGHT_REPS,BODYWEIGHT
+케이블 크런치,Cable Crunch,CORE,abdominals,PULL,WEIGHT_REPS,CABLE
+머신 크런치,Ab Crunch Machine,CORE,abdominals,PULL,WEIGHT_REPS,MACHINE
+레그 풀인,Leg Pull-In,CORE,abdominals,PULL,BODYWEIGHT_REPS,BODYWEIGHT
+케이블 리버스 크런치,Cable Reverse Crunch,CORE,abdominals,PULL,WEIGHT_REPS,CABLE
+평행봉 레그레이즈,Knee/Hip Raise On Parallel Bars,CORE,abdominals,PULL,BODYWEIGHT_REPS,PULLUP_BAR
+랜드마인 180,Landmine 180's,CORE,abdominals,PULL,WEIGHT_REPS,BARBELL
+러시안 트위스트,Russian Twist,CORE,abdominals,PULL,BODYWEIGHT_REPS,BODYWEIGHT
+케이블 러시안 트위스트,Cable Russian Twists,CORE,abdominals,PULL,WEIGHT_REPS,CABLE
