@@ -1,0 +1,4 @@
+ALTER TABLE exercises ALTER COLUMN equipment SET NOT NULL;
+
+ALTER TABLE exercises ADD CONSTRAINT ck_exercises_equipment
+    CHECK (equipment IN ('BARBELL','DUMBBELL','MACHINE','CABLE','BODYWEIGHT','PULLUP_BAR'));
