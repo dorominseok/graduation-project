@@ -1,23 +1,39 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 
+type HealthStatus = 'UP' | 'DOWN' | 'OUT_OF_SERVICE' | 'UNKNOWN'
+
+interface HealthComponent {
+  status: HealthStatus
+  details?: Record<string, unknown>
+  components?: Record<string, HealthComponent>
+}
+
+interface HealthResponse {
+  status: HealthStatus
+  components?: Record<string, HealthComponent>
+  groups?: string[]
+}
+
+type FetchStatus = 'loading' | 'error' | 'done'
+
 function App() {
-  const [status, setStatus] = useState('loading')
-  const [data, setData] = useState(null)
-  const [error, setError] = useState(null)
+  const [status, setStatus] = useState<FetchStatus>('loading')
+  const [data, setData] = useState<HealthResponse | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/actuator/health')
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json()
+        return res.json() as Promise<HealthResponse>
       })
       .then((json) => {
         setData(json)
         setStatus('done')
       })
-      .catch((err) => {
-        setError(err.message)
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : String(err))
         setStatus('error')
       })
   }, [])
