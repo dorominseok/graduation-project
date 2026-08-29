@@ -194,7 +194,9 @@ Authorization: Bearer {accessToken}
 
 ### 2.4 필요한 스키마 추가
 
-9월 인증 구현 전에 마이그레이션이 필요하다. `V1__init.sql`에 없는 항목이다.
+9월 1주에 아래 네 항목을 담은 마이그레이션 `V3__auth_profile_exercise_meta.sql`을 만든다. `V1__init.sql`에 없는 항목이며, `V2`는 이미 `equipment` 제약에 사용됨. (2·3번은 인증과 무관하지만, 종목 데이터·9월 화면이 의존하므로 같은 마이그레이션에서 함께 처리한다.)
+
+> **확인 완료**: `workout_sessions.memo`(TEXT)와 `duration_override_sec`(INT)는 `V1__init.sql`에 이미 존재한다. 6.9의 메모·시간 수동 보정은 추가 스키마 없이 동작한다.
 
 **(1) `refresh_tokens` — 신규 테이블**
 
@@ -220,7 +222,29 @@ Authorization: Bearer {accessToken}
 
 > 별도 `user_profiles` 테이블로 분리하는 방안도 있으나, 1:1이고 필드가 4개뿐이라 `users`에 인라인한다. 값은 회원가입 후 선택 입력이므로 전부 NULL 허용.
 
-이 두 마이그레이션을 `V3__auth_and_profile.sql`로 만든다. (`V2`는 이미 `equipment` 제약에 사용됨.)
+**(3) `exercises.delt_region` — 기존 테이블 확장**
+
+`primaryMuscle = shoulders`인 종목을 `DELT_FRONT` / `DELT_REAR`로 나누는 근거 컬럼(8.1). 이 분류는 8월 8일 종목 정제 때 이미 판단이 끝났고(LOG-09: `DELT_FRONT` 10종목 / `DELT_REAR` 3종목), 저장할 자리만 없었다. 폴백(전량 `DELT_FRONT` 집계)을 쓰면 전 사용자에게 "어깨(뒤) 부족"과 당기기 불균형 경고가 상시 뜨므로 — LOG-09가 전완을 판정에서 뺀 이유와 같은 상황 — 10월로 미루지 않고 여기서 확보한다.
+
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| `delt_region` | VARCHAR(10) NULL | `FRONT` / `REAR`. `primary_muscle = 'shoulders'`인 종목에만 값. 그 외 종목은 NULL |
+
+`primary_muscle = 'shoulders'`인 13개 종목에만 값을 채운다. 배분 기준은 LOG-09 §"어깨 전면·후면 분리 방식" 표(오버헤드 프레스·전면 레이즈·측면 레이즈 → `FRONT`, 후면 델트 → `REAR`)를 따른다.
+
+**(4) `user_favorite_exercises` — 신규 테이블**
+
+종목 즐겨찾기 별표(기록 방식 3.4). 이력 기반 "최근 사용"과 별개로, 사용자가 직접 토글하는 값이므로 저장이 필요하다.
+
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| `id` | BIGSERIAL PK | |
+| `user_id` | BIGINT FK → users ON DELETE CASCADE | |
+| `exercise_id` | BIGINT FK → exercises ON DELETE CASCADE | |
+| `created_at` | TIMESTAMPTZ NOT NULL DEFAULT now() | 즐겨찾기 탭 정렬 기준 |
+
+- `UNIQUE (user_id, exercise_id)` — 중복 방지
+- 인덱스: `(user_id, created_at DESC)` — 즐겨찾기 탭 조회
 
 ---
 
@@ -241,8 +265,10 @@ Authorization: Bearer {accessToken}
 
 | 메서드 | 경로 | 설명 | 인증 |
 |---|---|---|---|
-| GET | `/exercises` | 종목 목록·검색 (필터·페이지네이션) | — |
+| GET | `/exercises` | 종목 목록·검색 (필터·페이지네이션, `favorite` 필터) | — |
 | GET | `/exercises/{id}` | 종목 단건 조회 | — |
+| PUT | `/users/me/favorite-exercises/{exerciseId}` | 즐겨찾기 추가 (멱등) | ✔ |
+| DELETE | `/users/me/favorite-exercises/{exerciseId}` | 즐겨찾기 해제 (멱등) | ✔ |
 
 ### 3.3 운동 기록 (세션·세트)
 
@@ -455,6 +481,7 @@ Authorization: Bearer {accessToken}
 | `bodyPart` | enum | 6종 중 하나로 필터 |
 | `equipment` | enum | 기구로 필터 |
 | `measureType` | enum | 측정 유형으로 필터 |
+| `favorite` | boolean | `true`면 내 즐겨찾기 종목만. 인증 없이 호출하면 무시 |
 | `page`, `size`, `sort` | | 1.4 참조. 기본 `sort=nameKo,asc` |
 
 **응답 `200 OK`** — 1.4의 페이지 envelope. `content` 항목:
@@ -468,15 +495,39 @@ Authorization: Bearer {accessToken}
   "primaryMuscle": "chest",
   "pushPull": "PUSH",
   "measureType": "WEIGHT_REPS",
-  "equipment": "BARBELL"
+  "equipment": "BARBELL",
+  "deltRegion": null,
+  "isFavorite": true
 }
 ```
 
-> "최근 사용·즐겨찾기 종목 상단 노출"(기록 방식 3.4)은 기록 화면 프론트에서 `GET /workout-sessions` 이력으로 계산한다. 별도 엔드포인트는 9월 범위 밖.
+| 필드 | 설명 |
+|---|---|
+| `deltRegion` | `FRONT` \| `REAR` \| `null`. `primaryMuscle`가 `shoulders`인 종목만 값(8.1). 화면 종목 분류엔 쓰지 않고, 분석 판정 참고용 |
+| `isFavorite` | 내 즐겨찾기 여부. **인증된 요청에만** 포함하고, 비인증 요청에선 키 생략 |
+
+**종목 목록의 두 탭 (목업)**
+
+| 탭 | 산출 |
+|---|---|
+| 최근 사용 | 프론트가 `GET /workout-sessions` 이력에서 최근 등장 `exerciseId` 순으로 계산. 별도 엔드포인트 없음 |
+| 즐겨찾기 | `GET /exercises?favorite=true&sort=` — 서버가 `user_favorite_exercises` 기준. 정렬은 `createdAt,desc` 고정(별표 누른 순) |
 
 ### 5.3 GET /exercises/{id}
 
-**응답 `200 OK`** — 5.2의 단일 객체. 없으면 `404 RESOURCE_NOT_FOUND`.
+**응답 `200 OK`** — 5.2의 단일 객체(`deltRegion`, 인증 시 `isFavorite` 포함). 없으면 `404 RESOURCE_NOT_FOUND`.
+
+### 5.4 PUT / DELETE /users/me/favorite-exercises/{exerciseId}
+
+별표 토글. 둘 다 멱등이다 — 이미 등록/해제된 상태로 다시 호출해도 성공 처리한다.
+
+| 메서드 | 동작 | 응답 |
+|---|---|---|
+| `PUT` | 즐겨찾기 추가 (`user_favorite_exercises`에 UPSERT) | `204 No Content` |
+| `DELETE` | 즐겨찾기 해제 | `204 No Content` |
+
+- `exerciseId`가 없는 종목이면 `404 RESOURCE_NOT_FOUND`.
+- 개수 상한은 두지 않는다(9월 범위). 필요 시 이후 `409`로 추가.
 
 ---
 
@@ -539,6 +590,8 @@ workout_session (하루 한 번의 운동)
 | 이미 `DRAFT` 세션 보유 (`LIVE` 생성 시) | `409 DRAFT_SESSION_EXISTS` — 본문 `message`에 안내, 클라이언트는 `GET /workout-sessions/current`로 이어쓰기 유도 |
 | `LIVE`인데 `performedOn`이 오늘이 아님 | `400 VALIDATION_ERROR` |
 | `performedOn`이 미래 | `400 INVALID_DATE_RANGE` |
+
+> **미래 날짜 세션은 허용하지 않는다** (대조표 A-4.2 미결정 항목의 확정). 미리 짜두는 운동은 "계획"이고, `workout_sessions`는 "기록"만 담는다 — LOG-05가 이 둘을 다른 테이블로 분리한 것이 핵심 결정이다. 미래 운동을 미리 구성하는 화면은 10월 `routines` 테이블의 일이다. 목업의 미래 날짜 선택 화면은 제거해야 한다(9장).
 
 > **BACKFILL 편의(선택 구현)**: `POST /workout-sessions`에 `"sets": [ … ], "autoComplete": true`를 함께 받아 세션 생성 + 세트 일괄 저장 + 종료를 한 번에 처리할 수 있다. 기본 흐름은 위 3단계를 유지한다.
 
@@ -653,7 +706,10 @@ workout_session (하루 한 번의 운동)
 | `durationSec` | 자동 산출값 (`BACKFILL`은 `null`) |
 | `durationOverrideSec` | 사용자 수동 보정값 (없으면 `null`) |
 | `effectiveDurationSec` | **서버가 결정한 최종 시간** = `durationOverrideSec ?? durationSec`. 화면은 이 값만 쓰면 된다 |
-| `exercises[]` | 종목별로 그룹핑, 각 그룹 내 `sets`는 `setNo` 오름차순 |
+| `exercises[]` | 종목별로 그룹핑. **정렬 = 각 종목의 가장 이른 `recordedAt` 오름차순**(= 사용자가 그 종목을 처음 수행한 순서). 별도 순서 컬럼은 두지 않는다 |
+| `exercises[].sets` | `setNo` 오름차순 |
+
+> 세션 내 종목 순서는 "수행한 순서"로 고정한다. 종목을 위아래로 재배치하는 기능은 두지 않으므로 목업에서 제거해야 한다(9장). 자유 기록에서 `recordedAt` 순서 = 수행 순서이고, 이는 히스토리에서 보고 싶은 순서와 일치한다.
 
 ### 6.6 GET /workout-sessions
 
@@ -863,8 +919,8 @@ workout_session (하루 한 번의 운동)
 |---|---|
 | `CHEST` | `chest` |
 | `BACK` | `lats`, `middle back`, `traps`, `lower back` |
-| `DELT_FRONT` | `shoulders` 중 오버헤드 프레스·전면 레이즈·**측면 레이즈** 계열 |
-| `DELT_REAR` | `shoulders` 중 후면 델트 계열 |
+| `DELT_FRONT` | `primary_muscle = shoulders` AND `delt_region = FRONT` (오버헤드 프레스·전면 레이즈·**측면 레이즈** 계열) |
+| `DELT_REAR` | `primary_muscle = shoulders` AND `delt_region = REAR` (후면 델트 계열) |
 | `TRICEPS` | `triceps` |
 | `BICEPS` | `biceps` |
 | `QUADS` | `quadriceps`, `abductors`, `adductors` |
@@ -884,7 +940,9 @@ workout_session (하루 한 번의 운동)
 
 **판정 제외 — 표시만** (분석 2.3): `calves`(종아리), `forearms`(전완). 부족 판정하지 않고 세트 수만 내려준다.
 
-> **미해결 의존성**: `DELT_FRONT` / `DELT_REAR` 분리는 원본 데이터에 없다. `exercises`에 `movement_pattern`(또는 `delt_region`) 컬럼을 두거나 판정 로직에 종목 ID 매핑 상수를 두어야 한다. 10월 분석 로직 구현 시 확정(분석 4.3 미해결, LOG-09 한계 인지). **분석 API는 이 매핑이 확보돼야 정확히 동작한다.** 그 전까지 `shoulders`는 전량 `DELT_FRONT`로 임시 집계하고 응답에 `"shoulderSplitResolved": false` 플래그를 포함한다.
+> **어깨 앞·뒤 분리**: `DELT_FRONT` / `DELT_REAR`를 나누는 `exercises.delt_region` 컬럼을 9월 1주 `V3` 마이그레이션에서 확보한다(2.4-(3)). 분류 자체는 8월 8일 종목 정제 때 끝났고(`FRONT` 10 / `REAR` 3), 저장할 자리만 없었다. 폴백(전량 `DELT_FRONT` 집계)은 전 사용자에게 "어깨(뒤) 부족" + 당기기 불균형 경고를 상시 띄우므로 채택하지 않는다.
+>
+> 응답의 `shoulderSplitResolved` 플래그는 **유지**한다. `delt_region`이 채워진 종목이 하나라도 세션에 있으면 `true`, 정제 지연 등으로 아직 NULL만 있으면 `false`를 내려 화면이 어깨 하위 판정을 참고치로 낮춰 표시하도록 신호한다. 정상 운영에서는 항상 `true`다.
 
 ### 8.2 GET /analysis/muscle-volume
 
@@ -923,7 +981,7 @@ workout_session (하루 한 번의 운동)
   "periodWeeks": 4,
   "periodFrom": "2026-08-04",
   "periodTo": "2026-09-01",
-  "shoulderSplitResolved": false,
+  "shoulderSplitResolved": true,
   "confidence": {
     "level": "LOW",
     "doneSessionCount": 4,
@@ -988,7 +1046,7 @@ workout_session (하루 한 번의 운동)
 | 필드 | 설명 |
 |---|---|
 | `periodFrom` / `periodTo` | 실제 집계 구간 (화면 표기용, 서버가 계산) |
-| `shoulderSplitResolved` | `DELT_FRONT`/`DELT_REAR` 분리 매핑 확보 여부 (8.1의 미해결 의존성). `false`면 어깨 하위 판정을 참고치로만 표시하도록 화면에 신호 |
+| `shoulderSplitResolved` | 세션에 `delt_region`이 채워진 어깨 종목이 있으면 `true`(정상), 아직 NULL만 있으면 `false`. `false`일 때만 화면이 어깨 하위 판정을 참고치로 낮춰 표시 (8.1) |
 | `confidence.level` | `LOW` \| `NORMAL`. `doneSessionCount < threshold`이면 `LOW` |
 | `confidence.threshold` | 최근 4주 DONE 세션 임계값. 서버 설정값(기본 6, 기록 방식 5.5) |
 | `tiers[]` | **상위 6종**. 항상 6개, 고정 순서(`CHEST, BACK, SHOULDERS, ARMS, LEGS, CORE`) |
@@ -1043,7 +1101,7 @@ workout_session (하루 한 번의 운동)
   "referenceDate": "2026-09-01",
   "periodWeeks": 4,
   "ratioThreshold": 2.0,
-  "shoulderSplitResolved": false,
+  "shoulderSplitResolved": true,
   "pairs": [
     {
       "key": "PUSH_PULL",
@@ -1103,16 +1161,34 @@ workout_session (하루 한 번의 운동)
 
 ## 9. 미해결·후속 과제
 
+### 9.1 스키마 / 백엔드
+
 | 항목 | 내용 | 시점 |
 |---|---|---|
-| 어깨 전·후면 분리 데이터 | `exercises.movement_pattern` 컬럼 추가 or 종목 ID 매핑 상수. 분석 API 정확도의 전제 (8.1) | 10월 분석 로직 구현 |
-| `V3__auth_and_profile.sql` | `refresh_tokens` 테이블 + `users` 프로필 4컬럼 (2.4) | 9월 1주, 인증 구현 전 |
+| `V3__auth_profile_exercise_meta.sql` | ① `refresh_tokens` 테이블 ② `users` 프로필 4컬럼 ③ `exercises.delt_region` ④ `user_favorite_exercises` 테이블 (2.4) | 9월 1주, 인증 구현 전 |
+| `exercises.delt_region` 값 채우기 | `primary_muscle = 'shoulders'`인 13개 종목에 `FRONT`/`REAR` 입력. 배분 기준은 LOG-09 표 | 9월 1주, 종목 데이터 갱신과 함께 |
 | `routines` FK | `workout_sessions.routine_id`는 컬럼만 존재. `routines` 생성 시 FK 마이그레이션 | 10월 |
-| 요약 배지 문안 | `summaryBadge` label 및 `MIXED` 표기 확정 (8.2) | 화면 구현 시 |
+| 요약 배지 문안 | `summaryBadge` label 및 `MIXED` 표기 확정 (8.2). enum `key`는 고정 | 화면 구현 시 |
 | QUADS 화면 명칭 | `abductors`·`adductors` 포함이라 "앞허벅지"가 부정확 (LOG-10 한계) | 종목 정제 결과 확인 후 |
 | 우선순위 산출 | 여러 부위 동시 부족·불균형 시 보완 순서 (분석 8장) | 10월 |
 | 이메일·비밀번호 변경 API | 9월 범위 제외 | 필요 시 |
 | Rate limiting | `429 RATE_LIMITED` 코드만 예약. 실제 도입은 배포 후 판단 | 미정 |
+| 즐겨찾기 개수 상한 | 현재 무제한. 필요 시 `409`로 추가 (5.4) | 배포 후 판단 |
+
+> `workout_sessions.memo` / `duration_override_sec`는 `V1__init.sql`에 이미 존재함을 확인했다. V3 대상 아님.
+
+### 9.2 프론트엔드 목업 수정 필요
+
+명세와 8월 3주 목업이 어긋나는 지점. 명세를 기준으로 목업을 고친다.
+
+| 목업 화면 | 수정 내용 | 근거 |
+|---|---|---|
+| 미래 날짜 선택 → "루틴 미리 짜기" 화면 | **제거**. `workout_sessions`는 미래 날짜를 받지 않는다 | 6.2. 계획/기록 분리(LOG-05), 미리 짜기는 10월 `routines` |
+| 세션 내 종목 위·아래 재배치 기능 | **제거**. 종목 순서는 "수행한 순서"(첫 세트 `recordedAt`)로 고정 | 6.5 |
+| 프로필 목표: 증량 / 유지 / 감량 (체중 축) | **훈련 목표로 교체** — 근력 / 근비대 / 지구력 / 일반 체력 (`STRENGTH`/`HYPERTROPHY`/`ENDURANCE`/`GENERAL_FITNESS`) | 4.6, 분석 1.3의 목표 축. 체중 목표는 분석·추천 로직에서 안 쓰임 |
+| 프로필에 운동 경력 입력 없음 | **추가** — `experienceLevel` (초급/중급/고급) | UC-01-03, 4.6 |
+
+> 즐겨찾기 별표·탭, "어깨(앞)/어깨(뒤)" 2계층 표시는 목업 그대로 유지된다(명세가 목업에 맞췄음).
 
 ---
 
@@ -1126,8 +1202,9 @@ workout_session (하루 한 번의 운동)
 | `exercise.pushPull` | `PUSH`, `PULL`, `NONE` |
 | `exercise.measureType` | `WEIGHT_REPS`, `BODYWEIGHT_REPS`, `WEIGHTED_BODYWEIGHT`, `TIME` |
 | `exercise.equipment` | `BARBELL`, `DUMBBELL`, `MACHINE`, `CABLE`, `BODYWEIGHT`, `PULLUP_BAR` |
+| `exercise.deltRegion` | `FRONT`, `REAR`, `null` (`primaryMuscle = shoulders`인 종목만 값) |
 | `user.experienceLevel` | `BEGINNER`, `INTERMEDIATE`, `ADVANCED` |
-| `user.goal` | `STRENGTH`, `HYPERTROPHY`, `ENDURANCE`, `GENERAL_FITNESS` |
+| `user.goal` | `STRENGTH`, `HYPERTROPHY`, `ENDURANCE`, `GENERAL_FITNESS` (훈련 목표 축 — 체중 목표 아님) |
 | 판정 부위 상위 (`tier.key`) | `CHEST`, `BACK`, `SHOULDERS`, `ARMS`, `LEGS`, `CORE` |
 | 판정 부위 하위 (`child.key`) | `CHEST`, `BACK`, `DELT_FRONT`, `DELT_REAR`, `TRICEPS`, `BICEPS`, `QUADS`, `POSTERIOR`, `CORE` |
 | 표시만 (`displayOnly.key`) | `CALVES`, `FOREARMS` |
