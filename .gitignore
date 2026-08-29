@@ -31,3 +31,12 @@ desktop.ini
 
 # 작업 도구 (프로젝트 산출물 아님 — 구축 기록 3.2)
 docs/새대화_템플릿.md
+
+# LLM 실험 실행 결과 (원본 응답 — 로컬 보관, 보고서·발표용. git 미추적)
+scripts/llm-experiment/runs/
+scripts/llm-experiment/results.md
+scripts/llm-experiment/results.json
+
+# Python
+__pycache__/
+*.pyc
