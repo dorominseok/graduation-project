@@ -3,7 +3,8 @@
 
 > 8월 4주 계획 항목("LLM API 사전 실험"). 착수 시점: 2026-08-30.
 > 목적: 10월 루틴 추천의 핵심 리스크(LLM을 규칙 안에 가두는 것)가 실제로 되는지를 미리 확인하고, 안 되는 부분을 설계에 반영한다.
-> 이 문서는 **실험 계획 + 진행 기록**을 함께 담는다. §7·§9의 결과 표는 실험을 돌리며 채운다.
+> 이 문서는 **실험 계획 + 진행 기록**을 함께 담는다. ① 분석 해설 실험은 2026-08-30 완료(§7).
+> 회차별 상세 로그·원문은 `scripts/llm-experiment/runs/`(로컬, git 미추적)에 있다.
 
 ---
 
@@ -49,32 +50,25 @@
 
 **이번 실험에 쓸 것이 필요할 뿐, 통제 메커니즘(구조화 출력·프롬프트 규칙·출력 검증·규칙 폴백)은 3사 공통이고 provider에 종속되지 않는다.** §2의 인터페이스 추상화로 교체 가능하게 둔다.
 
-> 타 provider의 정확한 요금·rate limit·모델 ID는 각 콘솔에서 확인한다. 이 문서는 **Claude 기준으로 구체화**한다. 이유: (a) Java SDK가 성숙하고 Spring Boot에 얹기 쉬움, (b) 구조화 출력과 도구 스키마 `strict` 강제가 ②의 후보 제한에 바로 쓰임, (c) 최신 API 형태를 확인해 문서에 고정할 수 있음. 최종 확정은 §7 실험 결과를 보고 판단.
+> **채택: Google Gemini 무료 티어.** 이유: (a) 비용 0(모델별 별도 일일 쿼터), (b) 구조화 출력(`responseSchema` + `responseMimeType: application/json`) 지원, (c) `gemini-3.5-flash-lite` 응답 ~1.2초. 통제 메커니즘은 provider 독립이라 결과가 10월에 이식된다.
+> **주의**: 무료 티어는 프롬프트가 Google 모델 학습에 쓰일 수 있다(EU/UK/EEA 외). 이번 실험 입력은 전부 합성 데이터라 무방하나, 실제 사용자 데이터로 옮길 때는 재검토(§10).
 
-### 1.2 Claude 모델 티어 (요금: 2026-06 기준, 실측 시 콘솔 확인)
+### 1.2 Gemini 모델 (실측 — 2026-08-30 기준, 콘솔 재확인)
 
-| 모델 | 모델 ID | 입력 $/1M토큰 | 출력 $/1M토큰 | 이 앱에서의 위치 |
-|---|---|---|---|---|
-| Claude Opus 5 | `claude-opus-5` | $5 | $25 | 품질 상한 확인용 |
-| Claude Sonnet 5 | `claude-sonnet-5` | $2 | $10 | 운영 후보 |
-| Claude Haiku 4.5 | `claude-haiku-4-5` | $1 | $5 | 운영 후보 (①처럼 단순한 작업) |
+| 모델 ID | 특성 | 이 앱에서의 위치 |
+|---|---|---|
+| `gemini-3.5-flash-lite` | thinking 없음, 응답 ~1.2초, 출력 토큰 적음. 무료 티어 | **운영 후보** — ①처럼 단순한 해설에 충분 |
+| `gemini-3.6-flash` | thinking 기본 ON(케이스별 750~2,900 tok 선소모), 응답 7~12초. 무료 티어(별도 쿼터, 한도 낮음) | 품질·결함율 비교용 (4차 예정) |
+| `gemini-2.5-flash` | **신규 계정에 `404`** ("no longer available to new users") | 사용 불가 |
 
-**실험 방법**: `claude-opus-5`로 품질 상한을 먼저 잡고, `claude-sonnet-5` → `claude-haiku-4-5`로 내리며 §4의 검증 통과율이 유지되는지 측정한다. ①(짧은 해설)은 Haiku로도 충분할 가능성이 높다. 운영 모델은 통과율이 꺾이지 않는 가장 싼 티어로 정한다.
+**실험 방법**: `gemini-3.6-flash` v1으로 시작 → 출력 잘림(thinking)·과소보고 발견 → `gemini-3.5-flash-lite` + 프롬프트 v2·v3로 재측정. 결과 §7. flash vs lite 정면 비교는 flash 무료 쿼터 회복 후 4차.
 
-### 1.3 비용 실측 계획
+### 1.3 비용 (실측)
 
-- 입력: 8.2 muscle-volume 응답 JSON. 대략 800~1,500토큰 규모로 **추정**되나, `messages.count_tokens`로 실측한다.
-- 출력: 해설 2~3문장 ≈ 150~350토큰.
-- 1회 호출 개략 비용 (입력 1.5K + 출력 300 가정):
-
-| 모델 | 개략 단가/호출 |
-|---|---|
-| Opus 5 | ≈ $0.015 |
-| Sonnet 5 | ≈ $0.006 |
-| Haiku 4.5 | ≈ $0.003 |
-
-- 실사용자 검증(지인 약 10명)이 통계 화면을 주 몇 회 여는 수준이면 월 수백 회 → **월 몇 달러 이하**. system 프롬프트를 prompt caching으로 재사용하면 더 내려간다.
-- Anthropic 콘솔에서 **이 프로젝트 전용 API 키 + 월 spend limit**을 걸어 사고를 막는다.
+- **비용 0** — 두 모델 다 무료 티어. 유료 전환 시에도 호출당 센트 단위.
+- 실측 토큰(`gemini-3.5-flash-lite`, 케이스당): 입력 **~2,400** / 출력 **50~250**. `gemini-3.6-flash`는 여기에 thinking 750~2,900 추가.
+- **무료 일일 쿼터가 낮다.** 신형 3.x flash는 하루 ~20~25회 수준(옛 2.5-flash의 일 250 대비 대폭 축소). 실험 중 429로 여러 번 대기. 태평양시 자정 리셋.
+- 실사용자 검증(지인 10명) 단계에서 무료 쿼터로 감당 안 되면 유료 전환(월 몇 달러) 또는 상위 쿼터 티어.
 
 ---
 
@@ -84,22 +78,25 @@
 
 ```groovy
 // backend/build.gradle
-implementation 'com.anthropic:anthropic-java:2.34.0'
+implementation 'com.google.genai:google-genai:1.x'   // 또는 Spring RestClient로 REST 직접
 ```
+
+- Gemini REST(`generateContent`)는 요청 형태가 단순해 `RestClient`만으로도 충분하다. 공식 Java SDK(`google-genai`)를 쓰면 스키마 헬퍼가 붙는다. 어느 쪽이든 §2.2의 어댑터 안에 갇힌다.
+- **실험 하네스는 별개다.** `scripts/llm-experiment/`의 Python + REST 스크립트이며 본 앱에 들어가지 않는다(버릴 코드). 통제 검증용.
 
 ### 2.2 패키지 구조 (제안)
 
 ```
 com.fitness.backend.llm
-├─ LlmCommentaryPort         (인터페이스 — provider 무관)
-├─ ClaudeCommentaryAdapter   (Anthropic SDK 구현)
-├─ CommentaryPromptBuilder   (판정 JSON → 프롬프트)
-├─ CommentaryValidator       (§4 규칙 검증)
-├─ RuleBasedCommentary       (§5 폴백 — 규칙 기반 문장 조립)
-└─ LlmProperties             (app.llm.* 바인딩)
+├─ LlmCommentaryPort          (인터페이스 — provider 무관)
+├─ GeminiCommentaryAdapter    (Gemini generateContent 호출)
+├─ CommentaryPromptBuilder    (판정 JSON → 프롬프트)
+├─ CommentaryValidator        (§4 규칙 검증)
+├─ RuleBasedCommentary        (§5 폴백 — 규칙 기반 문장 조립)
+└─ LlmProperties              (app.llm.* 바인딩)
 ```
 
-- **포트-어댑터로 분리**: 서비스 로직은 `LlmCommentaryPort`만 안다. Claude → 다른 provider 교체, 테스트 시 mock, 폴백 주입이 전부 이 경계에서 해결된다.
+- **포트-어댑터로 분리**: 서비스 로직은 `LlmCommentaryPort`만 안다. Gemini → 다른 provider 교체, 테스트 시 mock, 폴백 주입이 전부 이 경계에서 해결된다.
 - 호출 위치: 10월 정식은 `GET /api/v1/analysis/commentary` (명세 8.4). **9월 실험 단계에서는** 임시 컨트롤러 또는 `@SpringBootTest` 실행 스크립트로 충분하다 — 화면 붙이기 전에 통제부터 확인.
 
 ### 2.3 흐름
@@ -111,11 +108,11 @@ com.fitness.backend.llm
 CommentaryPromptBuilder: DTO → (system 고정 + user에 JSON + 규칙)
         │
         ▼
-ClaudeCommentaryAdapter: 구조화 출력으로 호출 (타임아웃·재시도)
+GeminiCommentaryAdapter: 구조화 출력으로 호출 (타임아웃·재시도)
         │
         ├─ 성공 → CommentaryValidator
         │            ├─ 통과 → 해설 반환
-        │            └─ 위반 → 1회 재요청 → 또 위반 → 폴백
+        │            └─ 위반(직렬화 결함 등) → 1회 재요청 → 또 위반 → 폴백
         └─ 예외/타임아웃 → 폴백 (RuleBasedCommentary)
 ```
 
@@ -126,16 +123,16 @@ ClaudeCommentaryAdapter: 구조화 출력으로 호출 (타임아웃·재시도)
 app:
   llm:
     enabled: ${LLM_ENABLED:false}      # 기본 off — 명시적으로 켠다
-    provider: claude
-    model: claude-opus-5               # 실험 중 티어 조정
-    timeout-ms: 8000
-    max-output-tokens: 400
+    provider: gemini
+    model: gemini-3.5-flash-lite       # 운영 후보 (§7). flash는 8000 필요
+    timeout-ms: 15000                  # lite ~1.2s, 직렬화 결함 시 8~12s
+    max-output-tokens: 1024            # lite. gemini-3.6-flash는 thinking 때문에 8000
     retry:
-      max-attempts: 2                  # SDK 기본 재시도와 별개인 앱 레벨 재요청
+      max-attempts: 2                  # 이상 응답(직렬화 결함) 시 재요청 후 폴백
 ```
 
-- `ANTHROPIC_API_KEY`는 **환경변수로만** 주입한다(§6). `application.yaml`에 키 문자열을 두지 않는다.
-- `enabled: false`가 기본. 켜지 않으면 분석 화면은 폴백 문장만 쓰거나 해설 영역을 숨긴다.
+- `GEMINI_API_KEY`는 **환경변수로만** 주입한다(§6). `application.yaml`에 키 문자열을 두지 않는다.
+- `enabled: false`가 기본. 켜지 않아도 해설 카드는 유지하고 규칙 기반 문장을 넣는다(§5.3).
 
 ### 2.5 어댑터 스케치 (구조화 출력 — 핵심)
 
@@ -145,64 +142,73 @@ app:
 // 구조화 출력 대상 POJO
 record CommentaryClaim(
     String sentence,          // 사용자에게 보일 문장(한국어)
-    String citedTier,         // 인용한 부위 key (준 목록 안에서만)
+    String citedTier,         // 인용한 부위 label (준 목록 안에서만, 균형·신뢰도 문장은 null)
     Double citedWeeklySets,   // 인용한 주당 세트 수 (입력 JSON의 값과 일치해야 함)
     String citedVerdict       // 인용한 판정 라벨 (서버 판정과 일치해야 함)
 ) {}
 record Commentary(List<CommentaryClaim> claims) {}
-
-// ClaudeCommentaryAdapter
-StructuredMessageCreateParams<Commentary> params = MessageCreateParams.builder()
-    .model(props.model())                       // app.llm.model
-    .maxTokens(props.maxOutputTokens())
-    .outputConfig(OutputConfig.builder().effort(OutputConfig.Effort.LOW).build())
-    .systemOfTextBlockParams(List.of(
-        TextBlockParam.builder()
-            .text(SYSTEM_PROMPT)                 // §3.1, 고정 → 캐시
-            .cacheControl(CacheControlEphemeral.builder()
-                .ttl(CacheControlEphemeral.Ttl.TTL_1H).build())
-            .build()))
-    .outputConfig(Commentary.class)             // 스키마 자동 유도 + 타입 반환
-    .addUserMessage(promptBuilder.userMessage(dto))  // §3.2
-    .build();
-
-Commentary out = client.messages().create(params).content().stream()
-    .flatMap(cb -> cb.text().stream())
-    .map(t -> t.text())                          // t.text()가 Commentary 타입
-    .findFirst().orElseThrow();
 ```
 
-- `effort(LOW)` + 짧은 `maxTokens`: 해설은 단순 작업이므로 낮은 비용으로 충분한지 실험으로 확인.
-- `temperature` 등 샘플링 파라미터는 현재 모델에서 제거됨 — 쓰지 않는다.
-- system 프롬프트를 `cacheControl`로 캐시하면 반복 호출 시 입력 비용이 준다. `usage().cacheReadInputTokens()`로 적중 확인.
+Gemini `generateContent` 요청 본문의 요지 (REST 기준):
+
+```json
+{
+  "systemInstruction": { "parts": [{ "text": "<SYSTEM_PROMPT §3.1>" }] },
+  "contents": [{ "role": "user", "parts": [{ "text": "<USER §3.2>" }] }],
+  "generationConfig": {
+    "responseMimeType": "application/json",
+    "responseSchema": { /* Commentary 스키마 (OpenAPI subset) */ },
+    "temperature": 0,
+    "maxOutputTokens": 1024
+  }
+}
+```
+
+- **구조화 출력이 통제의 1차 방어선**: `responseSchema`로 `claims[]` 형태를 강제하고, 각 claim이 인용한 부위·세트수·판정을 함께 받는다 → 검증(§4)이 문자열 매칭이 아니라 값 비교가 된다.
+- `temperature: 0`. Gemini는 샘플링 파라미터를 받는다(Claude와 다름).
+- **`gemini-3.6-flash`는 thinking을 끌 수 없다** — v1beta에서 `thinkingBudget: 0` / `thinkingLevel`이 `400`. `maxOutputTokens`를 8000으로 크게 잡아 잘림을 피한다. `gemini-3.5-flash-lite`는 thinking이 없어 이 문제가 없다.
+- 응답 파싱: `candidates[0].content.parts[*].text`를 이어붙여 JSON 파싱. `finishReason == "MAX_TOKENS"`면 잘린 것 → 폴백. Gemini에는 prompt caching이 별도 API(암묵 캐시)이며 이 실험에서는 쓰지 않았다.
 
 ---
 
 ## 3. 프롬프트 구성 — 수치를 안 바꾸게 하는 법
 
-### 3.1 system 프롬프트 (고정)
+### 3.1 system 프롬프트 (고정, v3 — 실험으로 확정)
 
-역할·규칙을 고정하고, 매 요청 바뀌는 값(판정 JSON)은 user 메시지에만 둔다(캐시 안정성).
+역할·규칙을 고정하고, 매 요청 바뀌는 값(판정 JSON)은 user 메시지에만 둔다. v1(금지 규칙만) → v2(커버리지 규칙 추가) → v3(상충 문장 제거·불균형 수치 강제)로 다듬었다. 변경 근거는 §7.
 
 ```
-너는 헬스 앱의 분석 결과를 사용자에게 설명하는 역할이다.
-아래 규칙을 예외 없이 지켜라.
+너는 헬스 앱의 분석 결과를 사용자에게 설명하는 역할이다. 아래 규칙을 예외 없이 지켜라.
 
 [할 일]
-- 입력으로 받은 판정 결과 JSON을 한국어 2~3문장으로 풀어서 설명한다.
-- 어느 부위가 부족/과다한지, 밀기·당기기나 상·하체 균형이 어떤지 사실만 전달한다.
+- 입력으로 받은 판정 결과 JSON을 한국어로 풀어서 설명한다.
+- 어느 부위가 부족/과다한지, 밀기·당기기나 상·하체 균형이 어떤지 '사실'만 전달한다.
+
+[반드시 다룰 것 — 빠뜨리면 안 됨]
+- verdict 가 INSUFFICIENT(부족) / EXCESSIVE(과다) 인 부위는 전부 언급한다.
+- 그런 부위와 BELOW_RECOMMENDED(권장 이하) 부위를 합쳐 4곳 이상이면, 개별 나열 대신
+  "전반적으로 볼륨이 부족합니다"처럼 요약한다(대표 1~2곳만 예로 든다).
+- 균형(pairs)에 verdict 가 IMBALANCED(불균형) 인 쌍이 있으면 반드시 언급한다.
+  이때 어느 쌍(밀기/당기기 또는 상체/하체)인지와 ratio 값(몇 배인지)을 문장에 넣는다.
+  단 smallerSideZero 가 true 면 ratio 대신 "한쪽이 0세트라 비율을 낼 수 없다"고 말한다.
+- confidence.level 이 LOW 이면, 판정 신뢰도가 낮다는 문장을 반드시 포함한다.
+
+[전부 정상일 때만]
+- 위 네 가지가 하나도 없을 때에 한해 "부위별 볼륨과 균형이 권장 범위 안에 있습니다" 한 문장만 낸다.
+- 지적할 것이 하나라도 있으면 이 문장을 절대 쓰지 않는다. 지적 내용만 말한다.
 
 [금지]
 - 입력 JSON에 없는 수치를 만들어내지 않는다. 세트 수·비율·기간은 입력값만 인용한다.
 - 판정 라벨(부족 / 권장 이하 / 최적 / 과다)을 입력과 다르게 바꾸지 않는다.
-- 부위 이름은 입력 JSON의 label 값만 쓴다. 새 부위명을 지어내지 않는다.
-- 처방하지 않는다. "세트를 늘려라", "무게를 올려라", "~하세요" 같은 지시·명령·권고 표현을 쓰지 않는다.
+- 부위 이름은 입력 JSON의 label 값만 쓴다. 새 부위명(회전근개, 승모근 등)을 지어내지 않는다.
+- 처방하지 않는다. "세트를 늘리세요", "보완해야 합니다", "권장합니다" 같은 지시·명령·권고 표현 금지.
   현황만 알린다. 판단은 사용자 몫이다.
 - 진단, 의학적 조언, 부상 위험 단정을 하지 않는다.
 
-[출력]
-- claims 배열로 반환한다. 각 claim은 문장 하나와 그 문장이 인용한 부위·수치·판정을 함께 담는다.
-- 인용하지 않은 문장(일반론)은 넣지 않는다.
+[출력 형식]
+- JSON. claims 배열. 각 원소: sentence(100자 이내) / citedTier(부위 label, 균형·신뢰도 문장이면 null)
+  / citedWeeklySets(입력값 그대로 복사, 없으면 null) / citedVerdict(부족/권장 이하/최적/과다, 없으면 null)
+- claims는 2~4개. 근거 없는 일반론은 넣지 않는다.
 ```
 
 ### 3.2 user 메시지
@@ -222,13 +228,13 @@ Commentary out = client.messages().create(params).content().stream()
 - JSON을 **가공 없이** 넣는다. 서버가 이미 2계층으로 완성해 내려주므로(명세 8.2) LLM이 합산·분류할 일이 없다.
 - 태그로 감싸 입력 경계를 분명히 한다.
 
-### 3.3 few-shot (1~2개)
+### 3.3 few-shot (1개, system 안에)
 
-좋은 해설 예시를 system 뒤에 붙인다. 예:
+좋은 해설 예시를 system 프롬프트 끝에 1개 넣는다. `citedTier`는 **key가 아니라 label**을 쓴다(`DELT_REAR` ✗, `어깨(뒤)` ○) — 실험에서 label 쪽 통과율이 안정적이었다.
 
-> 입력: 어깨(뒤) 주 1세트·부족, 당기기:밀기 = 2.5
-> 출력 claim: "최근 4주간 어깨(뒤) 운동이 주 1세트로 부족 범위에 있습니다." (citedTier=DELT_REAR, citedWeeklySets=1.0, citedVerdict=부족)
-> 출력 claim: "밀기가 당기기의 2.5배로, 균형 기준(2배)을 넘어섰습니다." (citedTier=null → 균형은 별도 필드)
+> 입력: 어깨(뒤) weeklySets 1.0·verdictLabel "부족", 밀기/당기기 ratio 2.5·불균형
+> 출력: `{"sentence":"최근 4주간 어깨(뒤) 운동이 주 1세트로 부족 범위에 있습니다.","citedTier":"어깨(뒤)","citedWeeklySets":1.0,"citedVerdict":"부족"}`
+> 출력: `{"sentence":"밀기가 당기기의 2.5배로 균형 기준(2배)을 넘었습니다.","citedTier":null,"citedWeeklySets":null,"citedVerdict":null}`
 
 ### 3.4 한국어 고정
 
@@ -264,11 +270,12 @@ system에 "한국어로 출력"을 명시하고, few-shot도 한국어로 준다
 
 | 상황 | 처리 |
 |---|---|
-| 연결/응답 타임아웃 (`app.llm.timeout-ms`) | SDK 예외 → 폴백 |
-| 429 / 5xx / 네트워크 | SDK 자동 재시도(`maxRetries` 기본 2, 지수 백오프) → 그래도 실패 시 폴백 |
-| `stop_reason = refusal` | `stopDetails()` 로깅 → 폴백 |
+| 연결/응답 타임아웃 (`app.llm.timeout-ms`) | 예외 → 폴백 |
+| `429`(무료 쿼터·RPM) / `503`(과부하) / 네트워크 | 1회 재시도(대기) → 그래도 실패 시 폴백 |
+| `finishReason` = `MAX_TOKENS` (thinking에 잘림) / `SAFETY` / `promptFeedback.blockReason` | 로깅 → 폴백 |
+| **JSON 파싱 실패 또는 숫자 직렬화 결함** (`citedWeeklySets`가 `26.0E0000…` 폭주, §7.4) | 검증(§4)이 탐지 → 1회 재요청 → 재실패 시 폴백 |
 | 검증 실패 (§4) | 1회 재요청 → 재실패 시 폴백 |
-| `app.llm.enabled = false` | 호출 안 함 → 폴백 문장 |
+| `app.llm.enabled = false` | 호출 안 함 → 폴백 문장 (카드 유지, §5.3) |
 
 ### 5.2 규칙 기반 폴백 (`RuleBasedCommentary`)
 
@@ -300,79 +307,121 @@ AI 해설 카드는 **항상 유지**하고, 폴백 시 카드 안에 규칙 기
 
 ### 6.1 절대 규칙
 
-- **키를 커밋하지 않는다.** `.gitignore`에 `.env` / `*.env`가 이미 있고 `!.env.example` 예외가 걸려 있다(구축 기록). 그대로 활용.
-- 노출되면 **즉시 재발급**(Anthropic 콘솔에서 revoke + 새 키). Public 레포는 봇이 초 단위로 스캔한다.
-- 콘솔에서 이 프로젝트 **전용 키 1개** + **월 spend limit** 설정.
+- **키를 커밋하지 않는다.** `.gitignore`에 `.env` / `*.env`가 이미 있고 `!.env.example` 예외가 걸려 있다(구축 기록). 그대로 활용. 실험 원본(`scripts/llm-experiment/runs/`)도 gitignore에 추가함.
+- 노출되면 **즉시 재발급**(Google AI Studio에서 삭제 + 새 키). Public 레포는 봇이 초 단위로 스캔한다.
+- AI Studio에서 이 프로젝트 **전용 키 1개**. 유료 전환 시 spend limit 설정.
 
 ### 6.2 위치별
 
 | 환경 | 방법 |
 |---|---|
-| `.env.example` | `ANTHROPIC_API_KEY=` 빈 placeholder 행 추가 (실제 키 아님) |
-| 로컬 개발 | `.env`에 실제 키 → 실행 시 환경변수로 주입. `application.yaml`은 `${ANTHROPIC_API_KEY}`만 참조 |
-| EC2 배포 | systemd `EnvironmentFile=` 또는 `docker run -e ANTHROPIC_API_KEY=...`. 값은 GitHub Actions **Secret** → 배포 스텝에서 주입. 레포·이미지·로그에 남기지 않음 |
-| GitHub Actions (CI) | **실제 호출 금지.** 실험/단위 테스트는 `LlmCommentaryPort`를 mock. 실제 API를 때리는 테스트는 `@Disabled` 또는 태그 분리(`-PincludeLlmIt`)로 로컬 수동 실행만 |
+| `.env.example` | `GEMINI_API_KEY=` 빈 placeholder 행 (실제 키 아님) |
+| 로컬 개발 | `.env`에 실제 키 → 실행 시 환경변수로 주입. `application.yaml`은 `${GEMINI_API_KEY}`만 참조 |
+| EC2 배포 | systemd `EnvironmentFile=` 또는 `docker run -e GEMINI_API_KEY=...`. 값은 GitHub Actions **Secret** → 배포 스텝에서 주입. 레포·이미지·로그에 남기지 않음 |
+| GitHub Actions (CI) | **실제 호출 금지.** 단위 테스트는 `LlmCommentaryPort`를 mock. 실제 API를 때리는 테스트는 태그 분리로 로컬 수동만. 실험 하네스(`scripts/llm-experiment/`)도 CI에서 안 돎 |
 
 ### 6.3 코드에서
 
-```java
-// SDK가 ANTHROPIC_API_KEY 환경변수를 자동으로 읽음
-AnthropicClient client = AnthropicOkHttpClient.fromEnv();
+```
+GET https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
+헤더: x-goog-api-key: ${GEMINI_API_KEY}
 ```
 
-`application.yaml`에 키를 넣지 않고, Spring도 `${ANTHROPIC_API_KEY}`를 거치지 않게 한다(로그·액추에이터 `/env` 노출 방지). SDK가 환경에서 직접 읽게 두는 편이 표면적이 작다.
+- 키는 헤더로만. `application.yaml`·URL 쿼리스트링·로그에 넣지 않는다(액추에이터 `/env` 노출 방지).
+- 실험 하네스는 리포 루트 `.env`에서 `GEMINI_API_KEY`를 읽는다(코드에 하드코딩 없음).
 
 ---
 
-## 7. 실험 절차 및 결과
+## 7. 실험 절차 및 결과 (① 분석 해설, 2026-08-30 완료)
 
-### 7.1 절차
+### 7.1 실제로 한 것
 
-1. Anthropic 콘솔에서 키 발급 + spend limit. `.env`에 넣고 `.env.example`에 placeholder 커밋.
-2. `com.anthropic:anthropic-java` 추가, `ClaudeCommentaryAdapter` + `CommentaryPromptBuilder` + `CommentaryValidator` + `RuleBasedCommentary` 뼈대 작성.
-3. **판정 케이스 10~20개** 준비: 8.2/8.3 응답 JSON을 손으로 만들거나, 개발 DB에 시드 기록을 넣어 실제 엔드포인트로 뽑는다. 극단 케이스 포함 — 전부 최적 / 여러 부위 부족 / 한쪽 0세트 불균형 / 신뢰도 낮음.
-4. 프롬프트 v1으로 전 케이스 실행 → §4 검증 → 통과율·실패 유형 기록.
-5. 실패 유형별로 프롬프트/스키마 수정 → v2 재실행. 통과율이 안정될 때까지 반복.
-6. 안정된 프롬프트로 `opus-5` → `sonnet-5` → `haiku-4-5` 각각 실행 → 통과율·지연·비용 비교.
-7. 폴백 경로 강제 테스트: 키를 틀리게, 타임아웃을 1ms로, 검증을 일부러 깨서 → 폴백이 뜨는지.
+1. Google AI Studio에서 키 발급 → 리포 루트 `.env`의 `GEMINI_API_KEY`.
+2. 하네스 `scripts/llm-experiment/` 작성 (Python + REST, 버릴 코드):
+   - `analysis.py` — 부위별 주당 세트 수 → 8.2/8.3 응답 JSON 생성 (명세 §8 판정 로직 참조 구현)
+   - `cases.py` — 케이스 **10개** (전부 최적 / 여러 부위 부족 / 당기기 0세트 / 신뢰도 낮음 / 과다 / MIXED 배지 / 상하체 불균형 / 경계값 등)
+   - `run.py` — 케이스별 `generateContent` 호출(구조화 출력) → V1~V7 자동 채점 → 규칙 폴백 비교 → 실행별 원본 보관
+3. 프롬프트 v1 → v2 → v3, 모델 `gemini-3.6-flash` → `gemini-3.5-flash-lite` 로 반복 측정.
+4. 회차별 원본·서술 로그: `scripts/llm-experiment/runs/`.
 
-### 7.2 확인 목표
+### 7.2 확인 목표 대비 결과
 
-| 목표 | 합격선(잠정) |
-|---|---|
-| 형식 안정성 (V7) | 20/20 파싱 성공 |
-| 수치 불변 (V1·V2) | 위반 0. 1건이라도 나오면 원인 분석 후 재설계 |
-| 부위명 준수 (V3) | 위반 0 |
-| 톤 — 처방 없음 (V5) | 위반 ≤ 1, 재요청으로 회복 |
-| 폴백 동작 | 4가지 실패 주입 전부 폴백 |
-| 지연 | p95 < `timeout-ms` |
-| 비용 | 운영 후보 모델에서 호출당 목표 이하 |
+| 목표 | 잠정 합격선 | 결과 |
+|---|---|---|
+| 형식 안정성 (V7) | 전 케이스 파싱 | **10/10** (전 회차) |
+| 수치 불변 (V1) | 위반 0 | **의미상 위반 0.** 단 flash-lite 직렬화 결함(§7.4)이 값을 오염 → V1이 탐지 → 폴백 |
+| 판정 라벨 (V2) | 위반 0 | **10/10** (전 회차) |
+| 부위명 준수 (V3) | 위반 0 | **10/10** (전 회차) |
+| 톤 — 처방 없음 (V5) | 위반 0 | **10/10** (전 회차) |
+| 커버리지 (부족·불균형·신뢰도 빠짐없이) | — | v1 미달(3건 누락) → v2·v3에서 해소 |
+| 폴백 동작 | 실패 시 대체 | flash v1에서 MAX_TOKENS 3건 자동 폴백, flash-lite에서 직렬화 결함 시 자동 폴백 |
+| 지연 | 낮을수록 | flash 7~12초 / flash-lite **1.2초** |
+| 비용 | 낮을수록 | **0** (무료 티어) |
 
-### 7.3 결과 표 (실행하며 채움)
+### 7.3 결과
 
-**프롬프트 버전별 (모델: `claude-opus-5`)**
+**프롬프트 버전별** (검증 통과 = PASS 케이스 수 / 응답 케이스 수)
 
-| 버전 | 케이스 | V1 | V2 | V3 | V4 | V5 | V6 | V7 | 재요청 | 폴백 | 메모 |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| v1 | | | | | | | | | | | |
-| v2 | | | | | | | | | | | |
+| 버전 | 모델 | 응답 | V1 | V2 | V3 | V4 | V5 | V6 | V7 | 비고 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| v1 | `gemini-3.6-flash` | 7/10 | 7/7 | 7/7 | 7/7 | 7/7 | 7/7 | 5/7 | 7/7 | MAX_TOKENS 3건(thinking에 출력 잘림). 04·10 과소보고(신뢰도·불균형 누락) |
+| v2 | `gemini-3.5-flash-lite` | 10/10 | 10 | 10 | 10 | 10 | 10 | 9 | 10 | 커버리지 규칙 추가 → 과소보고 해소. 09·10에 상충 문장 잔존 |
+| v3 | `gemini-3.5-flash-lite` (×3) | 10/10 | 10\* | 10 | 10 | 10 | 10 | 10 | 10 | 상충 문장 제거·불균형 수치 강제. \*3회 중 2회 직렬화 결함 1건씩 → V1 FAIL → 폴백 |
 
-**모델별 (프롬프트: 안정 버전)**
+**모델 비교**
 
-| 모델 | 통과율 | 재요청률 | 폴백률 | p50 지연 | p95 지연 | 호출당 비용(실측) | 판단 |
-|---|---|---|---|---|---|---|---|
-| claude-opus-5 | | | | | | | |
-| claude-sonnet-5 | | | | | | | |
-| claude-haiku-4-5 | | | | | | | |
+| | `gemini-3.6-flash` | `gemini-3.5-flash-lite` |
+|---|---|---|
+| 통제 4항목(V1 의미·V2·V3·V5) 위반 | 0 (표본 7) | 0 (표본 30+) |
+| thinking | 기본 ON, 750~2,900 tok 선소모, 끌 수 없음(v1beta) | 없음 |
+| MAX_TOKENS(출력 잘림) | maxOutputTokens 3000에서 3/10 | 0 |
+| 숫자 직렬화 결함(§7.4) | 0 (표본 7) | **~7.5% / 호출** |
+| 지연 | 7~12초 | **~1.2초** (결함 발생 시 8~12초) |
+| 무료 일일 쿼터 | 매우 낮음(~20회) — 실험 중 429 다수 | 별도 버킷, 상대적으로 여유 |
 
-**폴백 주입 테스트**
+**폴백 주입 테스트** (하네스 강제)
 
 | 주입 | 기대 | 결과 |
 |---|---|---|
-| 잘못된 API 키 | 폴백 문장 | |
-| timeout-ms = 1 | 폴백 문장 | |
-| enabled = false | 폴백 문장 (카드는 유지 — §5.3) | |
-| 검증 강제 실패 | 1회 재요청 후 폴백 | |
+| 잘못된 모델 ID (`gemini-2.5-flash`) | 폴백 | ✅ 404 → 폴백 문장 |
+| `maxOutputTokens` 부족 (thinking) | 폴백 | ✅ MAX_TOKENS → 폴백 (v1 3건) |
+| 숫자 직렬화 결함 발생 | V1 FAIL → 폴백 | ✅ 자동 탐지 → 폴백 (v3) |
+| `enabled = false` | 폴백 문장, 카드 유지 | ✅ (§5.3) |
+
+### 7.4 발견 — `gemini-3.5-flash-lite` 숫자 직렬화 결함
+
+구조화 출력의 `citedWeeklySets`(number) 필드가 정상값 뒤에 **지수부를 0 수천 개로 채워** 반환하는 경우가 있다.
+
+```
+"citedWeeklySets": 26.0E0000000000…0005     →  파싱 결과 26.0 × 10^5 = 2,600,000
+"citedWeeklySets": 1.0E00000…000            →  100,000
+```
+
+- `temperature: 0`에서도 발생. **4회 실행 중 3회, 매번 1건씩(~7.5% / 호출)**.
+- 그 호출은 출력 토큰이 4,000~5,500으로 급증(정상 50~250), 지연 8~12초.
+- **`sentence`(사용자에게 보일 문장)는 정상.** 구조화 숫자 필드만 오염된다.
+- `finishReason`은 `STOP`(에러 아님). V7(파싱)도 통과 — JSON 자체는 유효하기 때문.
+- **V1(인용 수치가 입력에 존재하는가)이 이를 100% 잡아낸다** → 규칙 폴백으로 대체.
+
+**의미**
+
+| | |
+|---|---|
+| 검증 설계 | 구조화 출력 에코를 값 비교로 검증하는 방식(§2.5)이 이 결함을 잡는다. 프롬프트만으로는 못 막는다. |
+| 폴백 | **선택이 아니라 필수.** flash-lite 기준 호출의 ~7.5%에서 발동하며, §5의 규칙 폴백 설계가 그대로 정당화된다. |
+| 대안 | (a) `gemini-3.6-flash` 등 상위 모델(표본상 결함 0, 대신 느리고 쿼터 낮음), (b) 이상 응답(출력 토큰 급증·거대 수치) 감지 시 1회 재요청 후 폴백, (c) flash-lite + 폴백 감수(~7.5%). |
+
+### 7.5 상세 로그
+
+회차별 조건·과정·잘된 점·보완할 점과 케이스별 원본 응답:
+`scripts/llm-experiment/runs/실험일지.md` + `runs/{일시}_{모델}_{버전}/raw.jsonl` (로컬, git 미추적).
+
+### 7.6 결론
+
+- **① 분석 해설의 LLM 통제는 검증됨.** 프롬프트 v3 + 구조화 출력 + V1~V7 검증 + 규칙 폴백에서, 통제 4항목(수치 의미·판정·부위·톤)의 위반이 전 회차 **0**. `gemini-3.5-flash-lite` v3 `_0713` 실행은 10케이스 전 항목 통과.
+- **운영 후보: `gemini-3.5-flash-lite`** + "이상 응답 1회 재요청 → 폴백". 지연 1.2초, 비용 0, 통제 동급.
+- **10월 ② 리스크 평가**: LLM을 규칙 안에 가두는 것은 가능. 단 소형 모델은 구조화 출력에 직렬화 결함이 있으므로, ②도 정량 재검증 + 폴백을 필수로 둔다(§8).
+- 남은 것: (a) flash vs lite 정면 비교(4차, 쿼터 회복 후), (b) 문장 자연스러움은 지인 검증에서 정성 평가.
 
 ---
 
@@ -382,11 +431,13 @@ AnthropicClient client = AnthropicOkHttpClient.fromEnv();
 
 | ①에서 배운 것 | ②에 적용 |
 |---|---|
-| 구조화 출력이 형식 안정성을 만든다 | 루틴도 자유 텍스트가 아니라 **스키마 강제**로 받는다. 도구 `strict: true` + `additionalProperties: false` |
-| 인용 수치를 함께 반환시키면 검증이 필드 비교가 된다 | 각 루틴 항목에 `exerciseId`를 담게 하고, **후보 목록을 enum으로** 스키마에 박아 스키마 레벨에서 후보 밖 선택을 차단 |
-| 검증 실패 시 1회 재요청 → 폴백 | ②는 정량 규칙(명세 2.3: 부위별 세트 범위, 밀기·당기기 균형) 재검증 → 최대 N회 재생성 → 규칙 기반 기본 루틴. **N은 ①에서 관측한 형식 안정성으로 정한다** (형식이 거의 안 깨지면 N=1~2로 충분) |
-| system 캐시로 입력 비용 절감 | 후보 목록·규칙을 system에 고정, 분석 결과만 user에 |
+| 구조화 출력(`responseSchema`)이 JSON 형식을 안정화한다 (V7 10/10) | 루틴도 자유 텍스트가 아니라 **스키마 강제**로 받는다 (`responseSchema` + `responseMimeType`) |
+| 인용 값을 함께 반환시키면 검증이 필드 비교가 된다 | 각 루틴 항목에 `exerciseId`를 담게 하고, **후보 목록을 enum으로** 스키마에 박아 스키마 레벨에서 후보 밖 선택을 차단 |
+| **소형 모델은 숫자 필드에 직렬화 결함이 있다** (§7.4, flash-lite ~7.5%) | ②의 스키마에서 자유 숫자 필드를 줄이고(세트 수·반복 수는 enum·정수 범위로 제약), 생성 결과는 **정량 재검증 필수** — 직렬화 결함이 세트 수에 끼면 후보 밖 세트 수가 될 수 있음 |
+| 검증 실패 시 1회 재요청 → 폴백이 실제로 자주 쓰인다 (~10%) | ②는 정량 규칙(명세 2.3: 부위별 세트 범위, 밀기·당기기 균형) 재검증 → 최대 N회 재생성 → 규칙 기반 기본 루틴. **N은 최소 2** (①에서 재요청이 드물지 않았음) |
+| 프롬프트는 v1→v3로 다듬어야 커버리지가 나온다 | ②도 "후보 안에서만 / 세트 수는 분석이 준 값 / 순서 규칙" 을 명시적으로. 한 번에 안 됨 |
 | 톤 금지어 사전 | ②는 톤 이슈가 작지만, 루틴 설명 문구에 동일 사전 적용 |
+| `gemini-3.6-flash`는 thinking을 못 끄고 느리다 | ②는 JSON 조합이라 thinking이 도움될 수 있으나, 지연·MAX_TOKENS 위험. flash-lite로 먼저 시도 |
 
 미해결(② 설계 시): 후보 목록이 크면 enum이 비대해진다 → 부위별로 좁힌 후보만 전달하는 방식 검토.
 
@@ -397,16 +448,17 @@ AnthropicClient client = AnthropicOkHttpClient.fromEnv();
 | 항목 | 결정 | 상태 |
 |---|---|---|
 | 실험 순서 | ① 분석 해설(9월) → ② 루틴 생성(10월) | 확정 |
-| provider | 실험은 Claude. 인터페이스로 추상화해 교체 가능 | 확정(재검토는 §7 후) |
-| 실험 모델 | `opus-5`로 상한 → `sonnet-5`/`haiku-4-5`로 하향 측정 | 확정 |
-| 운영 모델 | §7 통과율이 꺾이지 않는 최저 티어 | 미정 (실험 후) |
-| 연동 구조 | 포트-어댑터. `LlmCommentaryPort` + `ClaudeCommentaryAdapter` + 검증기 + 규칙 폴백 | 확정 |
-| 수치 통제 1차 방어선 | 프롬프트가 아니라 **구조화 출력** — 인용 수치를 함께 반환 → 필드 비교 검증 | 확정 |
-| 출력 검증 | V1~V7 (§4). 실패 시 1회 재요청 → 폴백 | 확정 |
-| 폴백 | 규칙 기반 문장 조립. 항상 동작, 검증 불필요 | 확정 |
+| provider | **Google Gemini** (무료 티어). 포트-어댑터로 추상화해 교체 가능 | 확정 (§1.1) |
+| 실험 모델 | `gemini-3.6-flash`(v1) → `gemini-3.5-flash-lite`(v2·v3) | 완료 |
+| 운영 모델 | **`gemini-3.5-flash-lite`** — 통제 동급, 지연 1.2초, 비용 0 | 잠정 (flash 비교 4차 후 확정) |
+| 연동 구조 | 포트-어댑터. `LlmCommentaryPort` + `GeminiCommentaryAdapter` + 검증기 + 규칙 폴백 | 확정 |
+| 수치 통제 1차 방어선 | 프롬프트가 아니라 **구조화 출력**(`responseSchema`) — 인용 수치를 함께 반환 → 필드 비교 검증 | 확정 (§7로 입증) |
+| 출력 검증 | V1~V7 (§4). 실패·직렬화 결함 시 1회 재요청 → 폴백 | 확정 |
+| 폴백 | 규칙 기반 문장 조립. 항상 동작, 검증 불필요. **flash-lite 직렬화 결함(~7.5%)으로 필수 구성요소** | 확정 (§7.4) |
+| 프롬프트 | v3 (§3.1) — 금지 규칙 + 커버리지 규칙 + 상충 문장 금지 | 확정 |
 | 해설 카드 화면 처리 | 카드는 항상 유지, 폴백 시 카드 안에 규칙 기반 문장 (숨기지 않음) | 확정 (§5.3) |
-| API 키 | 환경변수만. `.env`(gitignore됨) / CI는 mock / EC2는 Actions Secret. 노출 시 즉시 재발급 | 확정 |
-| CI에서 실제 호출 | 안 함. mock. 실호출 테스트는 로컬 수동 | 확정 |
+| API 키 | 환경변수/헤더만. `.env`(gitignore됨) / CI는 mock / EC2는 Actions Secret. 노출 시 즉시 재발급 | 확정 |
+| CI에서 실제 호출 | 안 함. mock. 실호출·하네스는 로컬 수동 | 확정 |
 | `app.llm.enabled` | 기본 `false` | 확정 |
 
 ---
@@ -414,11 +466,14 @@ AnthropicClient client = AnthropicOkHttpClient.fromEnv();
 ## 10. 한계 인지
 
 - **이 실험은 "통제가 되는가"를 보는 것이지 "해설이 좋은가"를 보는 것이 아니다.** 문장 품질(자연스러움·유용함)은 지인 검증에서 정성 평가한다.
-- 케이스 10~20개는 통계적으로 작다. 위반이 "0"이어도 드물게 샐 수 있으므로, 운영에서도 §4 검증과 폴백은 상시 켜 둔다.
-- LLM API·요금·모델 ID는 바뀐다. §1.2 요금은 스냅샷이며 콘솔에서 실측·재확인한다.
-- provider를 Claude로 좁혔지만 이는 실험 편의를 위한 것이고, 통제 메커니즘 자체는 provider 독립적이다. 최종 채택은 비용·안정성·한국어 품질을 함께 보고 정한다.
+- **케이스 10개는 통계적으로 작다.** 통제 위반이 전 회차 0이어도 드물게 샐 수 있으므로, 운영에서도 §4 검증과 폴백은 상시 켜 둔다.
+- **`gemini-3.5-flash-lite` 숫자 직렬화 결함(§7.4)**은 이 실험에서 새로 확인한 것이다. `temperature: 0`에서도 ~7.5% 발생. 상위 모델·재요청·폴백 중 하나로 대응해야 하며, 운영 모델 확정 전 flash와의 정면 비교(4차)가 필요하다.
+- **flash 비교 미완**: `gemini-3.6-flash` 무료 일일 쿼터 소진으로 v2·v3를 flash로 못 돌렸다. 쿼터 리셋 후 4차에서 flash vs lite(품질·결함율·지연)를 마무리한다.
+- LLM API·모델 ID·무료 쿼터는 자주 바뀐다. §1.2는 2026-08-30 스냅샷이며 콘솔에서 재확인한다.
+- 무료 티어는 프롬프트가 Google 모델 학습에 쓰일 수 있다. 실험 입력은 합성 데이터라 무방하나, 실제 사용자 데이터로 옮길 때는 유료 티어 또는 학습 비사용 옵션을 확인한다.
+- provider를 Gemini로 정했지만 통제 메커니즘은 provider 독립적이다(§1.1). 비용·안정성·한국어 품질이 크게 어긋나면 포트-어댑터 경계에서 교체한다.
 - `루틴생성_로직_설계서.md`는 아직 저장소에 없다. ② 실험은 그 문서 확정 후 본 문서 §8을 갱신하며 진행한다.
 
 ---
 
-*본 문서는 실험 진행에 따라 §7·§9를 계속 갱신한다.*
+*본 문서는 실험 진행에 따라 §7·§9를 계속 갱신한다. 회차별 상세는 `scripts/llm-experiment/runs/실험일지.md`.*
