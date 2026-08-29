@@ -211,16 +211,17 @@ Authorization: Bearer {accessToken}
 
 **(2) `users` 프로필 컬럼 — 기존 테이블 확장**
 
-`users`에는 현재 `email / password_hash / nickname`만 있다. UC-01-03(프로필: 키/체중/경력/목표)을 위해 컬럼을 추가한다.
+`users`에는 현재 `email / password_hash / nickname`만 있다. 프로필 항목 **키 / 체중 / 목표 3종**을 위해 컬럼을 추가한다.
 
 | 컬럼 | 타입 | 설명 |
 |---|---|---|
 | `height_cm` | NUMERIC(4,1) NULL | 키 |
 | `weight_kg` | NUMERIC(5,2) NULL | 체중 |
-| `experience_level` | VARCHAR(15) NULL | `BEGINNER` / `INTERMEDIATE` / `ADVANCED` |
 | `goal` | VARCHAR(20) NULL | `STRENGTH` / `HYPERTROPHY` / `ENDURANCE` / `GENERAL_FITNESS` |
 
-> 별도 `user_profiles` 테이블로 분리하는 방안도 있으나, 1:1이고 필드가 4개뿐이라 `users`에 인라인한다. 값은 회원가입 후 선택 입력이므로 전부 NULL 허용.
+> 별도 `user_profiles` 테이블로 분리하는 방안도 있으나, 1:1이고 필드가 3개뿐이라 `users`에 인라인한다. 값은 회원가입 후 선택 입력이므로 전부 NULL 허용.
+
+> **운동 경력(`experience_level`)은 프로필에서 제외한다.** 분석 판정은 ACSM 기준을 따르므로 경력을 참조하지 않고, `goal`과 달리 향후 사용처도 구체적으로 예상되지 않는다. 쓰이지 않을 컬럼을 미리 두면 스키마만 늘어나므로, 필요해질 때 근거를 갖춰 추가한다. **UC-01-03이 프로필 항목으로 "키/체중/경력/목표"를 명시한 것과 다르며, 이 변경은 LOG-11에 기록한다.**
 
 **(3) `exercises.delt_region` — 기존 테이블 확장**
 
@@ -404,7 +405,6 @@ Authorization: Bearer {accessToken}
   "profile": {
     "heightCm": 175.0,
     "weightKg": 72.5,
-    "experienceLevel": "INTERMEDIATE",
     "goal": "HYPERTROPHY"
   },
   "createdAt": "2026-09-01T09:12:00+09:00"
@@ -425,7 +425,6 @@ Authorization: Bearer {accessToken}
   "profile": {
     "heightCm": 175.0,
     "weightKg": 71.0,
-    "experienceLevel": "ADVANCED",
     "goal": "STRENGTH"
   }
 }
@@ -436,10 +435,11 @@ Authorization: Bearer {accessToken}
 | `nickname` | 1~50자 |
 | `profile.heightCm` | 50.0 ~ 260.0, 소수 1자리 |
 | `profile.weightKg` | 20.0 ~ 400.0, 소수 2자리 |
-| `profile.experienceLevel` | enum (부록 A) |
 | `profile.goal` | enum (부록 A) |
 
 **응답 `200 OK`** — 4.5와 동일한 전체 프로필.
+
+> 프로필 항목은 키/체중/목표 3종이다. UC-01-03이 명시한 "경력"은 제외했다(2.4-(2), LOG-11).
 
 > 이메일·비밀번호 변경은 9월 범위에서 제외한다. 필요 시 별도 엔드포인트(`PATCH /users/me/password`)로 추가.
 
@@ -1165,7 +1165,7 @@ workout_session (하루 한 번의 운동)
 
 | 항목 | 내용 | 시점 |
 |---|---|---|
-| `V3__auth_profile_exercise_meta.sql` | ① `refresh_tokens` 테이블 ② `users` 프로필 4컬럼 ③ `exercises.delt_region` ④ `user_favorite_exercises` 테이블 (2.4) | 9월 1주, 인증 구현 전 |
+| `V3__auth_profile_exercise_meta.sql` | ① `refresh_tokens` 테이블 ② `users` 프로필 3컬럼(`height_cm` / `weight_kg` / `goal`) ③ `exercises.delt_region` ④ `user_favorite_exercises` 테이블 (2.4) | 9월 1주, 인증 구현 전 |
 | `exercises.delt_region` 값 채우기 | `primary_muscle = 'shoulders'`인 13개 종목에 `FRONT`/`REAR` 입력. 배분 기준은 LOG-09 표 | 9월 1주, 종목 데이터 갱신과 함께 |
 | `routines` FK | `workout_sessions.routine_id`는 컬럼만 존재. `routines` 생성 시 FK 마이그레이션 | 10월 |
 | 요약 배지 문안 | `summaryBadge` label 및 `MIXED` 표기 확정 (8.2). enum `key`는 고정 | 화면 구현 시 |
@@ -1174,6 +1174,7 @@ workout_session (하루 한 번의 운동)
 | 이메일·비밀번호 변경 API | 9월 범위 제외 | 필요 시 |
 | Rate limiting | `429 RATE_LIMITED` 코드만 예약. 실제 도입은 배포 후 판단 | 미정 |
 | 즐겨찾기 개수 상한 | 현재 무제한. 필요 시 `409`로 추가 (5.4) | 배포 후 판단 |
+| **LOG-11 작성** | 프로필에서 운동 경력 제외 결정을 「설계 변경 로그」에 신설. UC-01-03(키/체중/경력/목표)과의 차이를 기록 (2.4-(2)) | 본 명세 확정과 함께 |
 
 > `workout_sessions.memo` / `duration_override_sec`는 `V1__init.sql`에 이미 존재함을 확인했다. V3 대상 아님.
 
@@ -1186,9 +1187,9 @@ workout_session (하루 한 번의 운동)
 | 미래 날짜 선택 → "루틴 미리 짜기" 화면 | **제거**. `workout_sessions`는 미래 날짜를 받지 않는다 | 6.2. 계획/기록 분리(LOG-05), 미리 짜기는 10월 `routines` |
 | 세션 내 종목 위·아래 재배치 기능 | **제거**. 종목 순서는 "수행한 순서"(첫 세트 `recordedAt`)로 고정 | 6.5 |
 | 프로필 목표: 증량 / 유지 / 감량 (체중 축) | **훈련 목표로 교체** — 근력 / 근비대 / 지구력 / 일반 체력 (`STRENGTH`/`HYPERTROPHY`/`ENDURANCE`/`GENERAL_FITNESS`) | 4.6, 분석 1.3의 목표 축. 체중 목표는 분석·추천 로직에서 안 쓰임 |
-| 프로필에 운동 경력 입력 없음 | **추가** — `experienceLevel` (초급/중급/고급) | UC-01-03, 4.6 |
 
 > 즐겨찾기 별표·탭, "어깨(앞)/어깨(뒤)" 2계층 표시는 목업 그대로 유지된다(명세가 목업에 맞췄음).
+> 프로필 항목은 **키/체중/목표 3종**으로 확정. UC-01-03의 "경력"은 제외했다(2.4-(2), LOG-11). 목업에 경력 입력이 없으므로 목업 수정도 불필요하다.
 
 ---
 
@@ -1203,7 +1204,6 @@ workout_session (하루 한 번의 운동)
 | `exercise.measureType` | `WEIGHT_REPS`, `BODYWEIGHT_REPS`, `WEIGHTED_BODYWEIGHT`, `TIME` |
 | `exercise.equipment` | `BARBELL`, `DUMBBELL`, `MACHINE`, `CABLE`, `BODYWEIGHT`, `PULLUP_BAR` |
 | `exercise.deltRegion` | `FRONT`, `REAR`, `null` (`primaryMuscle = shoulders`인 종목만 값) |
-| `user.experienceLevel` | `BEGINNER`, `INTERMEDIATE`, `ADVANCED` |
 | `user.goal` | `STRENGTH`, `HYPERTROPHY`, `ENDURANCE`, `GENERAL_FITNESS` (훈련 목표 축 — 체중 목표 아님) |
 | 판정 부위 상위 (`tier.key`) | `CHEST`, `BACK`, `SHOULDERS`, `ARMS`, `LEGS`, `CORE` |
 | 판정 부위 하위 (`child.key`) | `CHEST`, `BACK`, `DELT_FRONT`, `DELT_REAR`, `TRICEPS`, `BICEPS`, `QUADS`, `POSTERIOR`, `CORE` |
