@@ -231,7 +231,7 @@ Authorization: Bearer {accessToken}
 |---|---|---|
 | `delt_region` | VARCHAR(10) NULL | `FRONT` / `REAR`. `primary_muscle = 'shoulders'`인 종목에만 값. 그 외 종목은 NULL |
 
-`primary_muscle = 'shoulders'`인 13개 종목에만 값을 채운다. 배분 기준은 LOG-09 §"어깨 전면·후면 분리 방식" 표(오버헤드 프레스·전면 레이즈·측면 레이즈 → `FRONT`, 후면 델트 → `REAR`)를 따른다.
+`primary_muscle = 'shoulders'`인 13개 종목에만 값을 채운다. 배분 기준은 LOG-09의 "어깨 전면·후면 분리 방식" 표(오버헤드 프레스·전면 레이즈·측면 레이즈 → `FRONT`, 후면 델트 → `REAR`)를 따른다.
 
 **(4) `user_favorite_exercises` — 신규 테이블**
 
