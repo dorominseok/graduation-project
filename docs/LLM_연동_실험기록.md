@@ -3,7 +3,7 @@
 
 > 8월 4주 계획 항목("LLM API 사전 실험"). 착수 시점: 2026-08-30.
 > 목적: 10월 루틴 추천의 핵심 리스크(LLM을 규칙 안에 가두는 것)가 실제로 되는지를 미리 확인하고, 안 되는 부분을 설계에 반영한다.
-> 이 문서는 **실험 계획 + 진행 기록**을 함께 담는다. ① 분석 해설 실험은 2026-08-30 완료(§7).
+> 이 문서는 **실험 계획 + 진행 기록**을 함께 담는다. ① 분석 해설 실험은 2026-08-30 완료(7절).
 > 회차별 상세 로그·원문은 `scripts/llm-experiment/runs/`(로컬, git 미추적)에 있다.
 
 ---
@@ -24,7 +24,7 @@
 | **① 분석 해설** | 운동_분석로직_설계서 7.3 | 9월 3주 통계 화면 | 판정 결과를 자연어 2~3문장으로 설명 | 낮음 — "수치를 안 바꿨는가"만 |
 | ② 루틴 생성 | 기능명세서 2.1~2.3 | 10월 | 후보 목록 안에서 오늘의 루틴을 JSON으로 조합 | 높음 — 스키마 준수 + 후보 제한 + 세트 수 검증 |
 
-**①부터 한다.** 출력이 자연어 한두 문장이라 단순하고, 여기서 잡은 감(형식 안정성·수치 불변·톤 통제)이 ②의 재생성 루프 설계에 그대로 들어간다. §8에 ②로 넘길 때 반영할 점을 정리한다.
+**①부터 한다.** 출력이 자연어 한두 문장이라 단순하고, 여기서 잡은 감(형식 안정성·수치 불변·톤 통제)이 ②의 재생성 루프 설계에 그대로 들어간다. 8절에 ②로 넘길 때 반영할 점을 정리한다.
 
 ### 0.3 반드시 지킬 원칙 (전 실험 공통)
 
@@ -48,10 +48,10 @@
 | Java 공식 SDK | 있음 (`com.anthropic:anthropic-java`) | 있음 | 있음 |
 | 한국어 품질 | 상 | 상 | 상 |
 
-**이번 실험에 쓸 것이 필요할 뿐, 통제 메커니즘(구조화 출력·프롬프트 규칙·출력 검증·규칙 폴백)은 3사 공통이고 provider에 종속되지 않는다.** §2의 인터페이스 추상화로 교체 가능하게 둔다.
+**이번 실험에 쓸 것이 필요할 뿐, 통제 메커니즘(구조화 출력·프롬프트 규칙·출력 검증·규칙 폴백)은 3사 공통이고 provider에 종속되지 않는다.** 2절의 인터페이스 추상화로 교체 가능하게 둔다.
 
 > **채택: Google Gemini 무료 티어.** 이유: (a) 비용 0(모델별 별도 일일 쿼터), (b) 구조화 출력(`responseSchema` + `responseMimeType: application/json`) 지원, (c) `gemini-3.5-flash-lite` 응답 ~1.2초. 통제 메커니즘은 provider 독립이라 결과가 10월에 이식된다.
-> **주의**: 무료 티어는 프롬프트가 Google 모델 학습에 쓰일 수 있다(EU/UK/EEA 외). 이번 실험 입력은 전부 합성 데이터라 무방하나, 실제 사용자 데이터로 옮길 때는 재검토(§10).
+> **주의**: 무료 티어는 프롬프트가 Google 모델 학습에 쓰일 수 있다(EU/UK/EEA 외). 이번 실험 입력은 전부 합성 데이터라 무방하나, 실제 사용자 데이터로 옮길 때는 재검토(10절).
 
 ### 1.2 Gemini 모델 (실측 — 2026-08-30 기준, 콘솔 재확인)
 
@@ -61,7 +61,7 @@
 | `gemini-3.6-flash` | thinking 기본 ON(케이스별 750~2,900 tok 선소모), 응답 7~12초. 무료 티어(별도 쿼터, 한도 낮음) | 품질·결함율 비교용 (4차 예정) |
 | `gemini-2.5-flash` | **신규 계정에 `404`** ("no longer available to new users") | 사용 불가 |
 
-**실험 방법**: `gemini-3.6-flash` v1으로 시작 → 출력 잘림(thinking)·과소보고 발견 → `gemini-3.5-flash-lite` + 프롬프트 v2·v3로 재측정. 결과 §7. flash vs lite 정면 비교는 flash 무료 쿼터 회복 후 4차.
+**실험 방법**: `gemini-3.6-flash` v1으로 시작 → 출력 잘림(thinking)·과소보고 발견 → `gemini-3.5-flash-lite` + 프롬프트 v2·v3로 재측정. 결과 7절. flash vs lite 정면 비교는 flash 무료 쿼터 회복 후 4차.
 
 ### 1.3 비용 (실측)
 
@@ -81,7 +81,7 @@
 implementation 'com.google.genai:google-genai:1.x'   // 또는 Spring RestClient로 REST 직접
 ```
 
-- Gemini REST(`generateContent`)는 요청 형태가 단순해 `RestClient`만으로도 충분하다. 공식 Java SDK(`google-genai`)를 쓰면 스키마 헬퍼가 붙는다. 어느 쪽이든 §2.2의 어댑터 안에 갇힌다.
+- Gemini REST(`generateContent`)는 요청 형태가 단순해 `RestClient`만으로도 충분하다. 공식 Java SDK(`google-genai`)를 쓰면 스키마 헬퍼가 붙는다. 어느 쪽이든 2.2절의 어댑터 안에 갇힌다.
 - **실험 하네스는 별개다.** `scripts/llm-experiment/`의 Python + REST 스크립트이며 본 앱에 들어가지 않는다(버릴 코드). 통제 검증용.
 
 ### 2.2 패키지 구조 (제안)
@@ -91,8 +91,8 @@ com.fitness.backend.llm
 ├─ LlmCommentaryPort          (인터페이스 — provider 무관)
 ├─ GeminiCommentaryAdapter    (Gemini generateContent 호출)
 ├─ CommentaryPromptBuilder    (판정 JSON → 프롬프트)
-├─ CommentaryValidator        (§4 규칙 검증)
-├─ RuleBasedCommentary        (§5 폴백 — 규칙 기반 문장 조립)
+├─ CommentaryValidator        (4절 규칙 검증)
+├─ RuleBasedCommentary        (5절 폴백 — 규칙 기반 문장 조립)
 └─ LlmProperties              (app.llm.* 바인딩)
 ```
 
@@ -124,15 +124,15 @@ app:
   llm:
     enabled: ${LLM_ENABLED:false}      # 기본 off — 명시적으로 켠다
     provider: gemini
-    model: gemini-3.5-flash-lite       # 운영 후보 (§7). flash는 8000 필요
+    model: gemini-3.5-flash-lite       # 운영 후보 (7절). flash는 8000 필요
     timeout-ms: 15000                  # lite ~1.2s, 직렬화 결함 시 8~12s
     max-output-tokens: 1024            # lite. gemini-3.6-flash는 thinking 때문에 8000
     retry:
       max-attempts: 2                  # 이상 응답(직렬화 결함) 시 재요청 후 폴백
 ```
 
-- `GEMINI_API_KEY`는 **환경변수로만** 주입한다(§6). `application.yaml`에 키 문자열을 두지 않는다.
-- `enabled: false`가 기본. 켜지 않아도 해설 카드는 유지하고 규칙 기반 문장을 넣는다(§5.3).
+- `GEMINI_API_KEY`는 **환경변수로만** 주입한다(6절). `application.yaml`에 키 문자열을 두지 않는다.
+- `enabled: false`가 기본. 켜지 않아도 해설 카드는 유지하고 규칙 기반 문장을 넣는다(5.3절).
 
 ### 2.5 어댑터 스케치 (구조화 출력 — 핵심)
 
@@ -153,8 +153,8 @@ Gemini `generateContent` 요청 본문의 요지 (REST 기준):
 
 ```json
 {
-  "systemInstruction": { "parts": [{ "text": "<SYSTEM_PROMPT §3.1>" }] },
-  "contents": [{ "role": "user", "parts": [{ "text": "<USER §3.2>" }] }],
+  "systemInstruction": { "parts": [{ "text": "<SYSTEM_PROMPT 3.1절>" }] },
+  "contents": [{ "role": "user", "parts": [{ "text": "<USER 3.2절>" }] }],
   "generationConfig": {
     "responseMimeType": "application/json",
     "responseSchema": { /* Commentary 스키마 (OpenAPI subset) */ },
@@ -164,7 +164,7 @@ Gemini `generateContent` 요청 본문의 요지 (REST 기준):
 }
 ```
 
-- **구조화 출력이 통제의 1차 방어선**: `responseSchema`로 `claims[]` 형태를 강제하고, 각 claim이 인용한 부위·세트수·판정을 함께 받는다 → 검증(§4)이 문자열 매칭이 아니라 값 비교가 된다.
+- **구조화 출력이 통제의 1차 방어선**: `responseSchema`로 `claims[]` 형태를 강제하고, 각 claim이 인용한 부위·세트수·판정을 함께 받는다 → 검증(4절)이 문자열 매칭이 아니라 값 비교가 된다.
 - `temperature: 0`. Gemini는 샘플링 파라미터를 받는다(Claude와 다름).
 - **`gemini-3.6-flash`는 thinking을 끌 수 없다** — v1beta에서 `thinkingBudget: 0` / `thinkingLevel`이 `400`. `maxOutputTokens`를 8000으로 크게 잡아 잘림을 피한다. `gemini-3.5-flash-lite`는 thinking이 없어 이 문제가 없다.
 - 응답 파싱: `candidates[0].content.parts[*].text`를 이어붙여 JSON 파싱. `finishReason == "MAX_TOKENS"`면 잘린 것 → 폴백. Gemini에는 prompt caching이 별도 API(암묵 캐시)이며 이 실험에서는 쓰지 않았다.
@@ -175,7 +175,7 @@ Gemini `generateContent` 요청 본문의 요지 (REST 기준):
 
 ### 3.1 system 프롬프트 (고정, v3 — 실험으로 확정)
 
-역할·규칙을 고정하고, 매 요청 바뀌는 값(판정 JSON)은 user 메시지에만 둔다. v1(금지 규칙만) → v2(커버리지 규칙 추가) → v3(상충 문장 제거·불균형 수치 강제)로 다듬었다. 변경 근거는 §7.
+역할·규칙을 고정하고, 매 요청 바뀌는 값(판정 JSON)은 user 메시지에만 둔다. v1(금지 규칙만) → v2(커버리지 규칙 추가) → v3(상충 문장 제거·불균형 수치 강제)로 다듬었다. 변경 근거는 7절.
 
 ```
 너는 헬스 앱의 분석 결과를 사용자에게 설명하는 역할이다. 아래 규칙을 예외 없이 지켜라.
@@ -256,7 +256,7 @@ system에 "한국어로 출력"을 명시하고, few-shot도 한국어로 준다
 | V6 | 길이 | claims 합쳐 2~3문장, 각 문장 120자 이내 | 장문 |
 | V7 | 파싱 성공 | 구조화 출력이 `Commentary` 스키마로 역직렬화됨 | (구조화 출력이면 거의 발생 안 함 — 발생 시 형식 불안정 신호) |
 
-**측정 지표**: 케이스당 V1~V7 통과 여부, 재요청 횟수, 폴백 발생률. §7 표에 기록.
+**측정 지표**: 케이스당 V1~V7 통과 여부, 재요청 횟수, 폴백 발생률. 7절 표에 기록.
 
 > V4의 숫자 화이트리스트는 오탐이 날 수 있다(예: "2~3문장" 같은 메타 표현은 애초에 출력에 없음). 실험하며 예외 목록을 다듬는다. V1·V2가 주 방어선이고 V4는 보조다.
 >
@@ -273,9 +273,9 @@ system에 "한국어로 출력"을 명시하고, few-shot도 한국어로 준다
 | 연결/응답 타임아웃 (`app.llm.timeout-ms`) | 예외 → 폴백 |
 | `429`(무료 쿼터·RPM) / `503`(과부하) / 네트워크 | 1회 재시도(대기) → 그래도 실패 시 폴백 |
 | `finishReason` = `MAX_TOKENS` (thinking에 잘림) / `SAFETY` / `promptFeedback.blockReason` | 로깅 → 폴백 |
-| **JSON 파싱 실패 또는 숫자 직렬화 결함** (`citedWeeklySets`가 `26.0E0000…` 폭주, §7.4) | 검증(§4)이 탐지 → 1회 재요청 → 재실패 시 폴백 |
-| 검증 실패 (§4) | 1회 재요청 → 재실패 시 폴백 |
-| `app.llm.enabled = false` | 호출 안 함 → 폴백 문장 (카드 유지, §5.3) |
+| **JSON 파싱 실패 또는 숫자 직렬화 결함** (`citedWeeklySets`가 `26.0E0000…` 폭주, 7.4절) | 검증(4절)이 탐지 → 1회 재요청 → 재실패 시 폴백 |
+| 검증 실패 (4절) | 1회 재요청 → 재실패 시 폴백 |
+| `app.llm.enabled = false` | 호출 안 함 → 폴백 문장 (카드 유지, 5.3절) |
 
 ### 5.2 규칙 기반 폴백 (`RuleBasedCommentary`)
 
@@ -299,7 +299,7 @@ AI 해설 카드는 **항상 유지**하고, 폴백 시 카드 안에 규칙 기
 
 ### 5.4 로깅 (실험 데이터)
 
-호출마다 기록: 모델, 입력/출력 토큰, 지연(ms), 재시도 횟수, 검증 결과(V1~V7), 폴백 여부, (실패 시) 예외 타입. 실험 종료 후 이 로그로 §7 표를 채운다.
+호출마다 기록: 모델, 입력/출력 토큰, 지연(ms), 재시도 횟수, 검증 결과(V1~V7), 폴백 여부, (실패 시) 예외 타입. 실험 종료 후 이 로그로 7절 표를 채운다.
 
 ---
 
@@ -338,7 +338,7 @@ GET https://generativelanguage.googleapis.com/v1beta/models/{model}:generateCont
 
 1. Google AI Studio에서 키 발급 → 리포 루트 `.env`의 `GEMINI_API_KEY`.
 2. 하네스 `scripts/llm-experiment/` 작성 (Python + REST, 버릴 코드):
-   - `analysis.py` — 부위별 주당 세트 수 → 8.2/8.3 응답 JSON 생성 (명세 §8 판정 로직 참조 구현)
+   - `analysis.py` — 부위별 주당 세트 수 → 8.2/8.3 응답 JSON 생성 (명세 8절 판정 로직 참조 구현)
    - `cases.py` — 케이스 **10개** (전부 최적 / 여러 부위 부족 / 당기기 0세트 / 신뢰도 낮음 / 과다 / MIXED 배지 / 상하체 불균형 / 경계값 등)
    - `run.py` — 케이스별 `generateContent` 호출(구조화 출력) → V1~V7 자동 채점 → 규칙 폴백 비교 → 실행별 원본 보관
 3. 프롬프트 v1 → v2 → v3, 모델 `gemini-3.6-flash` → `gemini-3.5-flash-lite` 로 반복 측정.
@@ -349,7 +349,7 @@ GET https://generativelanguage.googleapis.com/v1beta/models/{model}:generateCont
 | 목표 | 잠정 합격선 | 결과 |
 |---|---|---|
 | 형식 안정성 (V7) | 전 케이스 파싱 | **10/10** (전 회차) |
-| 수치 불변 (V1) | 위반 0 | **의미상 위반 0.** 단 flash-lite 직렬화 결함(§7.4)이 값을 오염 → V1이 탐지 → 폴백 |
+| 수치 불변 (V1) | 위반 0 | **의미상 위반 0.** 단 flash-lite 직렬화 결함(7.4절)이 값을 오염 → V1이 탐지 → 폴백 |
 | 판정 라벨 (V2) | 위반 0 | **10/10** (전 회차) |
 | 부위명 준수 (V3) | 위반 0 | **10/10** (전 회차) |
 | 톤 — 처방 없음 (V5) | 위반 0 | **10/10** (전 회차) |
@@ -375,7 +375,7 @@ GET https://generativelanguage.googleapis.com/v1beta/models/{model}:generateCont
 | 통제 4항목(V1 의미·V2·V3·V5) 위반 | 0 (표본 7) | 0 (표본 30+) |
 | thinking | 기본 ON, 750~2,900 tok 선소모, 끌 수 없음(v1beta) | 없음 |
 | MAX_TOKENS(출력 잘림) | maxOutputTokens 3000에서 3/10 | 0 |
-| 숫자 직렬화 결함(§7.4) | 0 (표본 7) | **~7.5% / 호출** |
+| 숫자 직렬화 결함(7.4절) | 0 (표본 7) | **~7.5% / 호출** |
 | 지연 | 7~12초 | **~1.2초** (결함 발생 시 8~12초) |
 | 무료 일일 쿼터 | 매우 낮음(~20회) — 실험 중 429 다수 | 별도 버킷, 상대적으로 여유 |
 
@@ -386,7 +386,7 @@ GET https://generativelanguage.googleapis.com/v1beta/models/{model}:generateCont
 | 잘못된 모델 ID (`gemini-2.5-flash`) | 폴백 | ✅ 404 → 폴백 문장 |
 | `maxOutputTokens` 부족 (thinking) | 폴백 | ✅ MAX_TOKENS → 폴백 (v1 3건) |
 | 숫자 직렬화 결함 발생 | V1 FAIL → 폴백 | ✅ 자동 탐지 → 폴백 (v3) |
-| `enabled = false` | 폴백 문장, 카드 유지 | ✅ (§5.3) |
+| `enabled = false` | 폴백 문장, 카드 유지 | ✅ (5.3절) |
 
 ### 7.4 발견 — `gemini-3.5-flash-lite` 숫자 직렬화 결함
 
@@ -407,8 +407,8 @@ GET https://generativelanguage.googleapis.com/v1beta/models/{model}:generateCont
 
 | | |
 |---|---|
-| 검증 설계 | 구조화 출력 에코를 값 비교로 검증하는 방식(§2.5)이 이 결함을 잡는다. 프롬프트만으로는 못 막는다. |
-| 폴백 | **선택이 아니라 필수.** flash-lite 기준 호출의 ~7.5%에서 발동하며, §5의 규칙 폴백 설계가 그대로 정당화된다. |
+| 검증 설계 | 구조화 출력 에코를 값 비교로 검증하는 방식(2.5절)이 이 결함을 잡는다. 프롬프트만으로는 못 막는다. |
+| 폴백 | **선택이 아니라 필수.** flash-lite 기준 호출의 ~7.5%에서 발동하며, 5절의 규칙 폴백 설계가 그대로 정당화된다. |
 | 대안 | (a) `gemini-3.6-flash` 등 상위 모델(표본상 결함 0, 대신 느리고 쿼터 낮음), (b) 이상 응답(출력 토큰 급증·거대 수치) 감지 시 1회 재요청 후 폴백, (c) flash-lite + 폴백 감수(~7.5%). |
 
 ### 7.5 상세 로그
@@ -420,7 +420,7 @@ GET https://generativelanguage.googleapis.com/v1beta/models/{model}:generateCont
 
 - **① 분석 해설의 LLM 통제는 검증됨.** 프롬프트 v3 + 구조화 출력 + V1~V7 검증 + 규칙 폴백에서, 통제 4항목(수치 의미·판정·부위·톤)의 위반이 전 회차 **0**. `gemini-3.5-flash-lite` v3 `_0713` 실행은 10케이스 전 항목 통과.
 - **운영 후보: `gemini-3.5-flash-lite`** + "이상 응답 1회 재요청 → 폴백". 지연 1.2초, 비용 0, 통제 동급.
-- **10월 ② 리스크 평가**: LLM을 규칙 안에 가두는 것은 가능. 단 소형 모델은 구조화 출력에 직렬화 결함이 있으므로, ②도 정량 재검증 + 폴백을 필수로 둔다(§8).
+- **10월 ② 리스크 평가**: LLM을 규칙 안에 가두는 것은 가능. 단 소형 모델은 구조화 출력에 직렬화 결함이 있으므로, ②도 정량 재검증 + 폴백을 필수로 둔다(8절).
 - 남은 것: (a) flash vs lite 정면 비교(4차, 쿼터 회복 후), (b) 문장 자연스러움은 지인 검증에서 정성 평가.
 
 ---
@@ -433,7 +433,7 @@ GET https://generativelanguage.googleapis.com/v1beta/models/{model}:generateCont
 |---|---|
 | 구조화 출력(`responseSchema`)이 JSON 형식을 안정화한다 (V7 10/10) | 루틴도 자유 텍스트가 아니라 **스키마 강제**로 받는다 (`responseSchema` + `responseMimeType`) |
 | 인용 값을 함께 반환시키면 검증이 필드 비교가 된다 | 각 루틴 항목에 `exerciseId`를 담게 하고, **후보 목록을 enum으로** 스키마에 박아 스키마 레벨에서 후보 밖 선택을 차단 |
-| **소형 모델은 숫자 필드에 직렬화 결함이 있다** (§7.4, flash-lite ~7.5%) | ②의 스키마에서 자유 숫자 필드를 줄이고(세트 수·반복 수는 enum·정수 범위로 제약), 생성 결과는 **정량 재검증 필수** — 직렬화 결함이 세트 수에 끼면 후보 밖 세트 수가 될 수 있음 |
+| **소형 모델은 숫자 필드에 직렬화 결함이 있다** (7.4절, flash-lite ~7.5%) | ②의 스키마에서 자유 숫자 필드를 줄이고(세트 수·반복 수는 enum·정수 범위로 제약), 생성 결과는 **정량 재검증 필수** — 직렬화 결함이 세트 수에 끼면 후보 밖 세트 수가 될 수 있음 |
 | 검증 실패 시 1회 재요청 → 폴백이 실제로 자주 쓰인다 (~10%) | ②는 정량 규칙(명세 2.3: 부위별 세트 범위, 밀기·당기기 균형) 재검증 → 최대 N회 재생성 → 규칙 기반 기본 루틴. **N은 최소 2** (①에서 재요청이 드물지 않았음) |
 | 프롬프트는 v1→v3로 다듬어야 커버리지가 나온다 | ②도 "후보 안에서만 / 세트 수는 분석이 준 값 / 순서 규칙" 을 명시적으로. 한 번에 안 됨 |
 | 톤 금지어 사전 | ②는 톤 이슈가 작지만, 루틴 설명 문구에 동일 사전 적용 |
@@ -448,15 +448,15 @@ GET https://generativelanguage.googleapis.com/v1beta/models/{model}:generateCont
 | 항목 | 결정 | 상태 |
 |---|---|---|
 | 실험 순서 | ① 분석 해설(9월) → ② 루틴 생성(10월) | 확정 |
-| provider | **Google Gemini** (무료 티어). 포트-어댑터로 추상화해 교체 가능 | 확정 (§1.1) |
+| provider | **Google Gemini** (무료 티어). 포트-어댑터로 추상화해 교체 가능 | 확정 (1.1절) |
 | 실험 모델 | `gemini-3.6-flash`(v1) → `gemini-3.5-flash-lite`(v2·v3) | 완료 |
 | 운영 모델 | **`gemini-3.5-flash-lite`** — 통제 동급, 지연 1.2초, 비용 0 | 잠정 (flash 비교 4차 후 확정) |
 | 연동 구조 | 포트-어댑터. `LlmCommentaryPort` + `GeminiCommentaryAdapter` + 검증기 + 규칙 폴백 | 확정 |
-| 수치 통제 1차 방어선 | 프롬프트가 아니라 **구조화 출력**(`responseSchema`) — 인용 수치를 함께 반환 → 필드 비교 검증 | 확정 (§7로 입증) |
-| 출력 검증 | V1~V7 (§4). 실패·직렬화 결함 시 1회 재요청 → 폴백 | 확정 |
-| 폴백 | 규칙 기반 문장 조립. 항상 동작, 검증 불필요. **flash-lite 직렬화 결함(~7.5%)으로 필수 구성요소** | 확정 (§7.4) |
-| 프롬프트 | v3 (§3.1) — 금지 규칙 + 커버리지 규칙 + 상충 문장 금지 | 확정 |
-| 해설 카드 화면 처리 | 카드는 항상 유지, 폴백 시 카드 안에 규칙 기반 문장 (숨기지 않음) | 확정 (§5.3) |
+| 수치 통제 1차 방어선 | 프롬프트가 아니라 **구조화 출력**(`responseSchema`) — 인용 수치를 함께 반환 → 필드 비교 검증 | 확정 (7절로 입증) |
+| 출력 검증 | V1~V7 (4절). 실패·직렬화 결함 시 1회 재요청 → 폴백 | 확정 |
+| 폴백 | 규칙 기반 문장 조립. 항상 동작, 검증 불필요. **flash-lite 직렬화 결함(~7.5%)으로 필수 구성요소** | 확정 (7.4절) |
+| 프롬프트 | v3 (3.1절) — 금지 규칙 + 커버리지 규칙 + 상충 문장 금지 | 확정 |
+| 해설 카드 화면 처리 | 카드는 항상 유지, 폴백 시 카드 안에 규칙 기반 문장 (숨기지 않음) | 확정 (5.3절) |
 | API 키 | 환경변수/헤더만. `.env`(gitignore됨) / CI는 mock / EC2는 Actions Secret. 노출 시 즉시 재발급 | 확정 |
 | CI에서 실제 호출 | 안 함. mock. 실호출·하네스는 로컬 수동 | 확정 |
 | `app.llm.enabled` | 기본 `false` | 확정 |
@@ -466,14 +466,14 @@ GET https://generativelanguage.googleapis.com/v1beta/models/{model}:generateCont
 ## 10. 한계 인지
 
 - **이 실험은 "통제가 되는가"를 보는 것이지 "해설이 좋은가"를 보는 것이 아니다.** 문장 품질(자연스러움·유용함)은 지인 검증에서 정성 평가한다.
-- **케이스 10개는 통계적으로 작다.** 통제 위반이 전 회차 0이어도 드물게 샐 수 있으므로, 운영에서도 §4 검증과 폴백은 상시 켜 둔다.
-- **`gemini-3.5-flash-lite` 숫자 직렬화 결함(§7.4)**은 이 실험에서 새로 확인한 것이다. `temperature: 0`에서도 ~7.5% 발생. 상위 모델·재요청·폴백 중 하나로 대응해야 하며, 운영 모델 확정 전 flash와의 정면 비교(4차)가 필요하다.
+- **케이스 10개는 통계적으로 작다.** 통제 위반이 전 회차 0이어도 드물게 샐 수 있으므로, 운영에서도 4절 검증과 폴백은 상시 켜 둔다.
+- **`gemini-3.5-flash-lite` 숫자 직렬화 결함(7.4절)**은 이 실험에서 새로 확인한 것이다. `temperature: 0`에서도 ~7.5% 발생. 상위 모델·재요청·폴백 중 하나로 대응해야 하며, 운영 모델 확정 전 flash와의 정면 비교(4차)가 필요하다.
 - **flash 비교 미완**: `gemini-3.6-flash` 무료 일일 쿼터 소진으로 v2·v3를 flash로 못 돌렸다. 쿼터 리셋 후 4차에서 flash vs lite(품질·결함율·지연)를 마무리한다.
-- LLM API·모델 ID·무료 쿼터는 자주 바뀐다. §1.2는 2026-08-30 스냅샷이며 콘솔에서 재확인한다.
+- LLM API·모델 ID·무료 쿼터는 자주 바뀐다. 1.2절는 2026-08-30 스냅샷이며 콘솔에서 재확인한다.
 - 무료 티어는 프롬프트가 Google 모델 학습에 쓰일 수 있다. 실험 입력은 합성 데이터라 무방하나, 실제 사용자 데이터로 옮길 때는 유료 티어 또는 학습 비사용 옵션을 확인한다.
-- provider를 Gemini로 정했지만 통제 메커니즘은 provider 독립적이다(§1.1). 비용·안정성·한국어 품질이 크게 어긋나면 포트-어댑터 경계에서 교체한다.
-- `루틴생성_로직_설계서.md`는 아직 저장소에 없다. ② 실험은 그 문서 확정 후 본 문서 §8을 갱신하며 진행한다.
+- provider를 Gemini로 정했지만 통제 메커니즘은 provider 독립적이다(1.1절). 비용·안정성·한국어 품질이 크게 어긋나면 포트-어댑터 경계에서 교체한다.
+- `루틴생성_로직_설계서.md`는 아직 저장소에 없다. ② 실험은 그 문서 확정 후 본 문서 8절을 갱신하며 진행한다.
 
 ---
 
-*본 문서는 실험 진행에 따라 §7·§9를 계속 갱신한다. 회차별 상세는 `scripts/llm-experiment/runs/실험일지.md`.*
+*본 문서는 실험 진행에 따라 7절·9절를 계속 갱신한다. 회차별 상세는 `scripts/llm-experiment/runs/실험일지.md`.*

@@ -6,10 +6,10 @@
     python scripts/llm-experiment/run.py            # 전체 10케이스, 실제 호출
     python scripts/llm-experiment/run.py 3          # 앞 3케이스만
     python scripts/llm-experiment/run.py --dry-run  # API 호출 없이 프롬프트만 출력
-    python scripts/llm-experiment/run.py --model gemini-2.5-flash-lite
+    python scripts/llm-experiment/run.py --model gemini-3.5-flash-lite
 
 키: 리포지토리 루트 .env 의 GEMINI_API_KEY 를 읽는다. 코드/로그에 키를 남기지 않는다.
-결과: 같은 폴더에 results.json / results.md 저장. results.md 는 실험기록 §7.3에 붙여넣는 용도.
+결과: 같은 폴더에 results.json / results.md 저장. results.md 는 실험기록 7.3절에 붙여넣는 용도.
 """
 import datetime
 import json
