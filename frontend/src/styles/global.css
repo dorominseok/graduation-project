@@ -1,0 +1,42 @@
+@import './tokens.css';
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-body);
+  color: var(--text-primary);
+  background: var(--page-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+/* 모바일 우선 화면이므로 데스크톱에서는 폰 폭으로 가운데 정렬한다.
+   목업의 390×844 프레임과 같은 폭. */
+#root {
+  max-width: 430px;
+  margin: 0 auto;
+  background: var(--phone-bg);
+  position: relative;
+  overflow: hidden;
+}
