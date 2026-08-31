@@ -1,0 +1,45 @@
+.viewport {
+  position: absolute;
+  left: var(--space-16);
+  right: var(--space-16);
+  bottom: calc(var(--tabbar-height) + var(--space-12));
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  background: var(--text-primary);
+  color: var(--on-fill);
+  border-radius: var(--radius-lg);
+  padding: var(--space-12) var(--space-16);
+  box-shadow: var(--shadow);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-medium);
+  pointer-events: auto;
+}
+
+.message {
+  flex: 1;
+  min-width: 0;
+}
+
+.danger {
+  background: var(--danger);
+}
+
+.action {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--on-fill);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-heavy);
+  text-decoration: underline;
+  padding: 0;
+}
