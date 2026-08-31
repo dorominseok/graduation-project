@@ -1,0 +1,104 @@
+/*
+ * 디자인 토큰 — 「밸런스핏」 목업(sample/밸런스핏 프로토타입.html)에서 옮김.
+ *
+ * 색상값은 목업 원본 그대로다(oklch). 목업에는 색만 변수로 선언돼 있고
+ * 간격·타이포·라운드는 인라인 값으로 흩어져 있어, 실제 사용값을 집계해
+ * 스케일로 정리했다. 값 자체는 목업에서 쓰인 것만 사용했다.
+ */
+
+:root {
+  /* ---- 배경 / 표면 ---- */
+  --page-bg: oklch(96% 0.004 90);
+  --phone-bg: oklch(99% 0.002 90);
+  --header-bg: oklch(99% 0.002 90);
+  --card-bg: oklch(100% 0 0);
+  --chip-bg: oklch(94% 0.006 90);
+
+  /* ---- 선 / 구분 ---- */
+  --card-border: oklch(90% 0.006 90);
+  --divider: oklch(90% 0.006 90);
+  --dashed-border: oklch(78% 0.008 90);
+  --checkbox-off: oklch(87% 0.008 90);
+
+  /* ---- 글자 ---- */
+  --text-primary: oklch(22% 0.01 90);
+  --text-secondary: oklch(42% 0.01 90);
+  --text-tertiary: oklch(56% 0.01 90);
+  --on-fill: oklch(99% 0 0);
+
+  /* ---- 강조 ---- */
+  --accent: oklch(42% 0.13 152);
+  --accent-strong: oklch(36% 0.13 152);
+  --accent-soft: oklch(93% 0.045 152);
+
+  /* ---- 상태 ---- */
+  --danger: oklch(48% 0.19 25);
+  --danger-soft: oklch(94% 0.035 25);
+  --warn: oklch(46% 0.15 60);
+  --warn-soft: oklch(94% 0.04 70);
+
+  /* ---- 차트 / 게이지 ---- */
+  --track-bg: oklch(90% 0.006 90);
+  --tick: oklch(76% 0.006 90);
+  --tick-strong: oklch(58% 0.008 90);
+  --push-color: oklch(48% 0.12 258);
+
+  /* ---- 스테퍼 ---- */
+  --stepper-bg: oklch(93% 0.006 90);
+  --stepper-text: oklch(28% 0.01 90);
+
+  /* ---- 그림자 / 스크림 ---- */
+  --shadow: 0 16px 40px rgba(20, 24, 20, 0.1), 0 2px 8px rgba(20, 24, 20, 0.06);
+  --scrim: rgba(20, 24, 20, 0.4);
+
+  /* ---- 타이포 ---- */
+  --font-sans: Pretendard, 'Pretendard Variable', -apple-system, BlinkMacSystemFont,
+    system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', 'Apple SD Gothic Neo',
+    'Malgun Gothic', sans-serif;
+
+  --font-display: 36px; /* 넘버패드 입력값 */
+  --font-h1: 24px;      /* 홈 인사말 · 로그인 타이틀 */
+  --font-h2: 22px;      /* 회원가입 타이틀 */
+  --font-h3: 17px;
+  --font-lg: 16px;
+  --font-md: 15px;
+  --font-body: 14.5px;  /* 입력 필드 */
+  --font-sm: 13px;
+  --font-xs: 12.5px;
+  --font-2xs: 11.5px;   /* 폼 라벨 */
+  --font-3xs: 11px;     /* 탭 라벨 */
+
+  --weight-medium: 600;
+  --weight-bold: 700;
+  --weight-heavy: 800;
+
+  /* ---- 간격 (목업 사용값) ---- */
+  --space-2: 2px;
+  --space-3: 3px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-14: 14px;
+  --space-16: 16px;
+  --space-18: 18px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-26: 26px;
+  --space-28: 28px;
+  --space-32: 32px;
+
+  /* ---- 라운드 ---- */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+  --radius-sheet: 20px;
+  --radius-pill: 99px;
+
+  /* ---- 레이아웃 ---- */
+  --tabbar-height: 74px;
+  --control-height: 50px; /* 입력 필드 · 시트 확인 버튼 */
+}

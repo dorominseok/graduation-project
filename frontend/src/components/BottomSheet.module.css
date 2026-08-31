@@ -1,0 +1,50 @@
+.scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+  z-index: 70;
+  border: none;
+  padding: 0;
+  width: 100%;
+}
+
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 71;
+  background: var(--phone-bg);
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  padding: var(--space-18) var(--space-20) var(--space-26);
+  box-shadow: var(--shadow);
+  max-height: 88%;
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-12);
+}
+
+.title {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.close {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-pill);
+  background: var(--chip-bg);
+  border: none;
+  color: var(--text-secondary);
+  font-size: var(--font-md);
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
