@@ -1,0 +1,30 @@
+.root {
+  flex-shrink: 0;
+  display: flex;
+  padding: var(--space-8) var(--space-6) var(--space-26);
+  background: var(--phone-bg);
+  border-top: 1px solid var(--divider);
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  background: transparent;
+  border: none;
+  padding: var(--space-6) 0;
+  text-decoration: none;
+  color: var(--text-tertiary);
+}
+
+.active {
+  color: var(--accent);
+}
+
+.label {
+  font-size: var(--font-3xs);
+  font-weight: var(--weight-medium);
+  color: inherit;
+}
