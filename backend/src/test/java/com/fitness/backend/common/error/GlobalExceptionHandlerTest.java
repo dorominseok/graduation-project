@@ -28,7 +28,9 @@ import org.springframework.web.bind.annotation.RequestParam;
  * 붙는지 확인한다. 시험용 컨트롤러를 띄워 HTTP 계층까지 통과시킨다.
  */
 @SpringBootTest
-@AutoConfigureMockMvc
+// 필터를 끈다. 이 테스트가 확인하는 것은 예외 → 응답 변환과 경로 접두사이지
+// 인증이 아니다. 부록 B의 비인증 목록은 SecurityConfigTest가 따로 검증한다.
+@AutoConfigureMockMvc(addFilters = false)
 @Import(GlobalExceptionHandlerTest.TestController.class)
 class GlobalExceptionHandlerTest {
 
