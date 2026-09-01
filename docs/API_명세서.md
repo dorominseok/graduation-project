@@ -212,17 +212,26 @@ Authorization: Bearer {accessToken}
 
 **(2) `users` 프로필 컬럼 — 기존 테이블 확장**
 
-`users`에는 현재 `email / password_hash / nickname`만 있다. 프로필 항목 **키 / 체중 / 목표 3종**을 위해 컬럼을 추가한다.
+`users`에는 현재 `email / password_hash / nickname`만 있다. 프로필 항목 **훈련 목표 1종**을 위해 컬럼을 추가한다.
 
 | 컬럼 | 타입 | 설명 |
 |---|---|---|
-| `height_cm` | NUMERIC(4,1) NULL | 키 |
-| `weight_kg` | NUMERIC(5,2) NULL | 체중 |
 | `goal` | VARCHAR(20) NULL | `STRENGTH` / `HYPERTROPHY` / `ENDURANCE` / `GENERAL_FITNESS` |
 
-> 별도 `user_profiles` 테이블로 분리하는 방안도 있으나, 1:1이고 필드가 3개뿐이라 `users`에 인라인한다. 값은 회원가입 후 선택 입력이므로 전부 NULL 허용.
+> 컬럼 하나이므로 별도 `user_profiles` 테이블을 두지 않고 `users`에 인라인한다. 회원가입 후 선택 입력이므로 NULL 허용.
 
-> **운동 경력(`experience_level`)은 프로필에서 제외한다.** 분석 판정은 ACSM 기준을 따르므로 경력을 참조하지 않고, `goal`과 달리 향후 사용처도 구체적으로 예상되지 않는다. 쓰이지 않을 컬럼을 미리 두면 스키마만 늘어나므로, 필요해질 때 근거를 갖춰 추가한다. **UC-01-03이 프로필 항목으로 "키/체중/경력/목표"를 명시한 것과 다르며, 이 변경은 LOG-11에 기록한다.**
+> **프로필은 훈련 목표 1종이다 — 키·체중·경력을 모두 제외한다.**
+>
+> 판단 기준은 LOG-08이 `equipment`를 미리 확보할 때 쓴 **비용 비대칭**이다. 종목 데이터는 나중에 컬럼을 추가하면 800여 종목을 재검토해야 하므로 미리 넣는 것이 옳았다. 반면 **프로필 컬럼에는 그 비대칭이 없다** — 필요해지면 NULL 허용 컬럼 하나와 폼 필드 하나를 추가하면 되고, 소급해서 채워야 할 과거 데이터도 없다. 미리 확보할 이유가 성립하지 않는다.
+>
+> - `experience_level`(경력): 분석 판정이 ACSM 절대 기준을 따라 경력을 참조하지 않고, 예상되는 사용처가 없다.
+> - `height_cm`(키): **어떤 로직도 참조하지 않는다.** BMI 등 체중 관리 지표는 이 앱의 범위 밖이다(목표축을 체중이 아닌 훈련 목표로 교체했다).
+> - `weight_kg`(체중): 예상 사용처는 `WEIGHTED_BODYWEIGHT` 종목의 실제 부하 산출뿐인데 해당 종목이 **109종 중 2종**(중량 풀업·중량 벤치 딥스)이고, 단일 스냅샷이라 과거 기록에 소급 적용하면 부정확하다. 실제로 쓰려면 체중 이력 테이블이 필요하다.
+> - `goal`(훈련 목표): **존치.** 루틴 추천의 출력 형식이 "운동명·세트·**반복 횟수**·순서"(기능명세 2.1)인데, 반복 횟수와 강도 범위는 ACSM이 목표별로 다르게 제시한다. 목표를 모르면 정할 근거가 없다. 셋 중 유일하게 출력이 그 값을 요구한다.
+>
+> 지인 10명에게 배포하면서 **쓰지 않을 신체 정보를 수집하지 않는다**는 점도 함께 고려했다.
+>
+> **UC-01-03·계획서가 명시한 프로필 항목("키/체중/경력/목표")과 다르며**, 경력 제외는 LOG-11에, 키·체중 제외는 LOG-13에 기록한다.
 
 **(3) `exercises.delt_region` — 기존 테이블 확장**
 
@@ -262,6 +271,7 @@ Authorization: Bearer {accessToken}
 | POST | `/auth/logout` | 로그아웃 (리프레시 토큰 폐기) | ✔ |
 | GET | `/users/me` | 내 프로필 조회 | ✔ |
 | PATCH | `/users/me` | 닉네임·프로필 수정 | ✔ |
+| DELETE | `/users/me` | **회원 탈퇴** (계정·기록 전부 삭제) | ✔ |
 
 ### 3.2 운동 종목
 
@@ -269,6 +279,7 @@ Authorization: Bearer {accessToken}
 |---|---|---|---|
 | GET | `/exercises` | 종목 목록·검색 (필터·페이지네이션, `favorite` 필터) | — |
 | GET | `/exercises/{id}` | 종목 단건 조회 | — |
+| GET | `/exercises/{id}/last-performance` | 이 종목의 **직전 수행 기록** (종목 프리필용) | ✔ |
 | PUT | `/users/me/favorite-exercises/{exerciseId}` | 즐겨찾기 추가 (멱등) | ✔ |
 | DELETE | `/users/me/favorite-exercises/{exerciseId}` | 즐겨찾기 해제 (멱등) | ✔ |
 
@@ -404,15 +415,14 @@ Authorization: Bearer {accessToken}
   "email": "user@example.com",
   "nickname": "민석",
   "profile": {
-    "heightCm": 175.0,
-    "weightKg": 72.5,
     "goal": "HYPERTROPHY"
   },
   "createdAt": "2026-09-01T09:12:00+09:00"
 }
 ```
 
-- 프로필 미입력 시 `profile`의 각 필드는 `null`.
+- 프로필 미입력 시 `profile.goal`은 `null`.
+- `profile`을 객체로 감싸 둔 것은 향후 항목이 늘어날 때 최상위 필드가 흩어지지 않게 하기 위함이다. 현재 항목은 `goal` 하나다.
 
 ### 4.6 PATCH /users/me
 
@@ -424,8 +434,6 @@ Authorization: Bearer {accessToken}
 {
   "nickname": "민석2",
   "profile": {
-    "heightCm": 175.0,
-    "weightKg": 71.0,
     "goal": "STRENGTH"
   }
 }
@@ -434,15 +442,53 @@ Authorization: Bearer {accessToken}
 | 필드 | 규칙 |
 |---|---|
 | `nickname` | 1~50자 |
-| `profile.heightCm` | 50.0 ~ 260.0, 소수 1자리 |
-| `profile.weightKg` | 20.0 ~ 400.0, 소수 2자리 |
-| `profile.goal` | enum (부록 A) |
+| `profile.goal` | enum (부록 A). `null`로 보내면 미설정으로 되돌린다 |
 
 **응답 `200 OK`** — 4.5와 동일한 전체 프로필.
 
-> 프로필 항목은 키/체중/목표 3종이다. UC-01-03이 명시한 "경력"은 제외했다(2.4-(2), LOG-11).
+> 프로필 항목은 **훈련 목표 1종**이다. UC-01-03이 명시한 "경력"(LOG-11)에 이어 "키·체중"도 제외했다. 근거는 2.4-(2) — 어떤 로직도 참조하지 않고, 프로필 컬럼은 나중에 추가해도 비용이 같다.
 
 > 이메일·비밀번호 변경은 9월 범위에서 제외한다. 필요 시 별도 엔드포인트(`PATCH /users/me/password`)로 추가.
+
+### 4.7 DELETE /users/me
+
+회원 탈퇴. 계정과 그에 딸린 모든 기록을 **되돌릴 수 없게** 삭제한다.
+
+**요청**
+
+```json
+{ "password": "hunter2hunter2" }
+```
+
+| 필드 | 규칙 |
+|---|---|
+| `password` | 필수. 현재 비밀번호를 재확인한다 |
+
+> 비밀번호를 다시 받는 것은 액세스 토큰만으로 실행되는 되돌릴 수 없는 동작이기 때문이다. 화면에서도 확인 다이얼로그를 한 번 더 둔다.
+
+**응답 `204 No Content`**
+
+- `users` 행을 삭제하면 FK `ON DELETE CASCADE`로 아래가 함께 지워진다. 별도 삭제 로직이 필요 없다.
+
+| 테이블 | 경로 |
+|---|---|
+| `refresh_tokens` | `user_id` → `users` (V3) |
+| `user_favorite_exercises` | `user_id` → `users` (V3) |
+| `workout_sessions` | `user_id` → `users` (V1) |
+| `workout_sets` | `session_id` → `workout_sessions` (V1) |
+
+- 리프레시 쿠키를 만료시킨다(`Set-Cookie: refreshToken=; Max-Age=0`). 액세스 토큰은 남은 만료 시간 동안 형식상 유효하지만 `sub`에 해당하는 사용자가 없으므로 모든 요청이 `401`이 된다.
+- `exercises`는 영향받지 않는다. 종목은 사용자 소유 데이터가 아니다.
+- **소프트 삭제를 쓰지 않는다.** 탈퇴의 목적이 개인정보를 남기지 않는 것이므로 행을 실제로 지운다. 같은 이메일로 다시 가입할 수 있다.
+
+**오류**
+
+| 상황 | 응답 |
+|---|---|
+| 비밀번호 불일치 | `401 INVALID_CREDENTIALS` |
+| `password` 누락 | `400 VALIDATION_ERROR` |
+
+> 목업 계정 화면에 삭제 버튼이 이미 있으나 동작이 연결돼 있지 않다(대조 평가 C-23). 이 엔드포인트를 붙이면 해소된다.
 
 ---
 
@@ -450,18 +496,19 @@ Authorization: Bearer {accessToken}
 
 ### 5.1 종목 데이터 개요
 
-`exercises` 테이블(V1 + V2). 종목 데이터 정제는 8월 2주 작업 산출물이며, 본 API는 읽기 전용이다.
+`exercises` 테이블(`V1` + `V2` + `V3`). 종목 데이터 정제는 8월 2주 작업 산출물이며, **종목 데이터 자체는 읽기 전용**이다(즐겨찾기 5.4는 별도 테이블에 쓴다).
 
 | 필드 | 타입 | 값 |
 |---|---|---|
 | `id` | number | |
-| `nameKo` | string | 한글 명칭 |
+| `nameKo` | string | 한글 명칭. 종목의 자연키이며 UNIQUE (`V3`) |
 | `nameEn` | string \| null | 영문 명칭 |
 | `bodyPart` | enum | `CHEST` `BACK` `LEGS` `SHOULDERS` `ARMS` `CORE` (저장·검색·차트용 6종) |
 | `primaryMuscle` | string \| null | 주동근 원자값 (`chest`, `lats`, `triceps` …). 판정 부위 산출 근거 (8.1) |
 | `pushPull` | enum | `PUSH` `PULL` `NONE` |
 | `measureType` | enum | `WEIGHT_REPS` `BODYWEIGHT_REPS` `WEIGHTED_BODYWEIGHT` `TIME` |
 | `equipment` | enum | `BARBELL` `DUMBBELL` `MACHINE` `CABLE` `BODYWEIGHT` `PULLUP_BAR` |
+| `deltRegion` | enum \| null | `FRONT` \| `REAR`. `primaryMuscle = shoulders`인 13종목만 값을 갖고 그 외는 `null` (`V3`, 8.1). 어깨 앞·뒤 판정 분리의 근거 컬럼 |
 
 **`measureType`별 세트 입력 항목** (6.4의 검증 근거)
 
@@ -511,7 +558,7 @@ Authorization: Bearer {accessToken}
 
 | 탭 | 산출 |
 |---|---|
-| 최근 사용 | 프론트가 `GET /workout-sessions` 이력에서 최근 등장 `exerciseId` 순으로 계산. 별도 엔드포인트 없음 |
+| 최근 사용 | 프론트가 `GET /workout-sessions` 이력에서 최근 등장 `exerciseId` 순으로 계산. 별도 엔드포인트 없음. 근거 필드는 6.6 응답의 `exercises[].id`이며, 배열이 수행 순서로 정렬돼 있으므로 세션을 `performedOn` 내림차순으로 훑으며 처음 만나는 순서가 곧 최근 사용 순이다 |
 | 부위별 | `GET /exercises?bodyPart=` — 부위 6종으로 필터. 목업의 부위 그리드에 표시되는 **부위별 종목 수**는 페이지 envelope의 `totalElements`로 얻는다(부위마다 1회 요청) |
 | 즐겨찾기 | `GET /exercises?favorite=true&sort=` — 서버가 `user_favorite_exercises` 기준. 정렬은 `createdAt,desc` 고정(별표 누른 순) |
 
@@ -531,6 +578,59 @@ Authorization: Bearer {accessToken}
 - `exerciseId`가 없는 종목이면 `404 RESOURCE_NOT_FOUND`.
 - 개수 상한은 두지 않는다(9월 범위). 필요 시 이후 `409`로 추가.
 
+### 5.5 GET /exercises/{id}/last-performance
+
+종목 프리필(기록 방식 3.4 ①)의 데이터 원천. 종목을 고르는 순간 호출해 그 종목의 직전 수행 세트를 그대로 받아 행을 채운다. 세트 행의 "이전기록" 열(기록 방식 3.2)도 이 값을 쓴다.
+
+**대상 선정 규칙**
+
+| 조건 | 내용 |
+|---|---|
+| 소유자 | 요청자 본인의 기록만 |
+| 세션 상태 | `status = 'DONE'` 세션만 |
+| 기간 | 제한 없음. 아무리 오래전이어도 마지막 수행분을 찾는다 |
+| 정렬 | `performed_on` 내림차순 → 동일 일자면 그 세션에 담긴 해당 종목 세트의 `MAX(recorded_at)` 내림차순. 그중 첫 세션 하나 |
+| 세트 범위 | 그 세션에서 해당 종목의 전 세트. 워밍업 세트도 포함하고 `isWarmup`으로 구분한다 |
+
+- `DRAFT`(기록 중인 세션)를 제외하는 것은 프리필 ①과 세트 복사 ②의 담당을 나누기 위함이다. 진행 중 세션 안의 값을 이어받는 것은 ②가 화면 상태로 처리한다.
+- 하루 복수 세션이 허용되므로(6.1) 같은 일자에 후보가 둘일 수 있어 `recorded_at` 2차 정렬을 둔다.
+- `BACKFILL` 세션도 대상이다. 정렬 기준이 `performed_on`이라 오늘 입력한 과거 기록이 최신으로 올라오지 않는다.
+
+**응답 `200 OK`**
+
+```json
+{
+  "exerciseId": 128,
+  "exerciseName": "바벨 벤치프레스",
+  "measureType": "WEIGHT_REPS",
+  "sessionId": 41,
+  "performedOn": "2026-08-28",
+  "sets": [
+    { "setNo": 1, "weightKg": 60.0, "reps": 12, "durationSec": null, "isWarmup": true },
+    { "setNo": 2, "weightKg": 70.0, "reps": 10, "durationSec": null, "isWarmup": false },
+    { "setNo": 3, "weightKg": 70.0, "reps": 9,  "durationSec": null, "isWarmup": false }
+  ]
+}
+```
+
+| 필드 | 설명 |
+|---|---|
+| `measureType` | 프리필 대상 필드를 정하는 데 쓴다(5.1 표). 종목 조회를 한 번 더 하지 않도록 함께 내려준다 |
+| `sessionId` / `performedOn` | 어느 기록에서 가져왔는지. "8/28 기록에서 채움" 같은 근거 표기에 쓸 수 있다 |
+| `sets[]` | `setNo` 오름차순. 저장 시 `기존 수 + 1`로 부여되므로 수행 순서와 일치한다 |
+| `sets[].setNo` | 참고용 표시값이다. 삭제로 구멍이 있을 수 있으며(6.12), 새 세션의 `setNo`는 저장 시점에 서버가 새로 부여한다 |
+
+> 세트에 `id`를 담지 않는다. 새 세션에 채워 넣을 참조값이지 편집 대상 행이 아니기 때문이다. 프리필된 행은 완료 체크 시점에 `POST /workout-sessions/{id}/sets`로 새로 저장된다(LOG-05).
+
+**응답 `204 No Content`** — 해당 종목의 `DONE` 기록이 없을 때. 오류가 아니라 "처음 하는 종목"이라는 정상 상태이며, 클라이언트는 빈 세트 행 하나로 시작한다. `GET /workout-sessions/current`(6.7)의 204와 같은 성격이다.
+
+**오류**
+
+| 상황 | 응답 |
+|---|---|
+| `id`가 없는 종목 | `404 RESOURCE_NOT_FOUND` |
+
+> 개인 기록이므로 `GET /exercises`와 달리 인증이 필요하다. 부록 B의 비인증 목록에 넣지 않는다.
 ---
 
 ## 6. 운동 기록 API
@@ -599,7 +699,9 @@ workout_session (한 번의 운동)
 
 > **미래 날짜 세션은 허용하지 않는다** (대조표 A-4.2 미결정 항목의 확정). 미리 짜두는 운동은 "계획"이고, `workout_sessions`는 "기록"만 담는다 — LOG-05가 이 둘을 다른 테이블로 분리한 것이 핵심 결정이다. 미래 운동을 미리 구성하는 화면은 10월 `routines` 테이블의 일이다. 목업의 미래 날짜 선택 화면은 제거해야 한다(9장).
 
-> **BACKFILL 편의(선택 구현)**: `POST /workout-sessions`에 `"sets": [ … ], "autoComplete": true`를 함께 받아 세션 생성 + 세트 일괄 저장 + 종료를 한 번에 처리할 수 있다. 기본 흐름은 위 3단계를 유지한다.
+> **BACKFILL 편의(선택 구현)**: `POST /workout-sessions`에 `"sets": [ … ], "autoComplete": true`를 함께 받아 세션 생성 + 세트 일괄 저장 + 종료를 한 번에 처리할 수 있다. 기본 흐름은 위 3단계를 유지한다. 이 경로로 보내는 세트 항목도 6.4와 같은 형태이므로 각각 `clientSetId`를 갖는다.
+>
+> **세션 생성의 멱등성 — 미결.** `LIVE`는 `DRAFT` 사용자당 1개 제약(위 409)이 재전송을 자연히 막지만, `BACKFILL`은 하루 복수 세션이 허용되므로(6.1) **응답 유실 후 재전송이 같은 날짜에 세션 두 개를 만든다.** 세트와 같은 방식(`clientSessionId` + `(user_id, client_session_id)` UNIQUE)으로 막을 수 있고, 완전 오프라인 시작을 지원하게 되면 어차피 필요해진다. 9월 범위에 넣을지는 오프라인 쓰기 큐의 범위와 함께 정한다.
 
 ### 6.3 POST /workout-sessions/{id}/complete
 
@@ -633,6 +735,7 @@ workout_session (한 번의 운동)
 
 ```json
 {
+  "clientSetId": "9f1c2a44-7b30-4d6e-9a11-8e2f5c0b7d31",
   "exerciseId": 128,
   "weightKg": 70.0,
   "reps": 10,
@@ -644,6 +747,7 @@ workout_session (한 번의 운동)
 
 | 필드 | 규칙 |
 |---|---|
+| `clientSetId` | **필수. 멱등 키** — 클라이언트가 완료 체크 시점에 생성한 UUID(`crypto.randomUUID()`). 같은 세션에서 같은 값이 다시 오면 새로 저장하지 않는다 (아래 참조) |
 | `exerciseId` | 필수 |
 | `weightKg` | 종목 `measureType`에 따라 필수/무시 (5.1 표). 0 이상, 소수 2자리 |
 | `reps` | 종목에 따라 필수/무시. 1 이상 |
@@ -651,12 +755,28 @@ workout_session (한 번의 운동)
 | `isWarmup` | 기본 `false`. `true`면 볼륨 집계 제외(8.2), 강도(%)에는 표시(7.2) |
 | `setNo` | 선택. 생략 시 서버가 `해당 세션 내 같은 exerciseId 세트 수 + 1`로 자동 부여 |
 
-**응답 `201 Created`**
+**멱등 처리**
+
+- 서버는 `(session_id, client_set_id)`에 UNIQUE 제약을 두고, 이미 있는 키로 들어온 요청은 **저장하지 않고 기존 세트를 그대로 돌려준다.**
+- 이때 상태 코드는 `201`이 아니라 **`200 OK`** 다. 클라이언트가 "새로 저장됨 / 이미 있던 것"을 구분할 수 있게 한다.
+- 본문이 기존 세트와 달라도 **기존 값을 유지한다.** 이 키는 "같은 완료 체크 한 번"을 뜻하므로, 값 수정은 재전송이 아니라 `PATCH`(6.11)로 한다.
+- 멱등 키는 `POST`에만 둔다. `PATCH`는 같은 값을 다시 보내도 결과가 같고, `DELETE`는 두 번째 호출이 `404`로 끝나므로 별도 장치가 필요 없다.
+
+> **왜 필수인가.** 요청이 서버에 도달해 저장까지 끝난 뒤 응답만 유실되는 경우(타임아웃·전파 지연)가 있다. 클라이언트는 실패로 판단해 재전송하고, 멱등 키가 없으면 **같은 세트가 2행**이 된다. 이는 오프라인 큐를 붙이지 않아도 발생한다 — UC-02-01 예외 흐름 6a가 정한 "재시도를 안내한다"에서 사용자가 재시도를 누르면 그대로 일어난다.
+>
+> 중복 세트는 곧 **볼륨 과대 집계**이고, 부족한 부위를 충분한 것으로 올려 **약점을 놓치는 방향**으로 판정을 틀리게 한다. LOG-02(워밍업 제외)·LOG-05(계획 행 미저장)가 같은 이유로 막아온 오판 방향이며, 여기서만 열어둘 이유가 없다.
+>
+> 선택 항목으로 두지 않은 것은, 빠뜨려도 아무 오류가 나지 않고 **중복이 조용히 쌓이기** 때문이다. 클라이언트가 하나뿐인 현 단계에서 필수로 두는 비용은 `crypto.randomUUID()` 한 줄이다.
+>
+> **후속**: `workout_sets.client_set_id` 컬럼과 UNIQUE 제약이 필요하다. `V1`에 없으므로 `V4` 마이그레이션으로 추가한다(9.1).
+
+**응답 `201 Created`** (새로 저장) / **`200 OK`** (같은 `clientSetId`로 이미 저장돼 있음)
 
 ```json
 {
   "id": 901,
   "sessionId": 55,
+  "clientSetId": "9f1c2a44-7b30-4d6e-9a11-8e2f5c0b7d31",
   "exerciseId": 128,
   "exerciseName": "바벨 벤치프레스",
   "setNo": 1,
@@ -672,6 +792,7 @@ workout_session (한 번의 운동)
 
 | 상황 | 응답 |
 |---|---|
+| `clientSetId` 누락 또는 UUID 형식 아님 | `400 VALIDATION_ERROR` |
 | `measureType`에 필요한 값 누락 (예: `WEIGHT_REPS`인데 `reps` 없음) | `400 INVALID_MEASURE_INPUT` |
 | `exerciseId` 없음 | `404 RESOURCE_NOT_FOUND` |
 | 타인 세션 | `403 ACCESS_DENIED` |
@@ -703,8 +824,8 @@ workout_session (한 번의 운동)
       "exerciseName": "바벨 벤치프레스",
       "measureType": "WEIGHT_REPS",
       "sets": [
-        { "id": 901, "setNo": 1, "weightKg": 70.0, "reps": 10, "durationSec": null, "isWarmup": false, "recordedAt": "2026-09-01T19:32:11+09:00" },
-        { "id": 902, "setNo": 2, "weightKg": 70.0, "reps": 9,  "durationSec": null, "isWarmup": false, "recordedAt": "2026-09-01T19:36:02+09:00" }
+        { "id": 901, "clientSetId": "9f1c2a44-7b30-4d6e-9a11-8e2f5c0b7d31", "setNo": 1, "weightKg": 70.0, "reps": 10, "durationSec": null, "isWarmup": false, "recordedAt": "2026-09-01T19:32:11+09:00" },
+        { "id": 902, "clientSetId": "3d7e6b18-0c52-4f9a-b6d4-1a8c93e5f207", "setNo": 2, "weightKg": 70.0, "reps": 9,  "durationSec": null, "isWarmup": false, "recordedAt": "2026-09-01T19:36:02+09:00" }
       ]
     }
   ]
@@ -718,6 +839,7 @@ workout_session (한 번의 운동)
 | `effectiveDurationSec` | **서버가 결정한 최종 시간** = `durationOverrideSec ?? durationSec`. 화면은 이 값만 쓰면 된다 |
 | `exercises[]` | 종목별로 그룹핑. **정렬 = 각 종목의 가장 이른 `recordedAt` 오름차순**(= 사용자가 그 종목을 처음 수행한 순서). 별도 순서 컬럼은 두지 않는다 |
 | `exercises[].sets` | `setNo` 오름차순 |
+| `exercises[].sets[].clientSetId` | 저장 시 클라이언트가 보낸 멱등 키(6.4). 재전송 도중 앱이 종료된 경우, 클라이언트가 세션을 다시 받아 자기 큐와 대조해 무엇이 이미 저장됐는지 판별하는 데 쓴다 |
 
 > 세션 내 종목 순서는 "수행한 순서"로 고정한다. 종목을 위아래로 재배치하는 기능은 두지 않으므로 목업에서 제거해야 한다(9장). 자유 기록에서 `recordedAt` 순서 = 수행 순서이고, 이는 히스토리에서 보고 싶은 순서와 일치한다.
 
@@ -731,7 +853,10 @@ workout_session (한 번의 운동)
 |---|---|
 | `from`, `to` | `performedOn` 범위 (둘 다 `YYYY-MM-DD`). 생략 시 최근 30일 |
 | `status` | `DRAFT` \| `DONE` 필터 (생략 시 전체) |
+| `exerciseId` | **종목별 필터.** 해당 종목의 세트가 하나라도 있는 세션만. 없는 종목 ID를 넣으면 오류가 아니라 빈 페이지다 |
 | `page`, `size`, `sort` | 기본 `sort=performedOn,desc` |
+
+> `exerciseId`는 「기능명세서」 1의 기본 기능 *"운동 히스토리 — 날짜별/**종목별** 필터"* 에 대응한다. 세트 단위가 아니라 **세션 단위 필터**다 — 응답은 그대로 세션 요약이며, 필터에 걸린 종목의 세트만 골라 담지 않는다. 종목 하나의 수치 추이는 통계 API(7.1)가, 직전 1회는 5.5가 담당한다.
 
 **응답 `200 OK`** — 페이지 envelope. `content` 항목:
 
@@ -744,9 +869,20 @@ workout_session (한 번의 운동)
   "effectiveDurationSec": 3339,
   "setCount": 12,
   "exerciseCount": 3,
-  "exerciseNames": ["바벨 벤치프레스", "인클라인 덤벨 프레스", "케이블 푸시다운"]
+  "exercises": [
+    { "id": 128, "nameKo": "바벨 벤치프레스" },
+    { "id": 131, "nameKo": "인클라인 덤벨 프레스" },
+    { "id": 302, "nameKo": "케이블 푸시다운" }
+  ]
 }
 ```
+
+| 필드 | 설명 |
+|---|---|
+| `exercises[]` | 세션에 등장한 종목. **정렬은 6.5와 동일**(각 종목의 가장 이른 `recordedAt` 오름차순 = 수행 순서). `exerciseCount`와 길이가 같다 |
+| `exercises[].id` | 종목 ID. 5.2의 "최근 사용" 탭과 종목 상세 이동이 이 값을 쓴다 |
+
+> **이름 배열(`exerciseNames`)이 아니라 `{ id, nameKo }` 객체 배열이다.** 5.2가 "최근 사용" 탭을 *"이력에서 최근 등장 `exerciseId` 순으로 계산"* 하도록 정했는데, 이름만 내려주면 그 계산을 할 수 없고 목록에서 종목 상세·프리필로 이어갈 수도 없다. 이름으로 역조회하는 경로(`GET /exercises?q=`)는 부분 일치라 동명 종목을 구분하지 못한다.
 
 ### 6.7 GET /workout-sessions/current
 
@@ -864,12 +1000,12 @@ workout_session (한 번의 운동)
   "points": [
     {
       "date": "2026-06-10",
-      "estimatedOneRm": 92.3,
+      "estimatedOneRm": 93.3,
       "basedOnSet": { "weightKg": 80.0, "reps": 5 }
     },
     {
       "date": "2026-06-17",
-      "estimatedOneRm": 95.0,
+      "estimatedOneRm": 96.3,
       "basedOnSet": { "weightKg": 82.5, "reps": 5 }
     }
   ]
@@ -878,6 +1014,9 @@ workout_session (한 번의 운동)
 
 - `points`는 날짜 오름차순. 해당 종목 기록이 없는 날짜는 포함하지 않는다(선을 끊지 않고 이어 그림).
 - `basedOnSet`: 그날 최댓값을 만든 세트(디버그·근거 표시용).
+- `estimatedOneRm`은 소수 1자리(HALF_UP).
+
+> **정정 (2026-09-02)**: 초판 예시의 `92.3` / `95.0`은 위 Epley 공식으로 계산되지 않는 값이었다. `80.0 × (1 + 5/30) = 93.3`, `82.5 × (1 + 5/30) = 96.3`이 맞다. 공식이 규범이고 예시가 틀린 것이었으며, 예시를 기준으로 테스트를 짜면 실패한다. 단위 테스트 작성 중 발견했으며 LOG-13에 기록한다.
 
 ### 7.2 GET /stats/session-intensity/{sessionId}
 
@@ -894,11 +1033,11 @@ workout_session (한 번의 운동)
       "exerciseId": 128,
       "exerciseName": "바벨 벤치프레스",
       "measureType": "WEIGHT_REPS",
-      "estimatedOneRm": 95.0,
+      "estimatedOneRm": 93.3,
       "sets": [
-        { "setNo": 1, "weightKg": 60.0, "reps": 12, "isWarmup": true,  "intensityPct": 63 },
-        { "setNo": 2, "weightKg": 70.0, "reps": 10, "isWarmup": false, "intensityPct": 74 },
-        { "setNo": 3, "weightKg": 70.0, "reps": 9,  "isWarmup": false, "intensityPct": 74 }
+        { "setNo": 1, "weightKg": 60.0, "reps": 12, "isWarmup": true,  "intensityPct": 64 },
+        { "setNo": 2, "weightKg": 70.0, "reps": 10, "isWarmup": false, "intensityPct": 75 },
+        { "setNo": 3, "weightKg": 70.0, "reps": 9,  "isWarmup": false, "intensityPct": 75 }
       ]
     },
     {
@@ -918,6 +1057,8 @@ workout_session (한 번의 운동)
 |---|---|
 | `estimatedOneRm` | 그날 그 종목의 추정 1RM (7.1과 동일 규칙). `WEIGHT_REPS`가 아니거나 `reps ≤ 12` 세트가 없으면 `null` |
 | `intensityPct` | `round(weightKg / estimatedOneRm × 100)`. `estimatedOneRm`이 `null`이면 `null`. 워밍업 세트도 표시함 |
+
+> 위 예시의 검산: 세트별 Epley 추정이 `60×12 → 84.0`, `70×10 → 93.3`, `70×9 → 91.0`이므로 그날 최댓값은 `93.3`이고, 강도는 `60/93.3 → 64%`, `70/93.3 → 75%`가 된다. 초판은 `95.0 / 63 / 74`로 적혀 있었다(7.1과 같은 정정).
 
 ---
 
@@ -967,25 +1108,29 @@ workout_session (한 번의 운동)
 | 파라미터 | 기본값 | 설명 |
 |---|---|---|
 | `weeks` | `4` | 집계 기간(주). 설정값, 보통 고정 |
-| `referenceDate` | 오늘 | 이 날짜로부터 `weeks × 7`일 이전까지 집계 (테스트·과거 시점 조회용) |
+| `referenceDate` | 오늘 | 집계 구간의 마지막 날. 이 날을 **포함해** 과거로 `weeks × 7`일을 집계한다 (테스트·과거 시점 조회용) |
 
 **집계 조건** (전부 서버에서 적용)
 
 - `workout_sessions.status = 'DONE'` (`DRAFT` 제외)
 - `workout_sets.is_warmup = false` (본세트만)
-- 기간: `performed_on ∈ [referenceDate - weeks×7일, referenceDate]` (기록 저장 시각 아님)
+- 기간: `performed_on ∈ [referenceDate - (weeks × 7 - 1)일, referenceDate]` (기록 저장 시각 아님)
 - `source = 'BACKFILL'` 세션 **포함** (실제 수행한 운동)
 - 세트 → 판정 부위: 종목의 `primary_muscle` 기준, 주동근에만 카운트(간접 자극 미반영)
 - 주당 평균 = `기간 내 세트 합 ÷ weeks`
+
+> **집계 구간은 `referenceDate`를 포함해 정확히 `weeks × 7`일이다.** `weeks = 4`면 28일이며, `referenceDate = 2026-09-01`일 때 `2026-08-05 ~ 2026-09-01`이다. 양끝을 포함하는 구간이므로 하한에서 하루를 빼야 분모(`weeks`)와 분자의 기간이 맞는다. LOG-12의 "오늘 포함 28일" 확정을 계산식으로 옮긴 것이다.
 
 **4단계 판정** (`verdict`, 분석 2.2)
 
 | 주당 평균 세트 | `verdict` | `verdictLabel` |
 |---|---|---|
-| `< 4` | `INSUFFICIENT` | 부족 |
-| `4 ~ 10` | `BELOW_RECOMMENDED` | 권장 이하 |
-| `10 ~ 20` | `OPTIMAL` | 최적 |
-| `> 20` | `EXCESSIVE` | 과다 |
+| `x < 4` | `INSUFFICIENT` | 부족 |
+| `4 ≤ x < 10` | `BELOW_RECOMMENDED` | 권장 이하 |
+| `10 ≤ x ≤ 20` | `OPTIMAL` | 최적 |
+| `x > 20` | `EXCESSIVE` | 과다 |
+
+> **경계값은 위 부등호가 확정이다.** `weeklySets`가 소수 1자리이므로 정확히 `4.0` / `10.0` / `20.0`이 흔하게 나온다(4주 40세트 = 10.0). ACSM 권고의 "최소 유효 4세트, 최적 10~20세트, 20세트 초과 시 수익 감소"(분석 2.2)를 그대로 읽어 **`10`과 `20`은 최적에 포함**한다. 목업은 `20`을 과다로 처리하므로 수정 대상이다(대조 평가 C-29).
 
 **응답 `200 OK`**
 
@@ -993,7 +1138,7 @@ workout_session (한 번의 운동)
 {
   "referenceDate": "2026-09-01",
   "periodWeeks": 4,
-  "periodFrom": "2026-08-04",
+  "periodFrom": "2026-08-05",
   "periodTo": "2026-09-01",
   "shoulderSplitResolved": true,
   "confidence": {
@@ -1059,7 +1204,7 @@ workout_session (한 번의 운동)
 
 | 필드 | 설명 |
 |---|---|
-| `periodFrom` / `periodTo` | 실제 집계 구간 (화면 표기용, 서버가 계산) |
+| `periodFrom` / `periodTo` | 실제 집계 구간 (화면 표기용, 서버가 계산). 양끝 포함이며 `periodTo - periodFrom + 1 = weeks × 7`일 |
 | `shoulderSplitResolved` | 세션에 `delt_region`이 채워진 어깨 종목이 있으면 `true`(정상), 아직 NULL만 있으면 `false`. `false`일 때만 화면이 어깨 하위 판정을 참고치로 낮춰 표시 (8.1) |
 | `confidence.level` | `LOW` \| `NORMAL`. `doneSessionCount < threshold`이면 `LOW` |
 | `confidence.threshold` | 최근 4주 DONE 세션 임계값. 서버 설정값(기본 6, 기록 방식 5.5) |
@@ -1074,15 +1219,20 @@ workout_session (한 번의 운동)
 
 **`summaryBadge` enum** (서버가 하위 상태로 결정)
 
-| `summaryBadge` | `summaryBadgeLabel` | 조건 |
-|---|---|---|
-| `ALL_OPTIMAL` | 모두 최적 | 하위 전부 `OPTIMAL` |
-| `PARTIAL_BELOW` | 일부 권장 이하 | 하위 중 최악이 `BELOW_RECOMMENDED` |
-| `PARTIAL_INSUFFICIENT` | 일부 부족 | 하위 중 하나 이상 `INSUFFICIENT` |
-| `PARTIAL_EXCESSIVE` | 일부 과다 | 하위 중 최악이 `EXCESSIVE`, 부족·권장이하 없음 |
-| `MIXED` | 확인 필요 | 하위가 서로 반대 방향(한쪽 `INSUFFICIENT`, 한쪽 `EXCESSIVE`) |
+위에서부터 순서대로 검사해 처음 걸리는 것을 쓴다. 조건이 겹치지 않도록 각 행에 배타 조건을 명시했다.
 
-> 우선순위: `INSUFFICIENT` > `EXCESSIVE`(+`INSUFFICIENT` 동반 시 `MIXED`) > `BELOW_RECOMMENDED` > `ALL_OPTIMAL`.
+| 순서 | `summaryBadge` | `summaryBadgeLabel` | 조건 |
+|---|---|---|---|
+| 1 | `MIXED` | 확인 필요 | `INSUFFICIENT`와 `EXCESSIVE`가 **함께** 있다 (서로 반대 방향) |
+| 2 | `PARTIAL_INSUFFICIENT` | 일부 부족 | `INSUFFICIENT`가 하나 이상 있다 |
+| 3 | `PARTIAL_EXCESSIVE` | 일부 과다 | `EXCESSIVE`가 하나 이상 있다 |
+| 4 | `PARTIAL_BELOW` | 일부 권장 이하 | `BELOW_RECOMMENDED`가 하나 이상 있다 |
+| 5 | `ALL_OPTIMAL` | 모두 최적 | 하위 전부 `OPTIMAL` |
+
+우선순위: `INSUFFICIENT` > `EXCESSIVE` > `BELOW_RECOMMENDED` > `ALL_OPTIMAL`. 부족과 과다가 동반하면 `MIXED`.
+
+> **정정 (2026-09-02)**: 초판은 조건을 서술형으로 적어 `PARTIAL_EXCESSIVE` 행("하위 중 최악이 `EXCESSIVE`, 부족·권장이하 없음")과 우선순위 줄(`EXCESSIVE` > `BELOW_RECOMMENDED`)이 어긋났다. 과다와 권장 이하가 함께 있을 때(삼두 22세트 · 이두 6세트처럼 실제로 가능한 조합) 두 서술이 다른 답을 낸다. **우선순위를 따르는 쪽으로 확정**하고 표를 순서 검사 형태로 바꿨다 — 더 나쁜 상태를 감추지 않는 쪽이다. 단위 테스트 작성 중 발견했으며 LOG-13에 기록한다.
+
 > **미확정**: 요약 배지의 정확한 문안, `MIXED` 표기는 화면 구현 시 확정(분석 2.4). enum `key`는 유지하고 `label`만 조정될 수 있다.
 
 **화면이 하지 않아도 되는 것** (서버가 완성)
@@ -1179,8 +1329,10 @@ workout_session (한 번의 운동)
 
 | 항목 | 내용 | 시점 |
 |---|---|---|
-| `V3__auth_profile_exercise_meta.sql` | ① `refresh_tokens` 테이블 ② `users` 프로필 3컬럼(`height_cm` / `weight_kg` / `goal`) ③ `exercises.delt_region` ④ `user_favorite_exercises` 테이블 (2.4) | 9월 1주, 인증 구현 전 |
+| `V3__auth_profile_exercise_meta.sql` | ① `refresh_tokens` 테이블 ② `users.goal` 1컬럼 ③ `exercises.delt_region` ④ `user_favorite_exercises` 테이블 (2.4) | 9월 1주, 인증 구현 전 |
 | `exercises.delt_region` 값 채우기 | `primary_muscle = 'shoulders'`인 13개 종목에 `FRONT`/`REAR` 입력. 배분 기준은 LOG-09 표 | 9월 1주, 종목 데이터 갱신과 함께 |
+| `V4__add_client_set_id.sql` | `workout_sets.client_set_id`(UUID NOT NULL) + `UNIQUE (session_id, client_set_id)`. 세트 저장 멱등 키(6.4). `V3`가 이미 적용된 뒤이므로 별도 버전으로 올린다 | 9월 1주, 기록 API 구현 전 |
+| 세션 생성 멱등 키 | `BACKFILL` 세션의 재전송 중복 방지(`clientSessionId`). 6.2 주석의 미결 항목이며, 오프라인 쓰기 큐 범위와 함께 판단 | 미정 |
 | `routines` FK | `workout_sessions.routine_id`는 컬럼만 존재. `routines` 생성 시 FK 마이그레이션 | 10월 |
 | 요약 배지 문안 | `summaryBadge` label 및 `MIXED` 표기 확정 (8.2). enum `key`는 고정 | 화면 구현 시 |
 | QUADS 화면 명칭 | `abductors`·`adductors` 포함이라 "앞허벅지"가 부정확 (LOG-10 한계) | 종목 정제 결과 확인 후 |
@@ -1189,7 +1341,8 @@ workout_session (한 번의 운동)
 | 이메일·비밀번호 변경 API | 9월 범위 제외 | 필요 시 |
 | Rate limiting | `429 RATE_LIMITED` 코드만 예약. 실제 도입은 배포 후 판단 | 미정 |
 | 즐겨찾기 개수 상한 | 현재 무제한. 필요 시 `409`로 추가 (5.4) | 배포 후 판단 |
-| **LOG-11 작성** | 프로필에서 운동 경력 제외 결정을 「설계 변경 로그」에 신설. UC-01-03(키/체중/경력/목표)과의 차이를 기록 (2.4-(2)) | 본 명세 확정과 함께 |
+| **LOG-11 작성** | 프로필에서 운동 경력 제외 결정을 「설계 변경 로그」에 신설 | 완료 |
+| **LOG-13 작성** | 프로필에서 키·체중까지 제외해 **훈련 목표 1종으로 축소**한 결정. UC-01-03·계획서의 "키/체중/경력/목표"와의 차이를 기록 (2.4-(2)) | 9월 1주 |
 
 > `workout_sessions.memo` / `duration_override_sec`는 `V1__init.sql`에 이미 존재함을 확인했다. V3 대상 아님.
 
@@ -1223,7 +1376,7 @@ workout_session (한 번의 운동)
 > 즐겨찾기 별표·탭은 목업 그대로 유지된다(명세가 목업에 맞췄음).
 >
 > **정정(2026-08-31)**: 이 자리에 "'어깨(앞)/어깨(뒤)' 2계층 표시는 목업 그대로 유지된다"고 적혀 있었으나 **사실이 아니다.** 목업에 2계층 표시는 존재하지 않는다 — `어깨(앞)`·`어깨(뒤)`·`삼두`·`이두`·`앞허벅지`·`뒤허벅지` 문자열이 목업 전체에 0회다. 목업 분석 탭은 상위 6종을 평면 리스트로 나열하고 **각 상위 항목에 판정 라벨을 직접 붙인다.** 이는 2.4가 금지한 표시 방식이므로, 2계층 리스트·펼치기·`summaryBadge`는 **신규로 설계해야 한다**(아래 표에 추가). 근거: 「목업_문서_대조_평가」 C-1.
-> 프로필 항목은 **키/체중/목표 3종**으로 확정. UC-01-03의 "경력"은 제외했다(2.4-(2), LOG-11). 목업에 경력 입력이 없으므로 목업 수정도 불필요하다.
+> 프로필 항목은 **훈련 목표 1종**으로 확정. UC-01-03의 "경력"(LOG-11)에 이어 "키·체중"도 제외했다(2.4-(2), LOG-13). 목업 개인 정보 화면의 키·체중 표시(대조 평가 C-21)는 **제거** 대상이 된다 — C-21이 지적한 "편집 불가" 문제도 함께 해소된다.
 
 ---
 
