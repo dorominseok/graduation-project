@@ -1000,12 +1000,12 @@ workout_session (한 번의 운동)
   "points": [
     {
       "date": "2026-06-10",
-      "estimatedOneRm": 92.3,
+      "estimatedOneRm": 93.3,
       "basedOnSet": { "weightKg": 80.0, "reps": 5 }
     },
     {
       "date": "2026-06-17",
-      "estimatedOneRm": 95.0,
+      "estimatedOneRm": 96.3,
       "basedOnSet": { "weightKg": 82.5, "reps": 5 }
     }
   ]
@@ -1014,6 +1014,9 @@ workout_session (한 번의 운동)
 
 - `points`는 날짜 오름차순. 해당 종목 기록이 없는 날짜는 포함하지 않는다(선을 끊지 않고 이어 그림).
 - `basedOnSet`: 그날 최댓값을 만든 세트(디버그·근거 표시용).
+- `estimatedOneRm`은 소수 1자리(HALF_UP).
+
+> **정정 (2026-09-02)**: 초판 예시의 `92.3` / `95.0`은 위 Epley 공식으로 계산되지 않는 값이었다. `80.0 × (1 + 5/30) = 93.3`, `82.5 × (1 + 5/30) = 96.3`이 맞다. 공식이 규범이고 예시가 틀린 것이었으며, 예시를 기준으로 테스트를 짜면 실패한다. 단위 테스트 작성 중 발견했으며 LOG-13에 기록한다.
 
 ### 7.2 GET /stats/session-intensity/{sessionId}
 
@@ -1030,11 +1033,11 @@ workout_session (한 번의 운동)
       "exerciseId": 128,
       "exerciseName": "바벨 벤치프레스",
       "measureType": "WEIGHT_REPS",
-      "estimatedOneRm": 95.0,
+      "estimatedOneRm": 93.3,
       "sets": [
-        { "setNo": 1, "weightKg": 60.0, "reps": 12, "isWarmup": true,  "intensityPct": 63 },
-        { "setNo": 2, "weightKg": 70.0, "reps": 10, "isWarmup": false, "intensityPct": 74 },
-        { "setNo": 3, "weightKg": 70.0, "reps": 9,  "isWarmup": false, "intensityPct": 74 }
+        { "setNo": 1, "weightKg": 60.0, "reps": 12, "isWarmup": true,  "intensityPct": 64 },
+        { "setNo": 2, "weightKg": 70.0, "reps": 10, "isWarmup": false, "intensityPct": 75 },
+        { "setNo": 3, "weightKg": 70.0, "reps": 9,  "isWarmup": false, "intensityPct": 75 }
       ]
     },
     {
@@ -1054,6 +1057,8 @@ workout_session (한 번의 운동)
 |---|---|
 | `estimatedOneRm` | 그날 그 종목의 추정 1RM (7.1과 동일 규칙). `WEIGHT_REPS`가 아니거나 `reps ≤ 12` 세트가 없으면 `null` |
 | `intensityPct` | `round(weightKg / estimatedOneRm × 100)`. `estimatedOneRm`이 `null`이면 `null`. 워밍업 세트도 표시함 |
+
+> 위 예시의 검산: 세트별 Epley 추정이 `60×12 → 84.0`, `70×10 → 93.3`, `70×9 → 91.0`이므로 그날 최댓값은 `93.3`이고, 강도는 `60/93.3 → 64%`, `70/93.3 → 75%`가 된다. 초판은 `95.0 / 63 / 74`로 적혀 있었다(7.1과 같은 정정).
 
 ---
 
@@ -1214,15 +1219,20 @@ workout_session (한 번의 운동)
 
 **`summaryBadge` enum** (서버가 하위 상태로 결정)
 
-| `summaryBadge` | `summaryBadgeLabel` | 조건 |
-|---|---|---|
-| `ALL_OPTIMAL` | 모두 최적 | 하위 전부 `OPTIMAL` |
-| `PARTIAL_BELOW` | 일부 권장 이하 | 하위 중 최악이 `BELOW_RECOMMENDED` |
-| `PARTIAL_INSUFFICIENT` | 일부 부족 | 하위 중 하나 이상 `INSUFFICIENT` |
-| `PARTIAL_EXCESSIVE` | 일부 과다 | 하위 중 최악이 `EXCESSIVE`, 부족·권장이하 없음 |
-| `MIXED` | 확인 필요 | 하위가 서로 반대 방향(한쪽 `INSUFFICIENT`, 한쪽 `EXCESSIVE`) |
+위에서부터 순서대로 검사해 처음 걸리는 것을 쓴다. 조건이 겹치지 않도록 각 행에 배타 조건을 명시했다.
 
-> 우선순위: `INSUFFICIENT` > `EXCESSIVE`(+`INSUFFICIENT` 동반 시 `MIXED`) > `BELOW_RECOMMENDED` > `ALL_OPTIMAL`.
+| 순서 | `summaryBadge` | `summaryBadgeLabel` | 조건 |
+|---|---|---|---|
+| 1 | `MIXED` | 확인 필요 | `INSUFFICIENT`와 `EXCESSIVE`가 **함께** 있다 (서로 반대 방향) |
+| 2 | `PARTIAL_INSUFFICIENT` | 일부 부족 | `INSUFFICIENT`가 하나 이상 있다 |
+| 3 | `PARTIAL_EXCESSIVE` | 일부 과다 | `EXCESSIVE`가 하나 이상 있다 |
+| 4 | `PARTIAL_BELOW` | 일부 권장 이하 | `BELOW_RECOMMENDED`가 하나 이상 있다 |
+| 5 | `ALL_OPTIMAL` | 모두 최적 | 하위 전부 `OPTIMAL` |
+
+우선순위: `INSUFFICIENT` > `EXCESSIVE` > `BELOW_RECOMMENDED` > `ALL_OPTIMAL`. 부족과 과다가 동반하면 `MIXED`.
+
+> **정정 (2026-09-02)**: 초판은 조건을 서술형으로 적어 `PARTIAL_EXCESSIVE` 행("하위 중 최악이 `EXCESSIVE`, 부족·권장이하 없음")과 우선순위 줄(`EXCESSIVE` > `BELOW_RECOMMENDED`)이 어긋났다. 과다와 권장 이하가 함께 있을 때(삼두 22세트 · 이두 6세트처럼 실제로 가능한 조합) 두 서술이 다른 답을 낸다. **우선순위를 따르는 쪽으로 확정**하고 표를 순서 검사 형태로 바꿨다 — 더 나쁜 상태를 감추지 않는 쪽이다. 단위 테스트 작성 중 발견했으며 LOG-13에 기록한다.
+
 > **미확정**: 요약 배지의 정확한 문안, `MIXED` 표기는 화면 구현 시 확정(분석 2.4). enum `key`는 유지하고 `label`만 조정될 수 있다.
 
 **화면이 하지 않아도 되는 것** (서버가 완성)
