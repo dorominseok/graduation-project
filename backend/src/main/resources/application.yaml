@@ -26,10 +26,24 @@ spring:
 server:
   port: 8080
 
+# 인증 — API 명세서 2.3
+app:
+  jwt:
+    # 서명 키는 환경변수로만 주입한다. 저장소가 Public이므로 값을 파일에 두지 않는다.
+    # 로컬 기본값은 개발 전용이며 운영에서는 JWT_SECRET을 반드시 설정한다.
+    secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-32b}
+    access-token-ttl: 30m       # 짧게 두고 리프레시로 갱신한다
+    refresh-token-ttl: 14d
+    cookie-name: refreshToken
+    # 쿠키 전송 경로를 /auth 아래로 좁힌다. 모든 요청에 딸려갈 이유가 없다.
+    cookie-path: /api/v1/auth
+    # Secure 쿠키는 http 오리진에서 브라우저가 저장하지 않는다. 로컬(http)에서만 끈다.
+    # 배포에서 true가 아니면 리프레시가 저장되지 않아 30분마다 로그아웃된다(LOG-15).
+    cookie-secure: false
+
 # 분석·통계 계산 설정 — API 명세서 8.5
 # "모든 값은 app.analysis.* 프로퍼티로 노출해 코드 수정 없이 조정 가능하게 한다."
 # 판정 로직은 순수 함수로 두고 여기서 값 객체를 만들어 넘긴다(AnalysisProperties).
-app:
   analysis:
     # 판정 집계 기간(주). 기준일을 포함해 weeks x 7일 (분석 2.1, LOG-13)
     weeks: 4
@@ -75,6 +89,11 @@ spring:
     properties:
       hibernate:
         format_sql: false
+
+app:
+  jwt:
+    # 배포는 HTTPS가 전제다. 이 값이 false면 리프레시 쿠키가 저장되지 않는다.
+    cookie-secure: true
 
 management:
   endpoint:
