@@ -26,6 +26,48 @@ spring:
 server:
   port: 8080
 
+# 인증 — API 명세서 2.3
+app:
+  jwt:
+    # 서명 키는 환경변수로만 주입한다. 저장소가 Public이므로 값을 파일에 두지 않는다.
+    # 로컬 기본값은 개발 전용이며 운영에서는 JWT_SECRET을 반드시 설정한다.
+    secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-32b}
+    access-token-ttl: 30m       # 짧게 두고 리프레시로 갱신한다
+    refresh-token-ttl: 14d
+    cookie-name: refreshToken
+    # 쿠키 전송 경로를 /auth 아래로 좁힌다. 모든 요청에 딸려갈 이유가 없다.
+    cookie-path: /api/v1/auth
+    # Secure 쿠키는 http 오리진에서 브라우저가 저장하지 않는다. 로컬(http)에서만 끈다.
+    # 배포에서 true가 아니면 리프레시가 저장되지 않아 30분마다 로그아웃된다(LOG-15).
+    cookie-secure: false
+    # 재사용 감지 유예 창(LOG-16). 동시 재발급은 밀리초 단위로 붙어 오고 탈취는
+    # 그렇지 않다. 이 안의 재사용은 그 요청만 거부하고 전체 폐기는 하지 않는다.
+    reuse-grace: 30s
+
+# 분석·통계 계산 설정 — API 명세서 8.5
+# "모든 값은 app.analysis.* 프로퍼티로 노출해 코드 수정 없이 조정 가능하게 한다."
+# 판정 로직은 순수 함수로 두고 여기서 값 객체를 만들어 넘긴다(AnalysisProperties).
+  analysis:
+    # 판정 집계 기간(주). 기준일을 포함해 weeks x 7일 (분석 2.1, LOG-13)
+    weeks: 4
+    # 부족 판정 임계 — 주당 세트. ACSM 권고를 구간화한 값 (분석 2.2)
+    # 경계 포함 관계에 유의: 10과 20은 최적에 포함된다
+    volume:
+      insufficient-below: 4     # 미만이면 부족
+      optimal-from: 10          # 이상부터 최적
+      optimal-through: 20       # 이하까지 최적, 초과하면 과다
+    # 균형 판정 — 큰 쪽 / 작은 쪽이 이 값을 초과하면 불균형 (분석 4.2)
+    # 1:1이 아닌 이유: 일반인의 밀기:당기기가 약 1.5:1이라 1:1 기준은 정상 다수를 오판한다
+    balance-ratio-threshold: 2.0
+    # 최근 weeks주 완료 세션이 이 값 미만이면 신뢰도 낮음 표시 (기록 방식 5.5)
+    confidence-session-threshold: 6
+    # 추정 1RM 산출 대상 반복 횟수 상한. 고반복 구간은 오차가 커서 제외 (LOG-07)
+    one-rm-max-reps: 12
+    # 운동 시간 산출 보정 (기록 방식 4.2)
+    inter-set-cap: 15m          # 세트 간격 상한 — 이탈 구간이 시간에 섞이지 않게
+    last-set-bonus: 90s         # 마지막 세트 수행 시간 보정
+    session-cap: 4h             # 세션 상한 — 최종 방어선
+
 management:
   endpoints:
     web:
@@ -38,3 +80,33 @@ management:
 logging:
   level:
     org.hibernate.SQL: debug
+
+---
+# 배포용 프로필 (LOG-15: 10월 중순 배포, 선행 작업은 9월 말)
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+
+app:
+  jwt:
+    # 배포는 HTTPS가 전제다. 이 값이 false면 리프레시 쿠키가 저장되지 않는다.
+    cookie-secure: true
+
+management:
+  endpoint:
+    health:
+      # 부록 B가 /actuator/health를 비인증으로 지정했다. always로 두면 누구나
+      # DB 벤더·연결 상태를 본다. 배포 환경에서는 상태만 노출한다.
+      show-details: never
+
+logging:
+  level:
+    # 운영에서 전 쿼리를 찍으면 로그가 폭증하고 파라미터가 남을 수 있다.
+    org.hibernate.SQL: warn
+    com.fitness.backend: info
