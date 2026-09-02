@@ -17,7 +17,7 @@ class JwtProviderTest {
 
     private static JwtProvider provider(String secret, Duration ttl) {
         return new JwtProvider(new JwtProperties(
-                secret, ttl, Duration.ofDays(14), "refreshToken", "/api/v1/auth", false));
+                secret, ttl, Duration.ofDays(14), "refreshToken", "/api/v1/auth", false, Duration.ofSeconds(30)));
     }
 
     private static JwtProvider provider() {
@@ -93,7 +93,7 @@ class JwtProviderTest {
     void rejectsShortSecret() {
         assertThrows(IllegalArgumentException.class, () -> new JwtProperties(
                 "too-short", Duration.ofMinutes(30), Duration.ofDays(14),
-                "refreshToken", "/api/v1/auth", false));
+                "refreshToken", "/api/v1/auth", false, Duration.ofSeconds(30)));
     }
 
     @Test
