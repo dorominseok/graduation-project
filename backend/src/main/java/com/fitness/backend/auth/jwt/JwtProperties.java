@@ -15,6 +15,8 @@ import org.springframework.validation.annotation.Validated;
  * @param cookieName      리프레시 토큰 쿠키 이름
  * @param cookiePath      쿠키 전송 경로. {@code /auth} 아래로 좁혀 다른 요청에 딸려가지 않게 한다
  * @param cookieSecure    {@code Secure} 속성. 운영은 반드시 {@code true} (아래 참조)
+ * @param reuseGrace      재사용 감지의 유예 창. 이 시간 안에 다시 온 폐기 토큰은
+ *                        공격이 아니라 동시 재발급으로 본다 (LOG-16)
  */
 @Validated
 @ConfigurationProperties(prefix = "app.jwt")
@@ -24,7 +26,8 @@ public record JwtProperties(
         @NotNull Duration refreshTokenTtl,
         @NotBlank String cookieName,
         @NotBlank String cookiePath,
-        boolean cookieSecure) {
+        boolean cookieSecure,
+        @NotNull Duration reuseGrace) {
 
     /**
      * HS256의 권장 키 길이(바이트). 서명 키가 해시 출력보다 짧으면 보안 강도가
