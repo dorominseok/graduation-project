@@ -27,6 +27,12 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    private final com.fitness.backend.auth.web.RefreshCookies refreshCookies;
+
+    public GlobalExceptionHandler(com.fitness.backend.auth.web.RefreshCookies refreshCookies) {
+        this.refreshCookies = refreshCookies;
+    }
+
     /** 애플리케이션이 의도적으로 던진 오류. */
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApiException(ApiException e, HttpServletRequest request) {
@@ -37,6 +43,24 @@ public class GlobalExceptionHandler {
             log.debug("[{}] {}", code, e.getMessage());
         }
         return build(code, e.getMessage(), request, null);
+    }
+
+    /**
+     * 재발급 실패 — 오류 응답과 함께 리프레시 쿠키를 지운다.
+     *
+     * <p>쿠키를 남겨두면 클라이언트가 죽은 토큰으로 재시도를 반복하고, 그 재시도가
+     * 재사용 감지에 걸려 상황을 악화시킨다.
+     */
+    @ExceptionHandler(com.fitness.backend.auth.web.AuthController.CookieClearingException.class)
+    public ResponseEntity<ErrorResponse> handleRefreshFailure(
+            com.fitness.backend.auth.web.AuthController.CookieClearingException e,
+            HttpServletRequest request) {
+        ApiException cause = e.apiException();
+        ErrorResponse body = ErrorResponse.of(cause.errorCode(), cause.getMessage(),
+                request.getRequestURI(), MDC.get("traceId"));
+        return ResponseEntity.status(cause.errorCode().status())
+                .header(org.springframework.http.HttpHeaders.SET_COOKIE, refreshCookies.clear().toString())
+                .body(body);
     }
 
     /** {@code @Valid} 본문 검증 실패 — 필드별 사유를 {@code errors}에 담는다. */
