@@ -7,7 +7,7 @@
 
 import { request } from './client'
 import { clearAccessToken } from './tokenStore'
-import type { MeResponse, TokenResponse, UpdateMeRequest } from './types'
+import type { ChangePasswordRequest, MeResponse, TokenResponse, UpdateMeRequest } from './types'
 
 export interface SignUpBody {
   email: string
@@ -57,6 +57,17 @@ export function getMe(): Promise<MeResponse> {
 /** 프로필 부분 수정 (명세 4.6). */
 export function updateMe(body: UpdateMeRequest): Promise<MeResponse> {
   return request<MeResponse>('/users/me', { method: 'PATCH', body })
+}
+
+/**
+ * 비밀번호 변경 (명세 4.8).
+ *
+ * 성공하면 서버가 리프레시 토큰을 전부 폐기하고 쿠키를 만료시키므로 이 세션은 더
+ * 이어갈 수 없다. 다만 액세스 토큰은 남은 시간 동안 유효하므로 여기서 지우지 않는다
+ * — 호출부가 곧바로 `logout()`을 부르면 그 토큰으로 정상 종료할 수 있다.
+ */
+export function changePassword(body: ChangePasswordRequest): Promise<void> {
+  return request<void>('/users/me/password', { method: 'PATCH', body })
 }
 
 /** 회원 탈퇴 (명세 4.7). 되돌릴 수 없어 비밀번호를 다시 받는다. */

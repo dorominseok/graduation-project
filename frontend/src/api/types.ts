@@ -66,3 +66,14 @@ export interface UpdateMeRequest {
   nickname?: string
   profile?: { goal: TrainingGoal | null }
 }
+
+/**
+ * 비밀번호 변경 요청 (명세 4.8).
+ *
+ * 성공하면 서버가 리프레시 토큰을 전부 폐기하고 쿠키를 만료시킨다 — 바꾼 본인도
+ * 다시 로그인해야 한다.
+ */
+export interface ChangePasswordRequest {
+  currentPassword: string
+  newPassword: string
+}

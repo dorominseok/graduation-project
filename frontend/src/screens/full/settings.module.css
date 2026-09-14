@@ -1,0 +1,225 @@
+/*
+ * 설정 계열 화면(프로필·설정·개인정보·계정) 공용 스타일.
+ *
+ * 네 화면이 같은 구조(섹션 카드 + 행 목록 + 폼)라 모듈을 하나로 둔다.
+ * 값은 tokens.css의 것만 쓴다 — 목업에서 옮겨온 스케일 밖으로 나가지 않는다.
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+  padding: var(--space-20) var(--space-16) var(--space-32);
+}
+
+/* ---- 사용자 요약 (프로필 탭 상단) ---- */
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-20) var(--space-16);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+}
+
+.nickname {
+  font-size: var(--font-h1);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.email {
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+}
+
+.goalChip {
+  align-self: flex-start;
+  margin-top: var(--space-8);
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-medium);
+}
+
+.goalChipEmpty {
+  background: var(--chip-bg);
+  color: var(--text-tertiary);
+}
+
+/* ---- 섹션 ---- */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+.sectionTitle {
+  font-size: var(--font-2xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-tertiary);
+  letter-spacing: 0.02em;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* ---- 행 ---- */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  width: 100%;
+  padding: var(--space-16);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--divider);
+  font-family: inherit;
+  font-size: var(--font-md);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.rowStatic {
+  cursor: default;
+}
+
+.rowLabel {
+  flex: 1;
+}
+
+.rowValue {
+  color: var(--text-tertiary);
+  font-size: var(--font-body);
+}
+
+.chevron {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.rowDanger {
+  color: var(--danger);
+}
+
+/* ---- 폼 ---- */
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--space-6);
+  font-size: var(--font-2xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+.input {
+  width: 100%;
+  height: var(--control-height);
+  padding: 0 var(--space-14);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  font-family: inherit;
+  font-size: var(--font-body);
+  color: var(--text-primary);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.inputError {
+  border-color: var(--danger);
+}
+
+.error {
+  margin-top: var(--space-6);
+  font-size: var(--font-xs);
+  color: var(--danger);
+}
+
+.hint {
+  font-size: var(--font-xs);
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+
+/* ---- 목표 선택 ---- */
+
+.goalGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-8);
+}
+
+.goalOption {
+  padding: var(--space-14) var(--space-12);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  font-family: inherit;
+  font-size: var(--font-body);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.goalOptionActive {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: var(--weight-medium);
+}
+
+/* ---- 버튼 ---- */
+
+.submit {
+  width: 100%;
+  height: var(--control-height);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--on-fill);
+  font-family: inherit;
+  font-size: var(--font-lg);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.danger {
+  composes: submit;
+  background: var(--danger);
+}
+
+.sheetBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--space-4) 0 var(--space-8);
+}
