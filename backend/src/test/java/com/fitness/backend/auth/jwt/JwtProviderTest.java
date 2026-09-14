@@ -13,6 +13,13 @@ import org.junit.jupiter.api.Test;
 class JwtProviderTest {
 
     private static final String SECRET = "test-secret-key-with-at-least-32-bytes!!";
+    /**
+     * 발급 시각 고정값.
+     *
+     * <p><b>파싱 성공을 기대하는 테스트에는 쓰지 않는다.</b> {@code parse}는 실제
+     * 시각으로 만료를 보는데 이 값은 과거라, 발급한 토큰이 곧바로 만료로 걸린다.
+     * 서명 검증이나 문자열 비교처럼 만료와 무관한 곳에만 쓴다.
+     */
     private static final Instant NOW = Instant.parse("2026-09-02T10:00:00Z");
 
     private static JwtProvider provider(String secret, Duration ttl) {
@@ -28,7 +35,9 @@ class JwtProviderTest {
     @DisplayName("발급한 토큰에서 userId와 email을 되찾는다")
     void roundTrip() {
         JwtProvider p = provider();
-        String token = p.issueAccessToken(42L, "user@example.com", NOW);
+        // 살아 있는 토큰이어야 하므로 실제 시각으로 발급한다. NOW를 쓰면 그 시각의
+        // 30분 뒤부터는 만료로 걸려, 작성 당일에만 통과하는 테스트가 된다.
+        String token = p.issueAccessToken(42L, "user@example.com", Instant.now());
         JwtProvider.AuthenticatedUser user = p.parse(token);
         assertEquals(42L, user.userId());
         assertEquals("user@example.com", user.email());
