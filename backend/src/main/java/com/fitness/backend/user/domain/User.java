@@ -74,4 +74,9 @@ public class User extends BaseTimeEntity {
     public void changeGoal(TrainingGoal goal) {
         this.goal = goal;
     }
+
+    /** 비밀번호 변경(명세 4.8). 가입과 마찬가지로 해시는 호출부가 만들어 넘긴다. */
+    public void changePassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
 }

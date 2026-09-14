@@ -38,6 +38,22 @@ public class UserController {
         return UserDtos.MeResponse.from(userService.update(principal.userId(), request));
     }
 
+    /**
+     * 비밀번호 변경(명세 4.8).
+     *
+     * <p>성공하면 리프레시 토큰이 전부 폐기되므로 쿠키도 함께 만료시킨다 — 죽은
+     * 쿠키를 남겨두면 클라이언트가 그걸로 재발급을 시도하고 실패만 반복한다(4.3).
+     */
+    @PatchMapping("/password")
+    public ResponseEntity<Void> changePassword(
+            @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
+            @Valid @RequestBody UserDtos.ChangePasswordRequest request) {
+        userService.changePassword(principal.userId(), request.currentPassword(), request.newPassword());
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, refreshCookies.clear().toString())
+                .build();
+    }
+
     /** 회원 탈퇴. 계정과 기록을 되돌릴 수 없게 지우고 리프레시 쿠키도 만료시킨다. */
     @DeleteMapping
     public ResponseEntity<Void> delete(@AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
