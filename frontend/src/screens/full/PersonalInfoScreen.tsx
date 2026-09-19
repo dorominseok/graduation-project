@@ -1,19 +1,17 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ScreenHeader, useToast } from '../../components'
-import { ErrorCodes, TRAINING_GOAL_LABEL, authApi, isApiError } from '../../api'
-import type { TrainingGoal } from '../../api'
+import { ErrorCodes, authApi, isApiError } from '../../api'
 import { useAuth } from '../../auth'
 import { validateNickname } from '../auth/validation'
 import styles from './settings.module.css'
 
-const GOALS = Object.keys(TRAINING_GOAL_LABEL) as TrainingGoal[]
-
 /**
- * 개인정보 수정 — 닉네임과 훈련 목표(명세 4.6).
+ * 개인정보 수정 — 닉네임(명세 4.6).
  *
- * 목표를 고른 항목에서 한 번 더 누르면 미설정으로 되돌아간다. 명세가 "없음"과
- * "null로 지움"을 구분하므로 되돌릴 방법이 화면에도 있어야 한다.
+ * 훈련 목표는 화면에서 뺐다(2026-09-20). 계획서에 없던 항목이고, 루틴 추천의
+ * 입력(기능명세서 2.1)도 운동 기록뿐이라 어디에도 쓰이지 않는다. 필요해지면
+ * 10월 루틴생성 로직 설계에서 근거를 갖춰 다시 넣는다.
  */
 export function PersonalInfoScreen() {
   const navigate = useNavigate()
@@ -21,7 +19,6 @@ export function PersonalInfoScreen() {
   const { showToast } = useToast()
 
   const [nickname, setNickname] = useState(user?.nickname ?? '')
-  const [goal, setGoal] = useState<TrainingGoal | null>(user?.profile.goal ?? null)
   const [error, setError] = useState<string>()
   const [saving, setSaving] = useState(false)
 
@@ -40,8 +37,8 @@ export function PersonalInfoScreen() {
     setSaving(true)
 
     try {
-      // goal은 null도 의미 있는 값이라 profile 객체를 항상 함께 보낸다.
-      const next = await authApi.updateMe({ nickname, profile: { goal } })
+      // profile 객체를 보내지 않으면 서버가 프로필을 건드리지 않는다(명세 4.6).
+      const next = await authApi.updateMe({ nickname })
       applyUser(next)
       showToast({ message: '저장했어요' })
       navigate(-1)
@@ -76,27 +73,6 @@ export function PersonalInfoScreen() {
               autoComplete="nickname"
             />
             {error && <div className={styles.error}>{error}</div>}
-          </div>
-
-          <div>
-            <span className={styles.label}>훈련 목표</span>
-            <div className={styles.goalGrid}>
-              {GOALS.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={`${styles.goalOption} ${goal === value ? styles.goalOptionActive : ''}`}
-                  aria-pressed={goal === value}
-                  onClick={() => setGoal(goal === value ? null : value)}
-                >
-                  {TRAINING_GOAL_LABEL[value]}
-                </button>
-              ))}
-            </div>
-            <p className={styles.hint}>
-              루틴 추천이 반복 횟수와 강도를 목표에 맞춰 정합니다. 고른 항목을 다시 누르면
-              미설정으로 돌아갑니다.
-            </p>
           </div>
         </div>
 

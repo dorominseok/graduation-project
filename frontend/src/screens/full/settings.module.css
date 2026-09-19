@@ -35,21 +35,7 @@
   color: var(--text-tertiary);
 }
 
-.goalChip {
-  align-self: flex-start;
-  margin-top: var(--space-8);
-  padding: var(--space-4) var(--space-12);
-  border-radius: var(--radius-pill);
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  font-size: var(--font-xs);
-  font-weight: var(--weight-medium);
-}
 
-.goalChipEmpty {
-  background: var(--chip-bg);
-  color: var(--text-tertiary);
-}
 
 /* ---- 섹션 ---- */
 
@@ -166,31 +152,6 @@
   line-height: 1.5;
 }
 
-/* ---- 목표 선택 ---- */
-
-.goalGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-8);
-}
-
-.goalOption {
-  padding: var(--space-14) var(--space-12);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-md);
-  background: var(--card-bg);
-  font-family: inherit;
-  font-size: var(--font-body);
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.goalOptionActive {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  font-weight: var(--weight-medium);
-}
 
 /* ---- 버튼 ---- */
 

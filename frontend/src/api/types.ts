@@ -5,15 +5,14 @@
  * 화면 쪽에서 가공한다.
  */
 
-/** 훈련 목표. 부록 A `user.goal` (LOG-14). 체중 목표가 아니다. */
+/**
+ * 훈련 목표. 부록 A `user.goal`.
+ *
+ * 화면에서는 쓰지 않는다(2026-09-20). 계획서에 없던 항목이고 루틴 추천 입력에도
+ * 없어서 표시·수정 화면을 뺐다. 타입만 남긴 이유는 서버 응답(4.5)에 아직 이 필드가
+ * 있어서다 — 서버에서 컬럼을 걷어내면 함께 지운다.
+ */
 export type TrainingGoal = 'STRENGTH' | 'HYPERTROPHY' | 'ENDURANCE' | 'GENERAL_FITNESS'
-
-export const TRAINING_GOAL_LABEL: Record<TrainingGoal, string> = {
-  STRENGTH: '근력',
-  HYPERTROPHY: '근비대',
-  ENDURANCE: '지구력',
-  GENERAL_FITNESS: '일반 체력',
-}
 
 /** 가입·로그인 응답에 딸려오는 축약 사용자 정보 (명세 4.1). */
 export interface UserSummary {
@@ -59,12 +58,11 @@ export interface MeResponse {
 /**
  * 프로필 부분 수정 요청 (명세 4.6).
  *
- * `profile` 키가 없으면 프로필을 건드리지 않고, 있으면 그 안의 `goal`로 설정한다.
- * `goal: null`은 미설정으로 되돌리라는 뜻이다 — "없음"과 "지움"이 다르다.
+ * `profile`은 보내지 않는다 — 키를 빼면 서버가 프로필을 건드리지 않는다.
+ * 화면이 다루는 항목은 닉네임뿐이다.
  */
 export interface UpdateMeRequest {
   nickname?: string
-  profile?: { goal: TrainingGoal | null }
 }
 
 /**

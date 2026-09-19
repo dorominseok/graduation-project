@@ -5,7 +5,6 @@ export type { ErrorCode, FieldError } from './errors'
 export { getAccessToken, setAccessToken, clearAccessToken } from './tokenStore'
 export * as authApi from './auth'
 export type { SignUpBody, LoginBody } from './auth'
-export { TRAINING_GOAL_LABEL } from './types'
 export type {
   ChangePasswordRequest,
   MeResponse,
