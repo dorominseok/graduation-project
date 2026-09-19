@@ -40,3 +40,6 @@ scripts/llm-experiment/results.json
 # Python
 __pycache__/
 *.pyc
+
+# Eclipse/JDT 언어 서버 출력
+backend/bin/
