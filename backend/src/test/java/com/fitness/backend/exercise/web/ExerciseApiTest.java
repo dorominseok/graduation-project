@@ -1,5 +1,6 @@
 package com.fitness.backend.exercise.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -7,7 +8,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fitness.backend.auth.service.AuthService;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -64,6 +70,22 @@ class ExerciseApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].isFavorite").exists())
                 .andExpect(jsonPath("$.content[0].isFavorite").value(false));
+    }
+
+    @Test
+    @DisplayName("기본 정렬은 가나다순이다 — DB 기본 콜레이션이 한글을 글자 수 순으로 놓는 것을 V5가 고친다")
+    void listIsSortedByKoreanName() throws Exception {
+        String body = mvc.perform(get("/api/v1/exercises").param("size", "100"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        List<String> names = new ArrayList<>();
+        Matcher m = Pattern.compile("\"nameKo\":\"([^\"]+)\"").matcher(body);
+        while (m.find()) {
+            names.add(m.group(1));
+        }
+        // String 기본 비교가 코드포인트순이고, 한글 음절은 그 순서가 곧 가나다순이다
+        assertThat(names).isNotEmpty().isSorted();
     }
 
     @Test
