@@ -52,6 +52,12 @@ export function LoginScreen() {
 
       // INVALID_CREDENTIALS는 이메일이 없을 때와 비밀번호가 틀렸을 때 모두 같은 코드로
       // 온다. 화면도 구분하지 않는다 — 구분해 보여주면 가입 여부가 드러난다(명세 4.2).
+      // 입력 오류라 토스트 대신 폼 안에 붙인다. 토스트는 네트워크 같은 예상 밖 오류용.
+      if (err.code === ErrorCodes.INVALID_CREDENTIALS) {
+        setErrors({ password: err.message })
+        return
+      }
+
       showToast({ message: err.message, tone: 'danger' })
     } finally {
       setSubmitting(false)
