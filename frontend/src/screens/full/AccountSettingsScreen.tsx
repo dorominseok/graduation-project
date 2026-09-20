@@ -186,7 +186,7 @@ function ChangePasswordForm({ onDone }: { onDone: () => void | Promise<void> }) 
       </div>
 
       <p className={styles.hint}>
-        바꾸면 로그인된 모든 기기에서 로그아웃됩니다.
+        비밀번호를 변경하면 로그인된 모든 기기에서 로그아웃됩니다.
       </p>
 
       <button type="submit" className={styles.submit} disabled={saving}>
