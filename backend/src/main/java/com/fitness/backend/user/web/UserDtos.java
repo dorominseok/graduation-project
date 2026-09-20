@@ -51,4 +51,22 @@ public final class UserDtos {
      */
     public record DeleteMeRequest(@NotBlank(message = "필수 항목입니다.") String password) {
     }
+
+    /**
+     * 비밀번호 변경 요청(명세 4.8).
+     *
+     * <p>현재 비밀번호를 다시 받는 것은 탈퇴와 같은 이유다 — 액세스 토큰만 있으면
+     * 실행되는 동작인데, 자리를 비운 사이 남이 바꾸면 계정을 통째로 빼앗긴다.
+     *
+     * <p>{@code newPassword}의 8~72자는 4.1의 가입 규칙과 같은 값이다. 상한 72자는
+     * BCrypt가 그 이상을 잘라내기 때문이다.
+     */
+    public record ChangePasswordRequest(
+            @NotBlank(message = "필수 항목입니다.")
+            String currentPassword,
+
+            @NotBlank(message = "필수 항목입니다.")
+            @Size(min = 8, max = 72, message = "8자 이상 72자 이하여야 합니다.")
+            String newPassword) {
+    }
 }

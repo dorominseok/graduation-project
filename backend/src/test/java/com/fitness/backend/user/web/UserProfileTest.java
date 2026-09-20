@@ -1,5 +1,7 @@
 package com.fitness.backend.user.web;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -9,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fitness.backend.auth.repository.RefreshTokenRepository;
 import com.fitness.backend.auth.service.AuthService;
+import com.fitness.backend.common.error.ApiException;
 import com.fitness.backend.user.repository.UserRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -152,6 +155,91 @@ class UserProfileTest {
         mvc.perform(delete("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, bearer)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"password\":\"hunter2hunter2\"}"))
+                .andExpect(status().isNoContent())
+                .andExpect(result -> {
+                    String setCookie = result.getResponse().getHeader(HttpHeaders.SET_COOKIE);
+                    if (setCookie == null || !setCookie.contains("Max-Age=0")) {
+                        throw new AssertionError("쿠키가 만료되지 않았다: " + setCookie);
+                    }
+                });
+    }
+
+    // ── 비밀번호 변경 (명세 4.8 / LOG-21)
+
+    @Test
+    @DisplayName("비밀번호를 바꾸면 새 값으로 로그인되고 옛 값은 막힌다")
+    void changePasswordSwapsCredential() throws Exception {
+        mvc.perform(patch("/api/v1/users/me/password").header(HttpHeaders.AUTHORIZATION, bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"hunter2hunter2\",\"newPassword\":\"hunter3hunter3\"}"))
+                .andExpect(status().isNoContent());
+
+        assertDoesNotThrow(() -> authService.login(email, "hunter3hunter3"), "새 비밀번호로 로그인되지 않는다");
+        assertThrows(ApiException.class, () -> authService.login(email, "hunter2hunter2"),
+                "옛 비밀번호가 아직 통한다");
+    }
+
+    /**
+     * 이 검사가 4.8의 핵심이다. 비밀번호를 바꾸는 동기 중 하나가 "계정이 털린 것
+     * 같다"인데, 기존 세션이 살아 있으면 바꿔도 목적을 이루지 못한다.
+     */
+    @Test
+    @DisplayName("비밀번호를 바꾸면 그 사용자의 리프레시 토큰이 전부 폐기된다")
+    void changePasswordRevokesAllRefreshTokens() throws Exception {
+        authService.login(email, "hunter2hunter2"); // 다른 기기에서 한 번 더 로그인한 상황
+        assertTrue(refreshTokenRepository.findAll().stream()
+                .filter(t -> t.getUserId().equals(userId))
+                .anyMatch(t -> !t.isRevoked()), "사전 조건: 살아 있는 토큰이 있어야 한다");
+
+        mvc.perform(patch("/api/v1/users/me/password").header(HttpHeaders.AUTHORIZATION, bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"hunter2hunter2\",\"newPassword\":\"hunter3hunter3\"}"))
+                .andExpect(status().isNoContent());
+
+        assertTrue(refreshTokenRepository.findAll().stream()
+                .filter(t -> t.getUserId().equals(userId))
+                .allMatch(t -> t.isRevoked()), "살아 있는 리프레시 토큰이 남아 있다");
+    }
+
+    @Test
+    @DisplayName("현재 비밀번호가 틀리면 바꾸지 않는다 — 토큰만으로 바뀌면 안 된다")
+    void changePasswordRequiresCurrent() throws Exception {
+        mvc.perform(patch("/api/v1/users/me/password").header(HttpHeaders.AUTHORIZATION, bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"wrong-password\",\"newPassword\":\"hunter3hunter3\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+
+        assertDoesNotThrow(() -> authService.login(email, "hunter2hunter2"), "비밀번호가 바뀌었다");
+    }
+
+    @Test
+    @DisplayName("현재와 같은 값으로는 바꿀 수 없다")
+    void changePasswordRejectsSameValue() throws Exception {
+        mvc.perform(patch("/api/v1/users/me/password").header(HttpHeaders.AUTHORIZATION, bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"hunter2hunter2\",\"newPassword\":\"hunter2hunter2\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    @DisplayName("새 비밀번호는 가입과 같은 8~72자 규칙을 따른다 (명세 4.1)")
+    void changePasswordAppliesSignUpRule() throws Exception {
+        mvc.perform(patch("/api/v1/users/me/password").header(HttpHeaders.AUTHORIZATION, bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"hunter2hunter2\",\"newPassword\":\"short7c\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.errors[0].field").value("newPassword"));
+    }
+
+    @Test
+    @DisplayName("비밀번호 변경 시 리프레시 쿠키도 만료시킨다")
+    void changePasswordClearsCookie() throws Exception {
+        mvc.perform(patch("/api/v1/users/me/password").header(HttpHeaders.AUTHORIZATION, bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"hunter2hunter2\",\"newPassword\":\"hunter3hunter3\"}"))
                 .andExpect(status().isNoContent())
                 .andExpect(result -> {
                     String setCookie = result.getResponse().getHeader(HttpHeaders.SET_COOKIE);
