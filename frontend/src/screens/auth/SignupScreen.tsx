@@ -1,15 +1,22 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { paths } from '../../app/paths'
+import { ErrorCodes, isApiError } from '../../api'
+import { useAuth } from '../../auth'
+import { useToast } from '../../components'
 import { validateEmail, validateNickname, validatePassword } from './validation'
 import styles from './auth.module.css'
 
 /**
- * 회원가입 화면. API 연동은 아직 하지 않는다.
+ * 회원가입 화면.
+ *
  * 가입 성공 시 서버가 토큰을 함께 내려주므로 로그인 왕복은 없다(API 명세서 4.1).
  */
 export function SignupScreen() {
   const navigate = useNavigate()
+  const { signUp } = useAuth()
+  const { showToast } = useToast()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [nickname, setNickname] = useState('')
@@ -18,9 +25,12 @@ export function SignupScreen() {
     password?: string
     nickname?: string
   }>({})
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (submitting) return
+
     const emailError = validateEmail(email)
     const passwordError = validatePassword(password)
     const nicknameError = validateNickname(nickname)
@@ -33,9 +43,34 @@ export function SignupScreen() {
       return
     }
     setErrors({})
-    // TODO(9월): POST /auth/signup → 201이면 토큰 저장 후 홈으로.
-    // 409 EMAIL_ALREADY_EXISTS는 이메일 필드 아래에 표시한다.
-    navigate(paths.home)
+    setSubmitting(true)
+
+    try {
+      await signUp(email, password, nickname)
+      navigate(paths.home, { replace: true })
+    } catch (err) {
+      if (!isApiError(err)) throw err
+
+      // 중복 이메일은 이메일 필드 아래에 붙인다. 어느 칸을 고쳐야 하는지가 분명해서.
+      if (err.code === ErrorCodes.EMAIL_ALREADY_EXISTS) {
+        setErrors({ email: err.message })
+        return
+      }
+
+      if (err.code === ErrorCodes.VALIDATION_ERROR) {
+        const fields = err.fieldErrors()
+        setErrors({
+          email: fields.email,
+          password: fields.password,
+          nickname: fields.nickname,
+        })
+        return
+      }
+
+      showToast({ message: err.message, tone: 'danger' })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -86,8 +121,8 @@ export function SignupScreen() {
         </div>
       </div>
 
-      <button type="submit" className={styles.submit}>
-        가입하기
+      <button type="submit" className={styles.submit} disabled={submitting}>
+        {submitting ? '가입 중…' : '가입하기'}
       </button>
 
       <Link to={paths.login} className={styles.switch}>

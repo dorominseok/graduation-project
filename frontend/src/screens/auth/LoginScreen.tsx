@@ -1,21 +1,34 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { paths } from '../../app/paths'
+import { ErrorCodes, isApiError } from '../../api'
+import { useAuth } from '../../auth'
+import { useToast } from '../../components'
 import { validateEmail, validatePassword } from './validation'
 import styles from './auth.module.css'
 
-/**
- * 로그인 화면. API 연동은 아직 하지 않는다 —
- * POST /auth/login 붙이는 자리는 handleSubmit 안에 표시해뒀다.
- */
+/** RequireAuth가 남겨둔 "원래 가려던 곳". 없으면 홈으로 보낸다. */
+interface FromState {
+  from?: { pathname?: string }
+}
+
 export function LoginScreen() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { login } = useAuth()
+  const { showToast } = useToast()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const redirectTo = (location.state as FromState | null)?.from?.pathname ?? paths.home
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (submitting) return
+
     const emailError = validateEmail(email)
     const passwordError = validatePassword(password)
     if (emailError || passwordError) {
@@ -23,9 +36,26 @@ export function LoginScreen() {
       return
     }
     setErrors({})
-    // TODO(9월): POST /auth/login → accessToken 저장 후 홈으로.
-    // 401 INVALID_CREDENTIALS는 이메일/비밀번호를 구분하지 않고 한 문구로 표시한다.
-    navigate(paths.home)
+    setSubmitting(true)
+
+    try {
+      await login(email, password)
+      navigate(redirectTo, { replace: true })
+    } catch (err) {
+      if (!isApiError(err)) throw err
+
+      if (err.code === ErrorCodes.VALIDATION_ERROR) {
+        const fields = err.fieldErrors()
+        setErrors({ email: fields.email, password: fields.password })
+        return
+      }
+
+      // INVALID_CREDENTIALS는 이메일이 없을 때와 비밀번호가 틀렸을 때 모두 같은 코드로
+      // 온다. 화면도 구분하지 않는다 — 구분해 보여주면 가입 여부가 드러난다(명세 4.2).
+      showToast({ message: err.message, tone: 'danger' })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -63,8 +93,8 @@ export function LoginScreen() {
         </div>
       </div>
 
-      <button type="submit" className={styles.submit}>
-        로그인
+      <button type="submit" className={styles.submit} disabled={submitting}>
+        {submitting ? '로그인 중…' : '로그인'}
       </button>
 
       <Link to={paths.signup} className={styles.switch}>
