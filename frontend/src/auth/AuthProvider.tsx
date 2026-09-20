@@ -106,9 +106,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const applyUser = useCallback((next: MeResponse) => setUser(next), [])
 
+  const resetSession = useCallback(() => {
+    clearAccessToken()
+    setUser(null)
+    setStatus('anonymous')
+  }, [])
+
   const value = useMemo(
-    () => ({ status, user, login, signUp, logout, applyUser }),
-    [status, user, login, signUp, logout, applyUser],
+    () => ({ status, user, login, signUp, logout, applyUser, resetSession }),
+    [status, user, login, signUp, logout, applyUser, resetSession],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>
