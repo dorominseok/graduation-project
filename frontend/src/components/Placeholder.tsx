@@ -1,14 +1,9 @@
 import styles from './Placeholder.module.css'
 
 /**
- * 아직 만들지 않은 화면의 자리표시자.
- * 홈·기록·분석·그룹·프로필 본문은 9월에 백엔드 기능과 짝지어 채운다.
+ * 아직 만들지 않은 화면의 자리표시자. 화면 이름은 헤더가 보여주므로 본문은 비워 둔다.
+ * 구현이 끝나면 이 컴포넌트 호출을 지운다 — 남은 개수가 곧 미구현 화면 수다.
  */
-export function Placeholder({ title, note }: { title: string; note?: string }) {
-  return (
-    <div className={styles.root}>
-      <div className={styles.title}>{title}</div>
-      <div className={styles.note}>{note ?? '9월에 백엔드 기능과 함께 구현한다.'}</div>
-    </div>
-  )
+export function Placeholder() {
+  return <div className={styles.root} />
 }
