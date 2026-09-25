@@ -20,4 +20,23 @@ public enum MeasureType {
     public boolean supportsOneRm() {
         return this == WEIGHT_REPS;
     }
+
+    /**
+     * 세트 저장에 중량이 필요한 유형인지(명세 5.1 표).
+     *
+     * <p>{@link #WEIGHTED_BODYWEIGHT}의 중량은 몸무게가 아니라 <b>추가로 매단 무게</b>다.
+     */
+    public boolean requiresWeight() {
+        return this == WEIGHT_REPS || this == WEIGHTED_BODYWEIGHT;
+    }
+
+    /** 세트 저장에 횟수가 필요한 유형인지(명세 5.1 표). */
+    public boolean requiresReps() {
+        return this != TIME;
+    }
+
+    /** 세트 저장에 지속 시간이 필요한 유형인지(명세 5.1 표). */
+    public boolean requiresDuration() {
+        return this == TIME;
+    }
 }
