@@ -126,4 +126,18 @@ public class WorkoutSession extends BaseTimeEntity {
     public Integer effectiveDurationSec() {
         return durationOverrideSec != null ? durationOverrideSec : durationSec;
     }
+
+    public void changeMemo(String memo) {
+        this.memo = memo;
+    }
+
+    /** {@code BACKFILL}의 날짜 정정(명세 6.9). {@code LIVE}는 호출 전에 막는다 */
+    public void changePerformedOn(LocalDate performedOn) {
+        this.performedOn = performedOn;
+    }
+
+    /** 사용자가 직접 넣는 운동 시간. {@code null}이면 보정을 해제하고 산출값으로 돌아간다 */
+    public void changeDurationOverrideSec(Integer durationOverrideSec) {
+        this.durationOverrideSec = durationOverrideSec;
+    }
 }
