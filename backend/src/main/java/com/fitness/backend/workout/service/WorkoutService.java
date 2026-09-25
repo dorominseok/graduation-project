@@ -13,25 +13,35 @@ import com.fitness.backend.workout.domain.WorkoutSession;
 import com.fitness.backend.workout.domain.WorkoutSet;
 import com.fitness.backend.workout.repository.WorkoutSessionRepository;
 import com.fitness.backend.workout.repository.WorkoutSetRepository;
+import com.fitness.backend.workout.web.WorkoutDtos.CalendarDay;
+import com.fitness.backend.workout.web.WorkoutDtos.CalendarResponse;
 import com.fitness.backend.workout.web.WorkoutDtos.CreateSessionRequest;
 import com.fitness.backend.workout.web.WorkoutDtos.CreateSetRequest;
 import com.fitness.backend.workout.web.WorkoutDtos.ExerciseGroup;
+import com.fitness.backend.workout.web.WorkoutDtos.ExerciseRef;
 import com.fitness.backend.workout.web.WorkoutDtos.SessionResponse;
+import com.fitness.backend.workout.web.WorkoutDtos.SessionSummary;
 import com.fitness.backend.workout.web.WorkoutDtos.SetInGroup;
 import com.fitness.backend.workout.web.WorkoutDtos.SetResponse;
 import com.fitness.backend.workout.web.WorkoutDtos.SetSaveResult;
+import com.fitness.backend.workout.web.WorkoutDtos.UpdateSessionRequest;
+import com.fitness.backend.workout.web.WorkoutDtos.UpdateSetRequest;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -186,6 +196,162 @@ public class WorkoutService {
     public Optional<SessionResponse> findCurrent(Long userId) {
         return sessionRepository.findByUserIdAndStatus(userId, SessionStatus.DRAFT)
                 .map(session -> toResponse(session, setRepository.findBySessionIdOrderByRecordedAtAsc(session.getId())));
+    }
+
+    /**
+     * 히스토리 목록(명세 6.6).
+     *
+     * <p>세션마다 세트를 조회하면 페이지 크기만큼 쿼리가 나간다. 페이지의 세션 ID를
+     * 모아 한 번에 읽고 메모리에서 묶는다.
+     */
+    public Page<SessionSummary> history(Long userId, LocalDate from, LocalDate to,
+                                        SessionStatus status, Long exerciseId, Pageable pageable) {
+        Page<WorkoutSession> page = sessionRepository.search(userId, from, to, status, exerciseId, pageable);
+        if (page.isEmpty()) {
+            return page.map(session -> toSummary(session, List.of(), Map.of()));
+        }
+
+        List<Long> sessionIds = page.getContent().stream().map(WorkoutSession::getId).toList();
+        List<WorkoutSet> sets = setRepository.findBySessionIdInOrderByRecordedAtAsc(sessionIds);
+        Map<Long, Exercise> exercises = loadExercises(sets);
+        Map<Long, List<WorkoutSet>> bySession = sets.stream()
+                .collect(Collectors.groupingBy(WorkoutSet::getSessionId));
+
+        return page.map(session ->
+                toSummary(session, bySession.getOrDefault(session.getId(), List.of()), exercises));
+    }
+
+    /** 캘린더 월별 요약(명세 6.8). 기록이 있는 날짜만 담는다. */
+    public CalendarResponse calendar(Long userId, int year, int month) {
+        YearMonth yearMonth = YearMonth.of(year, month);
+        List<WorkoutSession> sessions = sessionRepository.findByUserIdAndPerformedOnBetween(
+                userId, yearMonth.atDay(1), yearMonth.atEndOfMonth());
+
+        Map<LocalDate, List<WorkoutSession>> byDate = sessions.stream()
+                .collect(Collectors.groupingBy(WorkoutSession::getPerformedOn, TreeMap::new, Collectors.toList()));
+
+        List<CalendarDay> days = byDate.entrySet().stream()
+                .map(entry -> new CalendarDay(entry.getKey(), entry.getValue().size(),
+                        entry.getValue().stream().anyMatch(session -> !session.isDone())))
+                .toList();
+        return new CalendarResponse(year, month, days);
+    }
+
+    /** 세션 수정(명세 6.9). 보내지 않은 항목은 건드리지 않는다. */
+    @Transactional
+    public SessionResponse updateSession(Long userId, Long sessionId, UpdateSessionRequest request) {
+        WorkoutSession session = mustFindSession(userId, sessionId);
+
+        if (request.memo() != null) {
+            // 빈 문자열이 "메모 지우기"다. 아래 시간 보정의 0과 같은 규칙이다(LOG-23).
+            session.changeMemo(request.memo().isBlank() ? null : request.memo());
+        }
+
+        if (request.performedOn() != null) {
+            if (session.isLive()) {
+                // LIVE는 오늘 기록이라는 것이 전제다. 날짜를 옮기면 그 전제가 깨진다.
+                throw new ApiException(ErrorCode.VALIDATION_ERROR, "진행 중 기록의 날짜는 바꿀 수 없습니다.");
+            }
+            if (request.performedOn().isAfter(LocalDate.now(clock))) {
+                throw new ApiException(ErrorCode.INVALID_DATE_RANGE, "미래 날짜로는 기록할 수 없습니다.");
+            }
+            session.changePerformedOn(request.performedOn());
+        }
+
+        if (request.durationOverrideSec() != null) {
+            // 0은 보정 해제다 — 0초짜리 운동은 없으므로 값으로 쓰일 일이 없다.
+            int override = request.durationOverrideSec();
+            session.changeDurationOverrideSec(override == 0 ? null : override);
+        }
+
+        return toResponse(session, setRepository.findBySessionIdOrderByRecordedAtAsc(sessionId));
+    }
+
+    /** 세션 삭제(명세 6.10). 세트는 FK {@code ON DELETE CASCADE}로 함께 지워진다. */
+    @Transactional
+    public void deleteSession(Long userId, Long sessionId) {
+        sessionRepository.delete(mustFindSession(userId, sessionId));
+    }
+
+    /** 세트 수정(명세 6.11). */
+    @Transactional
+    public SetResponse updateSet(Long userId, Long sessionId, Long setId, UpdateSetRequest request) {
+        WorkoutSession session = mustFindSession(userId, sessionId);
+        WorkoutSet set = mustFindSet(sessionId, setId);
+        Exercise exercise = exerciseRepository.findById(set.getExerciseId())
+                .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "종목을 찾을 수 없습니다."));
+        MeasureType measureType = exercise.getMeasureType();
+
+        // 저장 때와 같은 기준으로 거른다. 쓰지 않는 값은 수정으로도 들어가지 않는다.
+        set.modify(measureType.requiresWeight() ? request.weightKg() : null,
+                measureType.requiresReps() ? toShort(request.reps()) : null,
+                measureType.requiresDuration() ? request.durationSec() : null,
+                request.isWarmup());
+
+        afterSetChange(session);
+        return SetResponse.of(set, exercise.getNameKo());
+    }
+
+    /**
+     * 세트 삭제(명세 6.12).
+     *
+     * <p>마지막 세트를 지워도 세션은 남는다 — 히스토리에 세트 0개로 보인다.
+     * {@code setNo}는 재부여하지 않아 번호에 구멍이 생기지만, 화면이 배열 순번으로
+     * 그리므로 사용자에게는 보이지 않는다.
+     */
+    @Transactional
+    public void deleteSet(Long userId, Long sessionId, Long setId) {
+        WorkoutSession session = mustFindSession(userId, sessionId);
+        setRepository.delete(mustFindSet(sessionId, setId));
+        afterSetChange(session);
+    }
+
+    /**
+     * 종목 단위 삭제(LOG-22). 그 종목의 세트를 한 번에 지운다.
+     *
+     * <p>명세 6.12의 세트 삭제만으로도 같은 결과를 낼 수 있지만, 5세트를 지우려면
+     * 요청이 다섯 번 나가고 중간에 실패하면 일부만 지워진 상태가 남는다.
+     * 기록 화면에서 "이 종목 빼기"는 세트 하나를 지우는 것보다 흔한 동작이다.
+     */
+    @Transactional
+    public void deleteExercise(Long userId, Long sessionId, Long exerciseId) {
+        WorkoutSession session = mustFindSession(userId, sessionId);
+        int deleted = setRepository.deleteBySessionIdAndExerciseId(sessionId, exerciseId);
+        if (deleted == 0) {
+            throw new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "이 기록에 해당 종목이 없습니다.");
+        }
+        setRepository.flush();
+        afterSetChange(session);
+    }
+
+    /**
+     * 세트가 바뀐 뒤 운동 시간을 맞춘다.
+     *
+     * <p>종료한 {@code LIVE} 세션만 대상이다 — 진행 중({@code DRAFT})에는 애초에
+     * 산출하지 않고, {@code BACKFILL}은 저장 시각으로 시간을 내지 않는다.
+     */
+    private void afterSetChange(WorkoutSession session) {
+        if (session.isDone() && session.isLive()) {
+            recalculateDuration(session);
+        }
+    }
+
+    private WorkoutSet mustFindSet(Long sessionId, Long setId) {
+        return setRepository.findByIdAndSessionId(setId, sessionId)
+                .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "세트를 찾을 수 없습니다."));
+    }
+
+    private SessionSummary toSummary(WorkoutSession session, List<WorkoutSet> sets,
+                                     Map<Long, Exercise> exercises) {
+        // sets가 저장 시각 순이므로 distinct()가 곧 수행 순서다.
+        List<ExerciseRef> refs = sets.stream()
+                .map(WorkoutSet::getExerciseId)
+                .distinct()
+                .map(id -> new ExerciseRef(id, exercises.containsKey(id) ? exercises.get(id).getNameKo() : null))
+                .toList();
+
+        return new SessionSummary(session.getId(), session.getPerformedOn(), session.getStatus(),
+                session.getSource(), session.effectiveDurationSec(), sets.size(), refs.size(), refs);
     }
 
     private WorkoutSession mustFindSession(Long userId, Long sessionId) {
