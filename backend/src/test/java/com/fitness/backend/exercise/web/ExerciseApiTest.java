@@ -299,12 +299,17 @@ class ExerciseApiTest {
     }
 
     @Test
-    @DisplayName("계열 목록은 대표 종목 id를 함께 준다 — 카드에 그림을 붙일 자리다")
+    @DisplayName("계열 목록은 대표 종목의 id와 영문명을 함께 준다 — 카드 그림 파일명이 영문명 슬러그다")
     void groupsCarryRepresentative() throws Exception {
         mvc.perform(get("/api/v1/exercises/groups").param("category", "CHEST"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].groupName").isNotEmpty())
-                .andExpect(jsonPath("$[0].representativeId").isNumber());
+                .andExpect(jsonPath("$[*].groupName").value(
+                        org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.not(org.hamcrest.Matchers.emptyString()))))
+                .andExpect(jsonPath("$[*].representativeId").value(
+                        org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.notNullValue())))
+                // 영문명이 비면 그림이 통째로 안 뜬다. 계열 전부를 확인한다.
+                .andExpect(jsonPath("$[*].representativeNameEn").value(
+                        org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.not(org.hamcrest.Matchers.emptyString()))));
     }
 
     @Test

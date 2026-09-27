@@ -14,6 +14,7 @@ import com.fitness.backend.exercise.web.ExerciseDtos.ExerciseResponse;
 import com.fitness.backend.exercise.web.ExerciseDtos.GroupCount;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -86,8 +87,19 @@ public class ExerciseService {
 
     /** 한 분류 안의 계열 목록(LOG-24). 종목이 많은 계열이 앞에 온다. */
     public List<GroupCount> groups(BrowseCategory category) {
-        return exerciseRepository.countByGroup(category.primaryMuscles()).stream()
-                .map(row -> new GroupCount((String) row[0], (Long) row[1], (Long) row[2]))
+        List<Object[]> rows = exerciseRepository.countByGroup(category.primaryMuscles());
+
+        // 대표 종목의 영문명은 계열 카드 그림의 파일명을 만드는 데 쓴다. 한 분류의
+        // 계열이 많아야 열 몇 개라 한 번 더 읽어도 된다.
+        Map<Long, String> names = new HashMap<>();
+        for (Exercise exercise : exerciseRepository.findAllById(
+                rows.stream().map(row -> (Long) row[2]).toList())) {
+            names.put(exercise.getId(), exercise.getNameEn());
+        }
+
+        return rows.stream()
+                .map(row -> new GroupCount((String) row[0], (Long) row[1], (Long) row[2],
+                        names.get((Long) row[2])))
                 .toList();
     }
 

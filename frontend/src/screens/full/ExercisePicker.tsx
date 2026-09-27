@@ -3,6 +3,7 @@ import { useToast } from '../../components'
 import { exerciseApi, isApiError, workoutApi } from '../../api'
 import type { BrowseCategory, CategoryCount, Exercise, GroupCount } from '../../api'
 import { BODY_PART_LABEL, EQUIPMENT_LABEL, MEASURE_CHIP_LABEL } from './exerciseLabels'
+import { exerciseImage, hideOnError } from './exerciseImage'
 import styles from './exercise.module.css'
 
 const PAGE_SIZE = 30
@@ -206,45 +207,66 @@ export function ExercisePicker({ step, onStepChange, onPick, onInfo }: ExerciseP
         ? '즐겨찾기한 종목이 없어요'
         : '찾는 종목이 없어요'
 
-  /** 종목 한 장. 이름 아래 알약으로 측정 방식과 장비를 붙인다 */
+  /** 종목 한 장. 시작·끝 자세를 나란히 올리고 그 아래 이름과 알약을 둔다 */
   const renderItem = (exercise: Exercise) => (
     <div key={exercise.id} className={styles.item}>
       <button type="button" className={styles.itemMain} onClick={() => onPick(exercise)}>
-        <div className={styles.itemName}>{exercise.nameKo}</div>
-        <div className={styles.chips}>
-          {!scopedToPart && (
+        <span className={styles.shots}>
+          {([1, 2] as const).map((shot) => {
+            const src = exerciseImage(exercise.nameEn, shot)
+            return src ? (
+              <img
+                key={shot}
+                className={styles.shot}
+                src={src}
+                alt=""
+                loading="lazy"
+                onError={hideOnError}
+              />
+            ) : (
+              <span key={shot} className={styles.shot} />
+            )
+          })}
+        </span>
+        <span className={styles.itemBody}>
+          <span className={styles.itemName}>{exercise.nameKo}</span>
+          <span className={styles.chips}>
+            {!scopedToPart && (
+              <span className={styles.chip}>
+                {BODY_PART_LABEL[exercise.bodyPart] ?? exercise.bodyPart}
+              </span>
+            )}
             <span className={styles.chip}>
-              {BODY_PART_LABEL[exercise.bodyPart] ?? exercise.bodyPart}
+              {MEASURE_CHIP_LABEL[exercise.measureType] ?? exercise.measureType}
             </span>
-          )}
-          <span className={styles.chip}>
-            {MEASURE_CHIP_LABEL[exercise.measureType] ?? exercise.measureType}
+            <span className={styles.chip}>
+              {EQUIPMENT_LABEL[exercise.equipment] ?? exercise.equipment}
+            </span>
           </span>
-          <span className={styles.chip}>
-            {EQUIPMENT_LABEL[exercise.equipment] ?? exercise.equipment}
-          </span>
-        </div>
+        </span>
       </button>
 
-      {onInfo && (
+      {/* 카드를 누르는 것과 다른 동작이라 카드 아래에 따로 둔다 */}
+      <div className={styles.itemActions}>
+        {onInfo && (
+          <button
+            type="button"
+            className={styles.itemAction}
+            onClick={() => onInfo(exercise)}
+            aria-label="종목 상세"
+          >
+            ⓘ
+          </button>
+        )}
         <button
           type="button"
-          className={styles.itemAction}
-          onClick={() => onInfo(exercise)}
-          aria-label="종목 상세"
+          className={`${styles.itemAction} ${exercise.isFavorite ? styles.starOn : ''}`}
+          onClick={() => void toggleFavorite(exercise)}
+          aria-label={exercise.isFavorite ? '즐겨찾기 해제' : '즐겨찾기'}
         >
-          ⓘ
+          {exercise.isFavorite ? '★' : '☆'}
         </button>
-      )}
-
-      <button
-        type="button"
-        className={`${styles.itemAction} ${exercise.isFavorite ? styles.starOn : ''}`}
-        onClick={() => void toggleFavorite(exercise)}
-        aria-label={exercise.isFavorite ? '즐겨찾기 해제' : '즐겨찾기'}
-      >
-        {exercise.isFavorite ? '★' : '☆'}
-      </button>
+      </div>
     </div>
   )
 
@@ -343,13 +365,21 @@ export function ExercisePicker({ step, onStepChange, onPick, onInfo }: ExerciseP
                   onStepChange({ category: step.category, group: item.groupName })
                 }}
               >
+                {/* 계열을 대표하는 종목 한 장. 이름만으로는 어떤 동작인지 모른다 */}
+                <img
+                  className={styles.groupThumb}
+                  src={exerciseImage(item.representativeNameEn) ?? ''}
+                  alt=""
+                  loading="lazy"
+                  onError={hideOnError}
+                />
                 <span className={styles.groupName}>{item.groupName}</span>
                 <span className={styles.chip}>{item.count}가지</span>
                 <span className={styles.groupArrow}>›</span>
               </button>
             ))}
 
-          {showItems && items.map(renderItem)}
+          {showItems && <div className={styles.itemGrid}>{items.map(renderItem)}</div>}
 
           {loading && <div className={styles.empty}>불러오는 중…</div>}
 

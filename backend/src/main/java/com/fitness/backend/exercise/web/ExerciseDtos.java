@@ -56,9 +56,11 @@ public final class ExerciseDtos {
     /**
      * 계열 목록의 한 칸(LOG-24).
      *
-     * <p>{@code representativeId}는 카드에 이미지를 붙일 때 쓸 대표 종목이다.
-     * 지금은 이미지가 없어 자리만 잡아둔다.
+     * <p>{@code representativeId}는 카드에 그림을 붙일 때 쓸 대표 종목이다.
+     * {@code representativeNameEn}은 그 그림의 파일명을 만드는 데 쓴다 — 파일명이
+     * 영문명 슬러그라서 id만으로는 어느 그림인지 알 수 없다.
      */
-    public record GroupCount(String groupName, long count, Long representativeId) {
+    public record GroupCount(String groupName, long count,
+                             Long representativeId, String representativeNameEn) {
     }
 }

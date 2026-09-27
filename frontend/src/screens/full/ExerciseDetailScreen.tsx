@@ -9,6 +9,7 @@ import {
   MEASURE_LABEL,
   PUSH_PULL_LABEL,
 } from './exerciseLabels'
+import { exerciseImage, hideOnError } from './exerciseImage'
 import styles from './exerciseDetail.module.css'
 
 /**
@@ -96,8 +97,22 @@ export function ExerciseDetailScreen() {
       />
 
       <div className={styles.page}>
-        {/* 동작 그림 자리 */}
-        <div className={styles.hero} />
+        {/* 시작 자세와 끝 자세를 나란히 둔다. 한 장만으로는 어느 쪽으로 움직이는지 모른다 */}
+        <div className={styles.hero}>
+          {([1, 2] as const).map((shot) => {
+            const src = exerciseImage(exercise.nameEn, shot)
+            return src ? (
+              <img
+                key={shot}
+                className={styles.heroShot}
+                src={src}
+                alt=""
+                loading="lazy"
+                onError={hideOnError}
+              />
+            ) : null
+          })}
+        </div>
 
         {exercise.nameEn && <div className={styles.nameEn}>{exercise.nameEn}</div>}
 
