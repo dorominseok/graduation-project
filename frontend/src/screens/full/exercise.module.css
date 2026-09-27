@@ -1,0 +1,240 @@
+/*
+ * 종목 고르기 — 목업 "종목 추가" 시트의 모양을 그대로 쓴다.
+ *
+ * 종목 한 줄은 테두리 있는 카드이고, 측정 방식·장비는 카드 안의 작은 알약으로
+ * 넣는다. 줄글로 "바벨 · 무게 × 횟수"라고 적으면 이름과 뒤섞여 읽히지 않는다.
+ */
+
+.page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--space-16) var(--space-20) var(--space-20);
+}
+
+/* 검색창은 어느 단계에서나 같은 자리에 둔다 — 부위를 모를 때의 탈출구다. */
+.search {
+  flex-shrink: 0;
+  height: 42px;
+  margin-bottom: var(--space-12);
+  padding: 0 var(--space-14);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  font-size: var(--font-body);
+  color: var(--text-primary);
+}
+
+.search:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.tabs {
+  flex-shrink: 0;
+  display: flex;
+  gap: var(--space-6);
+  margin-bottom: var(--space-12);
+}
+
+.tab {
+  flex: 1;
+  height: 36px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--chip-bg);
+  color: var(--text-secondary);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-bold);
+}
+
+.tabOn {
+  background: var(--accent);
+  color: var(--on-fill);
+}
+
+/* 한 단계 들어간 뒤의 머리. 어디를 보고 있는지와 나가는 길을 같은 줄에 둔다. */
+.crumb {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-bottom: var(--space-10);
+}
+
+.crumbBack {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-pill);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-size: var(--font-md);
+}
+
+.crumbLabel {
+  font-size: 14.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* ── 1단계: 부위 */
+
+.partGrid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  align-content: start;
+  gap: var(--space-10);
+}
+
+.partCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-xl);
+  background: var(--card-bg);
+  text-align: left;
+}
+
+.partCard:disabled {
+  opacity: 0.45;
+}
+
+/* 부위 그림이 들어갈 자리. 지금은 색 블록으로만 잡아둔다. */
+.partShape {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+}
+
+.partName {
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.partCount {
+  margin-left: var(--space-4);
+  font-size: var(--font-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+/* ── 2단계: 계열 (목업에는 없는 단계라 종목 카드와 같은 모양으로 맞춘다) */
+
+.groupCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  flex-shrink: 0;
+  padding: var(--space-12) var(--space-14);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  text-align: left;
+}
+
+.groupName {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.groupArrow {
+  flex-shrink: 0;
+  font-size: var(--font-lg);
+  color: var(--text-tertiary);
+}
+
+/* ── 3단계: 변형 (검색·최근·즐겨찾기 결과도 같은 모양을 쓴다) */
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex-shrink: 0;
+}
+
+.itemMain {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-12) var(--space-14);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  text-align: left;
+}
+
+.itemName {
+  margin-bottom: 5px;
+  font-size: 14px;
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.chip {
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--chip-bg);
+  font-size: 10.5px;
+  color: var(--text-secondary);
+}
+
+/* ⓘ·★는 카드를 누르는 것과 다른 동작이라 카드 밖에 따로 둔다. */
+.itemAction {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  font-size: var(--font-lg);
+  color: var(--text-secondary);
+}
+
+.starOn {
+  color: var(--accent);
+}
+
+.empty {
+  padding: var(--space-20);
+  text-align: center;
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+}
+
+.more {
+  flex-shrink: 0;
+  height: 42px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+

@@ -1,0 +1,835 @@
+/*
+ * 운동 기록 — 목업의 세션 화면을 그대로 옮긴다.
+ *
+ * 두 단계다. 목록에서는 오늘 무엇을 했는지만 보고, 종목을 누르면 그 종목의
+ * 세트만 남는다. 세트 한 줄은 체크·번호·값·삭제·펼치기가 한 줄에 들어가고,
+ * 값을 고치는 스테퍼는 펼친 뒤에 나온다 — 한 줄에 다 넣으면 눌 자리가 없다.
+ */
+
+.page {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ── 머리줄 (두 단계 공통 골격) */
+
+.header {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-10) var(--space-12);
+  border-bottom: 1px solid var(--divider);
+  background: var(--header-bg);
+}
+
+.headerBack {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-pill);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-size: var(--font-lg);
+}
+
+/* 오른쪽 버튼이 없을 때도 가운데 글이 가운데에 있어야 한다 */
+.headerSpacer {
+  width: 34px;
+  flex-shrink: 0;
+}
+
+.headerNav {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+}
+
+.navArrow {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--font-md);
+}
+
+.navArrow:disabled {
+  opacity: 0.25;
+}
+
+.headerTitle {
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.dayTitle {
+  font-size: var(--font-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* 진행 중일 때. 경과 시간은 서버 값이 아니라 startedAt부터의 벽시계 차이다(명세 6.3) */
+.liveCenter {
+  flex: 1;
+  text-align: center;
+}
+
+.liveDate {
+  font-size: var(--font-xs);
+  color: var(--text-secondary);
+}
+
+.liveElapsed {
+  font-size: var(--font-3xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.endButton {
+  height: 36px;
+  flex-shrink: 0;
+  padding: 0 var(--space-16);
+  border: none;
+  border-radius: 18px;
+  background: var(--accent);
+  color: var(--on-fill);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-heavy);
+  white-space: nowrap;
+}
+
+.endButton:disabled {
+  opacity: 0.45;
+}
+
+.endButtonSmall {
+  height: 32px;
+  flex-shrink: 0;
+  padding: 0 13px;
+  border: none;
+  border-radius: 16px;
+  background: var(--accent);
+  color: var(--on-fill);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-heavy);
+  white-space: nowrap;
+}
+
+/* ── 1단계: 오늘 한 운동 목록 */
+
+.listScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-16) var(--space-20) var(--space-24);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+/* 휴식 타이머가 떠 있으면 마지막 버튼이 가려진다 */
+.scrollWithRest {
+  padding-bottom: 90px;
+}
+
+/* 카드와 빼기 버튼. 빼기는 카드를 여는 것과 다른 일이라 카드 밖에 둔다 */
+.exRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex-shrink: 0;
+}
+
+.exCard {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-14) var(--space-16);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+  text-align: left;
+}
+
+.exDelete {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  color: var(--text-tertiary);
+  font-size: var(--font-body);
+}
+
+.exCardHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.exName {
+  font-size: var(--font-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.typeTag {
+  padding: 3px var(--space-8);
+  border-radius: var(--radius-pill);
+  background: var(--chip-bg);
+  font-size: var(--font-3xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.exSummary {
+  display: block;
+  margin-top: 5px;
+  font-size: var(--font-xs);
+  color: var(--text-secondary);
+}
+
+.addExercise {
+  width: 100%;
+  height: 50px;
+  flex-shrink: 0;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-xl);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+}
+
+/* 종목이 하나도 없을 때. 할 일이 하나뿐이라 그 버튼만 크게 둔다. */
+.emptyBox {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-16);
+  padding: var(--space-24);
+}
+
+.emptyTitle {
+  text-align: center;
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.emptyNote {
+  margin-top: var(--space-6);
+  text-align: center;
+  font-size: var(--font-xs);
+  color: var(--text-tertiary);
+}
+
+.emptyAdd {
+  height: 52px;
+  padding: 0 var(--space-28);
+  border: none;
+  border-radius: var(--radius-xl);
+  background: var(--accent);
+  color: var(--on-fill);
+  font-size: var(--font-md);
+  font-weight: var(--weight-heavy);
+}
+
+.loading {
+  padding: var(--space-32) var(--space-16);
+  text-align: center;
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+}
+
+/* ── 2단계: 종목 하나의 세트 */
+
+/* 지표 3종. 값은 분석 API가 생기면 채운다 — 지금은 자리만 잡아둔다. */
+.stats {
+  flex-shrink: 0;
+  display: flex;
+  gap: var(--space-6);
+  padding: 13px var(--space-16) var(--space-14);
+  border-bottom: 1px solid var(--divider);
+  background: var(--card-bg);
+}
+
+.stat {
+  flex: 1;
+  min-width: 0;
+}
+
+.statLabel {
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+}
+
+.statValueRow {
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+  margin-top: 3px;
+}
+
+.statValue {
+  font-size: 19px;
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.statUnit {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.statNote {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prevBar {
+  flex-shrink: 0;
+  padding: var(--space-6);
+  background: var(--chip-bg);
+  text-align: center;
+  font-size: var(--font-2xs);
+  color: var(--text-tertiary);
+}
+
+.setScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-14) var(--space-16) var(--space-24);
+}
+
+.setList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* 저장된 순간 줄 전체가 한 번 초록으로 물든다 — 무엇이 기록됐는지 눈에 남는다 */
+.setWrap {
+  position: relative;
+  border-radius: var(--radius-md);
+  background: transparent;
+  transition: background 0.18s ease;
+}
+
+.setWrapFlash {
+  background: var(--accent-soft);
+}
+
+.setRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  width: 100%;
+  padding: 9px var(--space-4) 2px;
+  background: none;
+  text-align: left;
+}
+
+.check {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 2px solid var(--tick);
+  border-radius: var(--radius-pill);
+  background: transparent;
+}
+
+.checkOn {
+  border: none;
+  background: var(--accent);
+}
+
+/* 워밍업으로 저장된 세트는 본세트와 다른 색이어야 한다 — 집계에서 빠지기 때문이다 */
+.checkOnWarmup {
+  border: 2px solid var(--warn);
+  background: var(--warn-soft);
+}
+
+.numPill {
+  width: 40px;
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--card-border);
+  border-radius: 9px;
+  background: transparent;
+  font-size: 14px;
+  font-weight: var(--weight-medium);
+  color: var(--text-tertiary);
+}
+
+.numPillDone {
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+
+.numPillWarmup {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.values {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  overflow: hidden;
+}
+
+.colA {
+  width: 92px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.colB {
+  width: 64px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.bigVal {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.bigValDone {
+  opacity: 0.75;
+}
+
+.bigValEmpty {
+  color: var(--tick-strong);
+}
+
+.unit {
+  margin-left: 2px;
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.iconBtn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+
+.chevron {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.chevronOpen {
+  background: var(--chip-bg);
+  transform: rotate(180deg);
+}
+
+/* 체크 옆이 아니라 아래에 둔다. 값보다 덜 중요한 것들이라 작게 깔린다. */
+.subLine {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 var(--space-4) 11px 44px;
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+}
+
+.subWarmup {
+  color: var(--warn);
+  font-weight: var(--weight-bold);
+}
+
+/* 펼친 뒤의 값 고치기 */
+.panel {
+  margin: 2px var(--space-4) var(--space-14) 48px;
+  padding: var(--space-12);
+  border-radius: var(--radius-lg);
+  background: var(--chip-bg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+.fieldRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.fieldLabel {
+  width: 44px;
+  flex-shrink: 0;
+  font-size: var(--font-xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+.fieldValue {
+  flex: 1;
+  min-width: 0;
+  padding: 7px var(--space-10);
+  border: 1px solid var(--card-border);
+  border-radius: 9px;
+  background: var(--card-bg);
+  font-size: 18px;
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.fieldUnit {
+  width: 20px;
+  flex-shrink: 0;
+  font-size: var(--font-3xs);
+  color: var(--text-tertiary);
+}
+
+.pillBtn {
+  width: 44px;
+  height: 34px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-heavy);
+}
+
+.restValue {
+  flex: 1;
+  min-width: 0;
+  padding: 3px var(--space-6);
+  font-size: var(--font-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.warmupHint {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-2xs);
+  color: var(--text-tertiary);
+}
+
+/* 워밍업 표시 (LOG-02). 켜면 볼륨 집계에서 빠진다 */
+.warmupPill {
+  min-width: 92px;
+  height: 34px;
+  flex-shrink: 0;
+  padding: 0 var(--space-12);
+  border: 1px solid var(--card-border);
+  border-radius: 9px;
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-heavy);
+}
+
+.warmupPillOn {
+  border: none;
+  background: var(--warn);
+  color: var(--on-fill);
+}
+
+.focusActions {
+  display: flex;
+  gap: var(--space-8);
+  margin-top: var(--space-14);
+}
+
+.addSet {
+  flex: 1;
+  height: 42px;
+  border: 1.5px dashed var(--dashed-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: var(--weight-medium);
+}
+
+.batchButton {
+  flex: 1;
+  height: 42px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: var(--weight-medium);
+}
+
+/* ── 휴식 타이머. 본문 위에 얹어 스크롤과 무관하게 같은 자리에 둔다. */
+
+.rest {
+  position: absolute;
+  left: var(--space-12);
+  right: var(--space-12);
+  bottom: var(--space-12);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-14);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  box-shadow: 0 12px 32px rgba(20, 24, 20, 0.16), 0 2px 8px rgba(20, 24, 20, 0.08);
+}
+
+.restTime {
+  min-width: 66px;
+  font-size: 26px;
+  font-weight: var(--weight-heavy);
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.restMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.restLabel {
+  margin-bottom: var(--space-6);
+  font-size: var(--font-2xs);
+  color: var(--text-secondary);
+}
+
+.restTrack {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--chip-bg);
+  overflow: hidden;
+}
+
+.restBar {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  transition: width 1s linear;
+}
+
+.restButtons {
+  display: flex;
+  gap: var(--space-6);
+  flex-shrink: 0;
+}
+
+.restButton {
+  height: 34px;
+  padding: 0 var(--space-10);
+  border: 1px solid var(--card-border);
+  border-radius: 9px;
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-size: var(--font-3xs);
+  font-weight: var(--weight-bold);
+}
+
+.restSkip {
+  height: 34px;
+  padding: 0 var(--space-12);
+  border: none;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--on-fill);
+  font-size: var(--font-3xs);
+  font-weight: var(--weight-heavy);
+}
+
+.restDone {
+  position: absolute;
+  left: var(--space-12);
+  right: var(--space-12);
+  bottom: var(--space-12);
+  z-index: 40;
+  padding: var(--space-14);
+  border-radius: var(--radius-lg);
+  background: var(--accent);
+  color: var(--on-fill);
+  text-align: center;
+  font-size: var(--font-sm);
+  font-weight: var(--weight-heavy);
+  box-shadow: 0 12px 32px rgba(20, 24, 20, 0.16);
+}
+
+/* ── 시트 안쪽 */
+
+/* 종목 고르기. 시트가 이미 높이를 제한하므로 안쪽은 그 안을 채운다. */
+.pickerBox {
+  display: flex;
+  flex-direction: column;
+  height: 70vh;
+  margin: 0 calc(-1 * var(--space-20));
+}
+
+.sheetTitle {
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+/* 종목 정보. 기록 중에는 상세 화면으로 나갈 수 없어 여기서 보여준다 */
+.infoName {
+  margin-bottom: var(--space-10);
+  font-size: var(--font-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.infoChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  margin-bottom: var(--space-12);
+}
+
+.infoNote {
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+  line-height: 1.6;
+}
+
+/* 일괄 수정. 같은 무게로 여러 세트를 한 번에 맞추는 자리다. */
+.batchList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  max-height: 34vh;
+  overflow-y: auto;
+  margin-bottom: var(--space-12);
+}
+
+.batchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  width: 100%;
+  padding: var(--space-10) var(--space-12);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  text-align: left;
+}
+
+.batchCheck {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--card-border);
+  border-radius: var(--radius-xs);
+  background: var(--card-bg);
+  color: var(--on-fill);
+  font-size: var(--font-3xs);
+}
+
+.batchCheckOn {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.batchLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-sm);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.batchApply {
+  width: 100%;
+  height: var(--control-height);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--on-fill);
+  font-size: var(--font-body);
+  font-weight: var(--weight-heavy);
+}
+
+.batchApply:disabled {
+  opacity: 0.45;
+}
+
+/* 되돌릴 수 없는 삭제를 확인받는 시트 */
+.confirmText {
+  margin-bottom: var(--space-16);
+  font-size: var(--font-body);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.confirmDanger {
+  width: 100%;
+  height: var(--control-height);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--danger);
+  color: var(--on-fill);
+  font-size: var(--font-body);
+  font-weight: var(--weight-heavy);
+}

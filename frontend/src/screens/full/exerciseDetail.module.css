@@ -1,0 +1,87 @@
+.page {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-16) var(--space-16) var(--space-32);
+}
+
+/* 동작 그림이 들어갈 자리 */
+.hero {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted, rgba(127, 127, 127, 0.08));
+}
+
+.nameEn {
+  margin-top: var(--space-10);
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+}
+
+.specs {
+  margin-top: var(--space-16);
+  border-top: 1px solid var(--divider);
+}
+
+.spec {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-12) 0;
+  border-bottom: 1px solid var(--divider);
+  font-size: var(--font-sm);
+}
+
+.spec dt {
+  color: var(--text-tertiary);
+}
+
+.spec dd {
+  color: var(--text-primary);
+}
+
+.sectionTitle {
+  margin: var(--space-24) 0 var(--space-10);
+  font-size: var(--font-md);
+  font-weight: var(--weight-heavy);
+  color: var(--text-primary);
+}
+
+.lastBox {
+  padding: var(--space-12) var(--space-14);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+}
+
+.lastDate {
+  margin-bottom: var(--space-8);
+  font-size: var(--font-2xs);
+  color: var(--text-tertiary);
+}
+
+.lastSet {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-8) 0;
+  font-size: var(--font-sm);
+  color: var(--text-primary);
+}
+
+.star {
+  padding: var(--space-8);
+  background: none;
+  font-size: var(--font-lg);
+  line-height: 1;
+  color: var(--text-tertiary);
+}
+
+.starOn {
+  color: var(--accent);
+}
+
+.empty {
+  padding: var(--space-24) 0;
+  text-align: center;
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+}
