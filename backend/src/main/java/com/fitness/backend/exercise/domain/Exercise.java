@@ -65,4 +65,14 @@ public class Exercise extends BaseCreatedEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "delt_region", length = 10)
     private DeltRegion deltRegion;
+
+    /**
+     * 종목 계열. 같은 동작의 변형들을 한 묶음으로 본다(V6, LOG-24).
+     *
+     * <p>{@code primaryMuscle}과 다른 축이다 — 저쪽은 "어느 근육을 쓰는가"(판정용),
+     * 이쪽은 "어떤 동작인가"(탐색용)다. 벤치프레스와 체스트프레스는 같은 근육을 쓰지만
+     * 사용자가 고를 때는 다른 동작으로 구분한다.
+     */
+    @Column(name = "group_name", length = 40)
+    private String groupName;
 }

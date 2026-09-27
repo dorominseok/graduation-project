@@ -197,6 +197,33 @@ public final class WorkoutDtos {
     public record CalendarDay(LocalDate date, int sessionCount, boolean hasDraft) {
     }
 
+    /**
+     * 직전 수행 기록(명세 5.5). 종목을 고르는 순간 세트 행을 채우는 데 쓴다.
+     *
+     * <p>세트에 {@code id}를 담지 않는다 — 새 세션에 채워 넣을 참조값이지 편집 대상
+     * 행이 아니다. 프리필된 행은 완료 체크 시점에 새로 저장된다(LOG-05).
+     */
+    public record LastPerformanceResponse(Long exerciseId,
+                                          String exerciseName,
+                                          MeasureType measureType,
+                                          Long sessionId,
+                                          LocalDate performedOn,
+                                          List<LastPerformanceSet> sets) {
+    }
+
+    /** 직전 수행 기록의 세트. 워밍업도 담고 {@code isWarmup}으로 구분한다 */
+    public record LastPerformanceSet(Short setNo,
+                                     BigDecimal weightKg,
+                                     Short reps,
+                                     Integer durationSec,
+                                     boolean isWarmup) {
+
+        public static LastPerformanceSet of(WorkoutSet s) {
+            return new LastPerformanceSet(s.getSetNo(), s.getWeightKg(), s.getReps(),
+                    s.getDurationSec(), s.isWarmup());
+        }
+    }
+
     /** 캘린더 월별 요약(명세 6.8) */
     public record CalendarResponse(int year, int month, List<CalendarDay> days) {
     }

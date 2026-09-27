@@ -19,6 +19,8 @@ import com.fitness.backend.workout.web.WorkoutDtos.CreateSessionRequest;
 import com.fitness.backend.workout.web.WorkoutDtos.CreateSetRequest;
 import com.fitness.backend.workout.web.WorkoutDtos.ExerciseGroup;
 import com.fitness.backend.workout.web.WorkoutDtos.ExerciseRef;
+import com.fitness.backend.workout.web.WorkoutDtos.LastPerformanceResponse;
+import com.fitness.backend.workout.web.WorkoutDtos.LastPerformanceSet;
 import com.fitness.backend.workout.web.WorkoutDtos.SessionResponse;
 import com.fitness.backend.workout.web.WorkoutDtos.SessionSummary;
 import com.fitness.backend.workout.web.WorkoutDtos.SetInGroup;
@@ -41,6 +43,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -219,6 +222,32 @@ public class WorkoutService {
 
         return page.map(session ->
                 toSummary(session, bySession.getOrDefault(session.getId(), List.of()), exercises));
+    }
+
+    /**
+     * 직전 수행 기록(명세 5.5).
+     *
+     * <p>기록이 없으면 빈 값이고 컨트롤러가 204로 바꾼다 — 오류가 아니라
+     * "처음 하는 종목"이라는 정상 상태다.
+     */
+    public Optional<LastPerformanceResponse> findLastPerformance(Long userId, Long exerciseId) {
+        Exercise exercise = exerciseRepository.findById(exerciseId)
+                .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "종목을 찾을 수 없습니다."));
+
+        List<WorkoutSession> sessions = sessionRepository.findLastPerformed(
+                userId, exerciseId, PageRequest.of(0, 1));
+        if (sessions.isEmpty()) {
+            return Optional.empty();
+        }
+
+        WorkoutSession session = sessions.get(0);
+        List<LastPerformanceSet> sets = setRepository
+                .findBySessionIdAndExerciseIdOrderBySetNoAsc(session.getId(), exerciseId).stream()
+                .map(LastPerformanceSet::of)
+                .toList();
+
+        return Optional.of(new LastPerformanceResponse(exerciseId, exercise.getNameKo(),
+                exercise.getMeasureType(), session.getId(), session.getPerformedOn(), sets));
     }
 
     /** 캘린더 월별 요약(명세 6.8). 기록이 있는 날짜만 담는다. */

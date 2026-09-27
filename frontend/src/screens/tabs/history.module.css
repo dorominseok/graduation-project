@@ -1,0 +1,110 @@
+/*
+ * 기록 탭 — 목업의 달력을 그대로 옮긴다.
+ *
+ * 한 달이 여섯 줄에 들어가도록 줄 수를 고정한다. 달마다 줄 수가 바뀌면
+ * 칸 높이가 달라져 같은 화면인데 다르게 보인다.
+ */
+
+.page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: var(--space-8);
+  padding: var(--space-16) var(--space-12) var(--space-12);
+}
+
+.monthBar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-8);
+}
+
+.monthLabel {
+  font-size: var(--font-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.monthNav {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-pill);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-size: var(--font-md);
+}
+
+.weekdays {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.weekday {
+  text-align: center;
+  font-size: var(--font-3xs);
+  color: var(--text-tertiary);
+}
+
+/* 달력이 남은 공간을 전부 쓴다. 한 달을 한눈에 보는 것이 이 탭의 목적이다. */
+.grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+  gap: 3px;
+}
+
+/* 1일 앞의 빈 자리. 이웃 달 날짜를 넣지 않는다 — 누르면 엉뚱한 달로 간다 */
+.blank {
+  display: block;
+}
+
+.cell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.cellToday {
+  border: 1.5px solid var(--accent);
+}
+
+/* 진행 중인 세션이 있는 날. 아직 끝내지 않았다는 뜻이라 테두리를 끊어 둔다 */
+.cellDraft {
+  border: 1.5px dashed var(--warn);
+}
+
+/* 기록 표시. 날짜 아래 점 하나로만 둔다 */
+.dot {
+  width: 5px;
+  height: 5px;
+  margin: 3px auto 0;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+/* 하루에 두 번 이상 운동한 날은 점을 키운다 */
+.dotMany {
+  width: 6px;
+  height: 6px;
+}
+
+.dotDraft {
+  background: var(--warn);
+}

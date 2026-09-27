@@ -24,6 +24,9 @@ public interface WorkoutSetRepository extends JpaRepository<WorkoutSet, Long> {
     /** 히스토리 목록의 세트 수·종목 목록을 한 번에 채운다. 세션마다 조회하면 N+1이다 */
     List<WorkoutSet> findBySessionIdInOrderByRecordedAtAsc(List<Long> sessionIds);
 
+    /** 직전 수행 기록(명세 5.5). {@code setNo} 순서가 곧 수행 순서다 */
+    List<WorkoutSet> findBySessionIdAndExerciseIdOrderBySetNoAsc(Long sessionId, Long exerciseId);
+
     /** 종목 단위 삭제(LOG-22). 그 종목의 세트를 한 번에 지운다 */
     int deleteBySessionIdAndExerciseId(Long sessionId, Long exerciseId);
 }

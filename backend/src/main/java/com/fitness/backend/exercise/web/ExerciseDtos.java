@@ -2,6 +2,7 @@ package com.fitness.backend.exercise.web;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fitness.backend.exercise.domain.BodyPart;
+import com.fitness.backend.exercise.domain.BrowseCategory;
 import com.fitness.backend.exercise.domain.DeltRegion;
 import com.fitness.backend.exercise.domain.Equipment;
 import com.fitness.backend.exercise.domain.Exercise;
@@ -32,12 +33,32 @@ public final class ExerciseDtos {
                                    MeasureType measureType,
                                    Equipment equipment,
                                    DeltRegion deltRegion,
+                                   String groupName,
                                    Boolean isFavorite) {
 
         public static ExerciseResponse of(Exercise e, Boolean isFavorite) {
             return new ExerciseResponse(e.getId(), e.getNameKo(), e.getNameEn(),
                     e.getBodyPart(), e.getPrimaryMuscle(), e.getPushPull(),
-                    e.getMeasureType(), e.getEquipment(), e.getDeltRegion(), isFavorite);
+                    e.getMeasureType(), e.getEquipment(), e.getDeltRegion(),
+                    e.getGroupName(), isFavorite);
         }
+    }
+
+    /**
+     * 부위 그리드의 한 칸(LOG-24).
+     *
+     * <p>종목이 0개인 분류도 내려간다 — 칸이 사라지면 그리드 자리가 밀려
+     * 위치로 기억한 사용자가 다시 찾아야 한다.
+     */
+    public record CategoryCount(BrowseCategory category, String label, long count) {
+    }
+
+    /**
+     * 계열 목록의 한 칸(LOG-24).
+     *
+     * <p>{@code representativeId}는 카드에 이미지를 붙일 때 쓸 대표 종목이다.
+     * 지금은 이미지가 없어 자리만 잡아둔다.
+     */
+    public record GroupCount(String groupName, long count, Long representativeId) {
     }
 }

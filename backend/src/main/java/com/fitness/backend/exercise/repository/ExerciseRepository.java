@@ -4,6 +4,8 @@ import com.fitness.backend.exercise.domain.BodyPart;
 import com.fitness.backend.exercise.domain.Equipment;
 import com.fitness.backend.exercise.domain.Exercise;
 import com.fitness.backend.exercise.domain.MeasureType;
+import java.util.Collection;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -31,11 +33,16 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
                and (:bodyPart is null or e.bodyPart = :bodyPart)
                and (:equipment is null or e.equipment = :equipment)
                and (:measureType is null or e.measureType = :measureType)
+               and (:allMuscles = true or e.primaryMuscle in :muscles)
+               and (:groupName is null or e.groupName = :groupName)
             """)
     Page<Exercise> search(@Param("namePattern") String namePattern,
                           @Param("bodyPart") BodyPart bodyPart,
                           @Param("equipment") Equipment equipment,
                           @Param("measureType") MeasureType measureType,
+                          @Param("allMuscles") boolean allMuscles,
+                          @Param("muscles") Collection<String> muscles,
+                          @Param("groupName") String groupName,
                           Pageable pageable);
 
     /**
@@ -54,6 +61,8 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
                and (:bodyPart is null or e.bodyPart = :bodyPart)
                and (:equipment is null or e.equipment = :equipment)
                and (:measureType is null or e.measureType = :measureType)
+               and (:allMuscles = true or e.primaryMuscle in :muscles)
+               and (:groupName is null or e.groupName = :groupName)
              order by f.createdAt desc
             """)
     Page<Exercise> searchFavorites(@Param("userId") Long userId,
@@ -61,5 +70,32 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
                                    @Param("bodyPart") BodyPart bodyPart,
                                    @Param("equipment") Equipment equipment,
                                    @Param("measureType") MeasureType measureType,
+                                   @Param("allMuscles") boolean allMuscles,
+                                   @Param("muscles") Collection<String> muscles,
+                                   @Param("groupName") String groupName,
                                    Pageable pageable);
+
+    /**
+     * 분류별 종목 수(LOG-24). 부위 그리드의 숫자다.
+     *
+     * <p>{@code primary_muscle}로 세어 돌려주고 12종으로 묶는 것은 서비스가 한다 —
+     * 묶는 규칙이 {@link com.fitness.backend.exercise.domain.BrowseCategory}에 있어서다.
+     */
+    @Query("select e.primaryMuscle, count(e) from Exercise e group by e.primaryMuscle")
+    List<Object[]> countByPrimaryMuscle();
+
+    /**
+     * 한 분류 안의 계열별 종목 수(LOG-24).
+     *
+     * <p>{@code min(e.id)}는 대표 종목이다 — 계열 카드에 이미지를 붙일 때 어느 종목의
+     * 것을 쓸지 정해야 하고, 지금은 이미지가 없으니 자리만 잡아둔다.
+     */
+    @Query("""
+            select e.groupName, count(e), min(e.id)
+              from Exercise e
+             where e.primaryMuscle in :muscles
+             group by e.groupName
+             order by count(e) desc, e.groupName asc
+            """)
+    List<Object[]> countByGroup(@Param("muscles") Collection<String> muscles);
 }

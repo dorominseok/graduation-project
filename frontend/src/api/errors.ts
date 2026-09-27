@@ -19,6 +19,13 @@ export const ErrorCodes = {
   TOKEN_EXPIRED: 'TOKEN_EXPIRED',
   TOKEN_INVALID: 'TOKEN_INVALID',
   EMAIL_ALREADY_EXISTS: 'EMAIL_ALREADY_EXISTS',
+  /** 진행 중인 세션이 이미 있다 (명세 6.2). 새로 만들지 말고 이어쓰기로 보낸다 */
+  DRAFT_SESSION_EXISTS: 'DRAFT_SESSION_EXISTS',
+  /** 세트가 하나도 없는 세션을 종료하려 했다 (명세 6.3) */
+  EMPTY_SESSION: 'EMPTY_SESSION',
+  /** 종목의 측정 유형이 요구하는 값이 빠졌다 (명세 6.4) */
+  INVALID_MEASURE_INPUT: 'INVALID_MEASURE_INPUT',
+  RESOURCE_NOT_FOUND: 'RESOURCE_NOT_FOUND',
   /** 통신 자체가 실패한 경우. 서버가 준 코드가 아니라 클라이언트가 붙인다. */
   NETWORK_ERROR: 'NETWORK_ERROR',
 } as const
