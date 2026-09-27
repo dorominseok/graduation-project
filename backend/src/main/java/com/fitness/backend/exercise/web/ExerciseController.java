@@ -4,7 +4,9 @@ import com.fitness.backend.auth.jwt.JwtProvider;
 import com.fitness.backend.common.web.ApiV1Controller;
 import com.fitness.backend.common.web.PageResponse;
 import com.fitness.backend.exercise.domain.BodyPart;
+import com.fitness.backend.exercise.domain.BrowseCategory;
 import com.fitness.backend.exercise.domain.Equipment;
+import java.util.List;
 import com.fitness.backend.exercise.domain.MeasureType;
 import com.fitness.backend.exercise.service.ExerciseService;
 import org.springframework.data.domain.Pageable;
@@ -40,6 +42,8 @@ public class ExerciseController {
             @RequestParam(required = false) BodyPart bodyPart,
             @RequestParam(required = false) Equipment equipment,
             @RequestParam(required = false) MeasureType measureType,
+            @RequestParam(required = false) BrowseCategory category,
+            @RequestParam(required = false) String group,
             @RequestParam(defaultValue = "false") boolean favorite,
             @PageableDefault(size = 20, sort = "nameKo", direction = Sort.Direction.ASC)
             Pageable pageable) {
@@ -47,7 +51,24 @@ public class ExerciseController {
         Long userId = principal == null ? null : principal.userId();
         return PageResponse.from(
                 exerciseService.search(userId, blankToNull(q), bodyPart, equipment,
-                        measureType, favorite, pageable));
+                        measureType, category, blankToNull(group), favorite, pageable));
+    }
+
+    /**
+     * 부위 그리드(LOG-24). 종목 선택 1단계.
+     *
+     * <p>109종을 한 목록에 늘어놓으면 검색 말고는 찾을 방법이 없어, 부위에서
+     * 계열로, 계열에서 변형으로 좁혀 들어가는 3단 구조를 쓴다.
+     */
+    @GetMapping("/categories")
+    public List<ExerciseDtos.CategoryCount> categories() {
+        return exerciseService.categories();
+    }
+
+    /** 한 분류의 계열 목록(LOG-24). 종목 선택 2단계. */
+    @GetMapping("/groups")
+    public List<ExerciseDtos.GroupCount> groups(@RequestParam BrowseCategory category) {
+        return exerciseService.groups(category);
     }
 
     @GetMapping("/{exerciseId}")

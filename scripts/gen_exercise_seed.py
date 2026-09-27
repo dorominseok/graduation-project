@@ -20,7 +20,7 @@ SQL_PATH = ROOT / "backend/src/main/resources/db/migration/R__seed_exercises.sql
 
 COLUMNS = [
     "name_ko", "name_en", "body_part", "primary_muscle",
-    "push_pull", "measure_type", "equipment", "delt_region",
+    "push_pull", "measure_type", "equipment", "delt_region", "group_name",
 ]
 # UPSERT 시 갱신 대상 (자연키인 name_ko 제외)
 UPDATED = COLUMNS[1:]

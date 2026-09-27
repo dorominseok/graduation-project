@@ -2,15 +2,22 @@ package com.fitness.backend.exercise.service;
 
 import com.fitness.backend.common.error.ApiException;
 import com.fitness.backend.exercise.domain.BodyPart;
+import com.fitness.backend.exercise.domain.BrowseCategory;
 import com.fitness.backend.exercise.domain.Equipment;
 import com.fitness.backend.exercise.domain.Exercise;
 import com.fitness.backend.exercise.domain.MeasureType;
 import com.fitness.backend.exercise.domain.UserFavoriteExercise;
 import com.fitness.backend.exercise.repository.ExerciseRepository;
 import com.fitness.backend.exercise.repository.UserFavoriteExerciseRepository;
+import com.fitness.backend.exercise.web.ExerciseDtos.CategoryCount;
 import com.fitness.backend.exercise.web.ExerciseDtos.ExerciseResponse;
+import com.fitness.backend.exercise.web.ExerciseDtos.GroupCount;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -42,14 +49,46 @@ public class ExerciseService {
      */
     public Page<ExerciseResponse> search(Long userId, String q, BodyPart bodyPart,
                                          Equipment equipment, MeasureType measureType,
+                                         BrowseCategory category, String groupName,
                                          boolean favoriteOnly, Pageable pageable) {
         String namePattern = namePattern(q);
+        // 분류를 지정하지 않으면 in 절을 건너뛴다. 빈 컬렉션을 넘기면 아무것도 안 나온다.
+        boolean allMuscles = category == null;
+        Collection<String> muscles = category == null ? List.of("") : category.primaryMuscles();
+
         Page<Exercise> page = favoriteOnly && userId != null
-                ? exerciseRepository.searchFavorites(userId, namePattern, bodyPart, equipment, measureType, pageable)
-                : exerciseRepository.search(namePattern, bodyPart, equipment, measureType, pageable);
+                ? exerciseRepository.searchFavorites(userId, namePattern, bodyPart, equipment, measureType,
+                        allMuscles, muscles, groupName, pageable)
+                : exerciseRepository.search(namePattern, bodyPart, equipment, measureType,
+                        allMuscles, muscles, groupName, pageable);
 
         Set<Long> favorites = favoriteIds(userId, page.getContent());
         return page.map(e -> toResponse(e, userId, favorites));
+    }
+
+    /**
+     * 부위 그리드(LOG-24). 12종 분류와 각 종목 수를 준다.
+     *
+     * <p>종목이 없는 분류도 담는다 — 그리드에서 칸이 사라지면 자리가 밀려
+     * 사용자가 위치로 기억한 것을 다시 찾아야 한다.
+     */
+    public List<CategoryCount> categories() {
+        Map<String, Long> byMuscle = exerciseRepository.countByPrimaryMuscle().stream()
+                .collect(Collectors.toMap(row -> (String) row[0], row -> (Long) row[1]));
+
+        return Arrays.stream(BrowseCategory.values())
+                .map(category -> new CategoryCount(category, category.label(),
+                        category.primaryMuscles().stream()
+                                .mapToLong(muscle -> byMuscle.getOrDefault(muscle, 0L))
+                                .sum()))
+                .toList();
+    }
+
+    /** 한 분류 안의 계열 목록(LOG-24). 종목이 많은 계열이 앞에 온다. */
+    public List<GroupCount> groups(BrowseCategory category) {
+        return exerciseRepository.countByGroup(category.primaryMuscles()).stream()
+                .map(row -> new GroupCount((String) row[0], (Long) row[1], (Long) row[2]))
+                .toList();
     }
 
     /** 종목 단건(명세 5.3). */

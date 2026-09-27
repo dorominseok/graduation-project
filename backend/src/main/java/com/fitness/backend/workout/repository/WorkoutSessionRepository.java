@@ -51,6 +51,29 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
                                 Pageable pageable);
 
     /**
+     * 그 종목을 마지막으로 수행한 세션(명세 5.5).
+     *
+     * <p>정렬이 {@code performedOn} 우선인 것은 {@code BACKFILL} 때문이다 — 어제 운동을
+     * 오늘 입력하면 저장 시각이 가장 최근이 되므로, 저장 시각으로 정렬하면 오늘 입력한
+     * 과거 기록이 "직전 수행"으로 올라온다.
+     *
+     * <p>같은 날짜에 세션이 둘일 수 있어(명세 6.1) 그 종목의 마지막 저장 시각으로 한 번 더 가른다.
+     */
+    @Query("""
+            select s from WorkoutSession s
+            where s.userId = :userId
+              and s.status = com.fitness.backend.workout.domain.SessionStatus.DONE
+              and exists (select 1 from WorkoutSet w
+                          where w.sessionId = s.id and w.exerciseId = :exerciseId)
+            order by s.performedOn desc,
+                     (select max(w2.recordedAt) from WorkoutSet w2
+                      where w2.sessionId = s.id and w2.exerciseId = :exerciseId) desc
+            """)
+    List<WorkoutSession> findLastPerformed(@Param("userId") Long userId,
+                                           @Param("exerciseId") Long exerciseId,
+                                           Pageable pageable);
+
+    /**
      * 캘린더 월별 요약(명세 6.8).
      *
      * <p>DB에서 집계하지 않고 그 달의 세션을 그대로 읽어 메모리에서 묶는다 —

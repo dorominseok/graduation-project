@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fitness.backend.auth.service.AuthService;
+import com.fitness.backend.exercise.domain.BrowseCategory;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -227,5 +228,110 @@ class ExerciseApiTest {
         mvc.perform(put("/api/v1/users/me/favorite-exercises/{id}", BENCH_PRESS))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
+    }
+
+    // ── 3단 탐색 (5.6·5.7, LOG-24)
+
+    /** 응답 본문에서 {@code "이름":숫자} 꼴의 값을 모두 더한다. */
+    private static long sumOf(String field, String body) {
+        Matcher m = Pattern.compile("\"" + field + "\":([0-9]+)").matcher(body);
+        long sum = 0;
+        while (m.find()) {
+            sum += Long.parseLong(m.group(1));
+        }
+        return sum;
+    }
+
+    private String getBody(String url, String... params) throws Exception {
+        var request = get(url);
+        for (int i = 0; i < params.length; i += 2) {
+            request = request.param(params[i], params[i + 1]);
+        }
+        return mvc.perform(request)
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+    }
+
+    @Test
+    @DisplayName("분류가 시드 종목을 하나도 빠뜨리거나 겹치지 않고 나눠 갖는다")
+    void categoriesPartitionEveryExercise() throws Exception {
+        String categories = mvc.perform(get("/api/v1/exercises/categories"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                // enum 상수가 하나도 빠지지 않는다
+                .andExpect(jsonPath("$.length()").value(BrowseCategory.values().length))
+                .andExpect(jsonPath("$[0].label").isNotEmpty())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        // 합이 전체와 같으면 누락도 중복도 없다는 뜻이다.
+        assertThat(sumOf("count", categories))
+                .isEqualTo(sumOf("totalElements", getBody("/api/v1/exercises", "size", "1")));
+    }
+
+    @Test
+    @DisplayName("계열이 그 분류의 종목을 남김없이 나눠 갖는다 — group_name이 빈 종목이 없다")
+    void groupsPartitionTheCategory() throws Exception {
+        for (BrowseCategory category : BrowseCategory.values()) {
+            String groups = getBody("/api/v1/exercises/groups", "category", category.name());
+            String inCategory = getBody("/api/v1/exercises", "category", category.name(), "size", "1");
+
+            assertThat(sumOf("count", groups))
+                    .as("분류 %s의 계열 합계", category)
+                    .isEqualTo(sumOf("totalElements", inCategory));
+        }
+    }
+
+    @Test
+    @DisplayName("계열로 좁히면 그 계열 종목만 나온다")
+    void groupFilterNarrowsToOneGroup() throws Exception {
+        String groups = getBody("/api/v1/exercises/groups", "category", "CHEST");
+        Matcher first = Pattern.compile("\"groupName\":\"([^\"]+)\"").matcher(groups);
+        assertThat(first.find()).isTrue();
+        String groupName = first.group(1);
+
+        mvc.perform(get("/api/v1/exercises")
+                        .param("category", "CHEST")
+                        .param("group", groupName)
+                        .param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].groupName")
+                        .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is(groupName))));
+    }
+
+    @Test
+    @DisplayName("계열 목록은 대표 종목 id를 함께 준다 — 카드에 그림을 붙일 자리다")
+    void groupsCarryRepresentative() throws Exception {
+        mvc.perform(get("/api/v1/exercises/groups").param("category", "CHEST"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].groupName").isNotEmpty())
+                .andExpect(jsonPath("$[0].representativeId").isNumber());
+    }
+
+    @Test
+    @DisplayName("종목 목록 응답에 계열 이름이 담긴다")
+    void listExposesGroupName() throws Exception {
+        mvc.perform(get("/api/v1/exercises").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].groupName").isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("계열 목록은 분류를 반드시 받아야 한다")
+    void groupsRequireCategory() throws Exception {
+        mvc.perform(get("/api/v1/exercises/groups"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    @DisplayName("없는 분류를 보내면 400이다 — 조용히 빈 목록을 주지 않는다")
+    void unknownCategoryIsRejected() throws Exception {
+        mvc.perform(get("/api/v1/exercises/groups").param("category", "NECK"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        mvc.perform(get("/api/v1/exercises").param("category", "NECK"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 }
