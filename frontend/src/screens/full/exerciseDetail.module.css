@@ -4,12 +4,20 @@
   padding: var(--space-16) var(--space-16) var(--space-32);
 }
 
-/* 동작 그림이 들어갈 자리 */
+/* 동작 그림. 시작·끝 두 장을 같은 크기로 나란히 둔다 */
 .hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   width: 100%;
-  aspect-ratio: 16 / 9;
   border-radius: var(--radius-lg);
-  background: var(--surface-muted, rgba(127, 127, 127, 0.08));
+  overflow: hidden;
+}
+
+.heroShot {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: contain;
 }
 
 .nameEn {

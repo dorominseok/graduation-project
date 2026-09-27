@@ -120,6 +120,8 @@ export interface GroupCount {
   groupName: string
   count: number
   representativeId: number | null
+  /** 계열 카드 그림의 파일명을 만드는 데 쓴다 (LOG-24) */
+  representativeNameEn: string | null
 }
 
 /** 종목 한 건 (명세 5.2·5.3). `isFavorite`는 인증된 요청에만 담긴다. */
