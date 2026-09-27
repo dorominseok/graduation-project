@@ -740,8 +740,10 @@ Authorization: Bearer {accessToken}
 
 ```json
 [
-  { "groupName": "체스트프레스", "count": 6, "representativeId": 3 },
-  { "groupName": "벤치프레스",   "count": 5, "representativeId": 1 }
+  { "groupName": "체스트프레스", "count": 6, "representativeId": 3,
+    "representativeNameEn": "Decline Smith Press" },
+  { "groupName": "벤치프레스",   "count": 5, "representativeId": 1,
+    "representativeNameEn": "Decline Barbell Bench Press" }
 ]
 ```
 
@@ -749,7 +751,10 @@ Authorization: Bearer {accessToken}
 |---|---|
 | `groupName` | `exercises.group_name` (`V6`). `GET /exercises?category=&group=`에 그대로 넣는다 |
 | `count` | 그 계열의 변형 수 |
-| `representativeId` | 계열 카드에 쓸 대표 종목 id. 동작 그림을 붙일 때 쓴다 |
+| `representativeId` | 계열 카드에 쓸 대표 종목 id |
+| `representativeNameEn` | 그 대표 종목의 영문명. 계열 카드 **동작 그림의 파일명**을 만드는 데 쓴다 — 그림이 `{영문명 슬러그}-{1,2}.webp`라서 id만으로는 어느 그림인지 알 수 없다 |
+
+> 동작 그림은 백엔드를 거치지 않는다. `exercises`에 `image_url` 컬럼을 두지 않고 프론트의 정적 파일로 두었다 — 사용자가 올리는 것이 아니라 제품에 딸려오는 고정 자산이라 코드와 같이 버전이 매겨지는 편이 맞고, 컬럼을 두면 그림이 없는 종목까지 채워야 한다. 출처와 라이선스는 `frontend/public/exercises/CREDITS.md`에 있다.
 
 > 계열은 109종 전부가 값을 가지며 40개다. `primary_muscle`이 "어느 근육을 쓰는가"(판정용)인 반면 `group_name`은 "어떤 동작인가"(탐색용)다 — 벤치프레스와 체스트프레스는 같은 근육을 쓰지만 고를 때는 다른 동작이다(LOG-24).
 
@@ -1480,6 +1485,7 @@ workout_session (한 번의 운동)
 | `V5__exercises_name_ko_collate_c.sql` | `exercises.nameKo` 정렬을 `C` 콜레이션으로. 한글 이름 정렬이 DB 로케일에 따라 달라지는 것을 고정 | 완료 (9월 3주) |
 | `V6__add_exercise_group.sql` | `exercises.group_name`(VARCHAR 40) + 인덱스. 종목 선택 3단 탐색의 계열 축(5.7, LOG-24). 분류 12종은 컬럼 없이 `primary_muscle`에서 파생하므로 이 한 컬럼이 전부다 | 완료 (9월 4주) |
 | 계열 값 채우기 | 109종 전부에 `group_name` 입력(40개 계열). 시드 CSV와 `R__seed_exercises.sql`에서 관리 | 완료 (9월 4주) |
+| `password_reset_tokens` 테이블 | 비밀번호 재설정(4.8 주석). 문서 곳곳에 `V5`로 적혀 있으나 `V5`·`V6`이 이미 쓰여 실제로는 **`V7`**이다. d1에서 떼어 검증 이후로 미뤘다(LOG-25) | 검증 이후 |
 | 세션 생성 멱등 키 | `BACKFILL` 세션의 재전송 중복 방지(`clientSessionId`). 6.2 주석의 미결 항목이며, 오프라인 쓰기 큐 범위와 함께 판단 | 미정 |
 | `routines` FK | `workout_sessions.routine_id`는 컬럼만 존재. `routines` 생성 시 FK 마이그레이션 | 10월 |
 | 요약 배지 문안 | `summaryBadge` label 및 `MIXED` 표기 확정 (8.2). enum `key`는 고정 | 화면 구현 시 |
