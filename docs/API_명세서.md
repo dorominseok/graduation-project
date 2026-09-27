@@ -579,6 +579,8 @@ Authorization: Bearer {accessToken}
 |---|---|---|
 | `q` | string | `nameKo` / `nameEn` 부분 일치 검색 |
 | `bodyPart` | enum | 6종 중 하나로 필터 |
+| `category` | enum | **탐색 분류 12종** 중 하나로 필터 (5.6, LOG-24) |
+| `group` | string | **계열**로 필터. `category`와 함께 쓴다 (5.7, LOG-24) |
 | `equipment` | enum | 기구로 필터 |
 | `measureType` | enum | 측정 유형으로 필터 |
 | `favorite` | boolean | `true`면 내 즐겨찾기 종목만. 인증 없이 호출하면 무시 |
@@ -597,6 +599,7 @@ Authorization: Bearer {accessToken}
   "measureType": "WEIGHT_REPS",
   "equipment": "BARBELL",
   "deltRegion": null,
+  "groupName": "벤치프레스",
   "isFavorite": true
 }
 ```
@@ -604,6 +607,7 @@ Authorization: Bearer {accessToken}
 | 필드 | 설명 |
 |---|---|
 | `deltRegion` | `FRONT` \| `REAR` \| `null`. `primaryMuscle`가 `shoulders`인 종목만 값(8.1). 화면 종목 분류엔 쓰지 않고, 분석 판정 참고용 |
+| `groupName` | 같은 동작의 변형 묶음 (`V6`, LOG-24). 109종 전부 값을 갖는다 |
 | `isFavorite` | 내 즐겨찾기 여부. **인증된 요청에만** 포함하고, 비인증 요청에선 키 생략 |
 
 **종목 목록의 세 탭 (목업)**
@@ -611,7 +615,7 @@ Authorization: Bearer {accessToken}
 | 탭 | 산출 |
 |---|---|
 | 최근 사용 | 프론트가 `GET /workout-sessions` 이력에서 최근 등장 `exerciseId` 순으로 계산. 별도 엔드포인트 없음. 근거 필드는 6.6 응답의 `exercises[].id`이며, 배열이 수행 순서로 정렬돼 있으므로 세션을 `performedOn` 내림차순으로 훑으며 처음 만나는 순서가 곧 최근 사용 순이다 |
-| 부위별 | `GET /exercises?bodyPart=` — 부위 6종으로 필터. 목업의 부위 그리드에 표시되는 **부위별 종목 수**는 페이지 envelope의 `totalElements`로 얻는다(부위마다 1회 요청) |
+| 부위별 | **3단 드릴다운** (LOG-24). `GET /exercises/categories`로 분류 12종과 개수를 한 번에 받고 → `GET /exercises/groups?category=`로 계열을 받고 → `GET /exercises?category=&group=`으로 변형을 받는다. 부위마다 1회씩 6번 세던 방식은 폐기 |
 | 즐겨찾기 | `GET /exercises?favorite=true&sort=` — 서버가 `user_favorite_exercises` 기준. 정렬은 `createdAt,desc` 고정(별표 누른 순) |
 
 ### 5.3 GET /exercises/{id}
@@ -683,6 +687,72 @@ Authorization: Bearer {accessToken}
 | `id`가 없는 종목 | `404 RESOURCE_NOT_FOUND` |
 
 > 개인 기록이므로 `GET /exercises`와 달리 인증이 필요하다. 부록 B의 비인증 목록에 넣지 않는다.
+
+### 5.6 GET /exercises/categories
+
+종목 선택 1단계 (LOG-24). 5.2보다 앞선 단계지만 나중에 신설해 번호가 뒤에 붙었다.
+
+**응답 `200 OK`** — 분류 12종 배열. 페이지 envelope을 쓰지 않는다(항상 12개, 고정).
+
+```json
+[
+  { "category": "CHEST", "label": "가슴", "count": 18 },
+  { "category": "BACK",  "label": "등",   "count": 8 }
+]
+```
+
+| 필드 | 설명 |
+|---|---|
+| `category` | `GET /exercises?category=`에 그대로 넣는 값 |
+| `label` | 화면에 적을 한글 이름. 서버가 준다 — 클라이언트마다 다르게 부르면 안 된다 |
+| `count` | 그 분류의 종목 수. `GROUP BY primary_muscle` 한 번으로 12개를 모두 센다 |
+
+**분류 12종과 `primary_muscle` 대응**
+
+| 분류 | `label` | `primary_muscle` | 종목 수 |
+|---|---|---|---|
+| `CHEST` | 가슴 | `chest` | 18 |
+| `ABS` | 복부 | `abdominals` | 16 |
+| `LEGS` | 하체 | `quadriceps`, `hamstrings` | 15 |
+| `TRICEPS` | 삼두 | `triceps` | 14 |
+| `SHOULDERS` | 어깨 | `shoulders` | 13 |
+| `BACK` | 등 | `lats`, `middle back` | 8 |
+| `TRAPS` | 승모근 | `traps` | 7 |
+| `BICEPS` | 이두 | `biceps` | 7 |
+| `FOREARMS` | 전완 | `forearms` | 3 |
+| `GLUTES` | 엉덩이 | `glutes`, `abductors` | 3 |
+| `CALVES` | 종아리 | `calves` | 3 |
+| `LOWER_BACK` | 허리 | `lower back` | 2 |
+
+> **컬럼을 추가하지 않았다.** 이 표는 `BrowseCategory` enum 안에 있고 기존 `primary_muscle` 값에서 파생한다. 분류를 고치려면 enum 한 곳만 고친다. 분석의 판정 부위 9종(8.1)과는 다른 축이므로 서로 영향을 주지 않는다.
+
+### 5.7 GET /exercises/groups
+
+종목 선택 2단계 (LOG-24). 한 분류 안의 계열 목록이다.
+
+**쿼리 파라미터**
+
+| 파라미터 | 타입 | 설명 |
+|---|---|---|
+| `category` | enum | **필수.** 5.6의 `category` 값 |
+
+**응답 `200 OK`** — 계열 배열. 종목 수 내림차순.
+
+```json
+[
+  { "groupName": "체스트프레스", "count": 6, "representativeId": 3 },
+  { "groupName": "벤치프레스",   "count": 5, "representativeId": 1 }
+]
+```
+
+| 필드 | 설명 |
+|---|---|
+| `groupName` | `exercises.group_name` (`V6`). `GET /exercises?category=&group=`에 그대로 넣는다 |
+| `count` | 그 계열의 변형 수 |
+| `representativeId` | 계열 카드에 쓸 대표 종목 id. 동작 그림을 붙일 때 쓴다 |
+
+> 계열은 109종 전부가 값을 가지며 40개다. `primary_muscle`이 "어느 근육을 쓰는가"(판정용)인 반면 `group_name`은 "어떤 동작인가"(탐색용)다 — 벤치프레스와 체스트프레스는 같은 근육을 쓰지만 고를 때는 다른 동작이다(LOG-24).
+
 ---
 
 ## 6. 운동 기록 API
@@ -1407,6 +1477,9 @@ workout_session (한 번의 운동)
 | `V3__auth_profile_exercise_meta.sql` | ① `refresh_tokens` 테이블 ② `users.goal` 1컬럼 ③ `exercises.delt_region` ④ `user_favorite_exercises` 테이블 (2.4) | 완료 (9월 1주) |
 | `exercises.delt_region` 값 채우기 | `primary_muscle = 'shoulders'`인 13개 종목에 `FRONT`/`REAR` 입력. 배분 기준은 LOG-09 표 | 완료 (9월 1주) |
 | `V4__add_client_set_id.sql` | `workout_sets.client_set_id`(UUID NOT NULL) + `UNIQUE (session_id, client_set_id)`. 세트 저장 멱등 키(6.4). `V3`가 이미 적용된 뒤이므로 별도 버전으로 올린다 | 완료 (9월 1주) |
+| `V5__exercises_name_ko_collate_c.sql` | `exercises.nameKo` 정렬을 `C` 콜레이션으로. 한글 이름 정렬이 DB 로케일에 따라 달라지는 것을 고정 | 완료 (9월 3주) |
+| `V6__add_exercise_group.sql` | `exercises.group_name`(VARCHAR 40) + 인덱스. 종목 선택 3단 탐색의 계열 축(5.7, LOG-24). 분류 12종은 컬럼 없이 `primary_muscle`에서 파생하므로 이 한 컬럼이 전부다 | 완료 (9월 4주) |
+| 계열 값 채우기 | 109종 전부에 `group_name` 입력(40개 계열). 시드 CSV와 `R__seed_exercises.sql`에서 관리 | 완료 (9월 4주) |
 | 세션 생성 멱등 키 | `BACKFILL` 세션의 재전송 중복 방지(`clientSessionId`). 6.2 주석의 미결 항목이며, 오프라인 쓰기 큐 범위와 함께 판단 | 미정 |
 | `routines` FK | `workout_sessions.routine_id`는 컬럼만 존재. `routines` 생성 시 FK 마이그레이션 | 10월 |
 | 요약 배지 문안 | `summaryBadge` label 및 `MIXED` 표기 확정 (8.2). enum `key`는 고정 | 화면 구현 시 |
