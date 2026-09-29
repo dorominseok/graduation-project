@@ -106,7 +106,9 @@ public class WorkoutService {
         }
 
         WorkoutSession session = sessionRepository.save(
-                WorkoutSession.start(userId, performedOn, source, request.routineId()));
+                // 루틴 연결은 routines 테이블이 생기는 10월부터다(명세 6.2). 그전까지
+                // 아무 번호나 받으면 참조 없는 값이 쌓여 나중에 FK를 걸 수 없다.
+                WorkoutSession.start(userId, performedOn, source, null));
         return SessionResponse.of(session, List.of());
     }
 
@@ -132,9 +134,10 @@ public class WorkoutService {
         validateMeasureInput(measureType, request);
 
         OffsetDateTime recordedAt = OffsetDateTime.now(clock);
-        short setNo = request.setNo() != null
-                ? request.setNo().shortValue()
-                : (short) (setRepository.countBySessionIdAndExerciseId(sessionId, request.exerciseId()) + 1);
+        // 순번은 서버가 매긴다. 클라이언트가 정하게 두면 같은 번호를 두 번 보내
+        // 1세트가 두 줄이 된다 — 화면이 세트를 셀 근거가 없어진다.
+        short setNo = (short) (setRepository
+                .countBySessionIdAndExerciseId(sessionId, request.exerciseId()) + 1);
 
         // 측정 유형이 쓰지 않는 값은 담지 않는다. 맨몸 운동에 중량이 들어가면
         // 볼륨 집계가 부풀려져 부족한 부위를 충분한 것으로 오판한다.

@@ -30,8 +30,7 @@ public final class WorkoutDtos {
      */
     public record CreateSessionRequest(
             @NotNull(message = "필수 항목입니다.") LocalDate performedOn,
-            SessionSource source,
-            Long routineId) {
+            SessionSource source) {
 
         public SessionSource sourceOrDefault() {
             return source == null ? SessionSource.LIVE : source;
@@ -53,8 +52,7 @@ public final class WorkoutDtos {
             BigDecimal weightKg,
             @Min(value = 1, message = "1 이상이어야 합니다.") Integer reps,
             @Min(value = 1, message = "1 이상이어야 합니다.") Integer durationSec,
-            Boolean isWarmup,
-            @Min(value = 1, message = "1 이상이어야 합니다.") Integer setNo) {
+            Boolean isWarmup) {
 
         public boolean warmupOrDefault() {
             return Boolean.TRUE.equals(isWarmup);
