@@ -10,14 +10,15 @@ import {
   PUSH_PULL_LABEL,
 } from './exerciseLabels'
 import { exerciseImage, hideOnError } from './exerciseImage'
+import { OneRmTrendPanel } from '../analysis/OneRmTrendPanel'
 import styles from './exerciseDetail.module.css'
 
 /**
  * 종목 상세 (명세 5.3).
  *
- * 추정 1RM 추이와 세트별 강도는 통계 API(7.1·7.2)가 붙는 10월에 채운다.
- * 지금은 종목 정보와 직전 수행 기록만 보여준다 — 목록에서 눌렀을 때
- * 빈 화면이 나오면 거기서 길이 끊긴다.
+ * 종목 정보, 직전 수행 기록, 그리고 중량·횟수 종목이면 추정 1RM 추이(7.1)를
+ * 보여준다. 추이 패널은 분석 탭 통계와 같은 것이다 — 성장을 보려는 사람이
+ * 어느 쪽으로 들어오든 같은 그림을 보게 한다.
  */
 export function ExerciseDetailScreen() {
   const { exerciseId } = useParams()
@@ -161,6 +162,14 @@ export function ExerciseDetailScreen() {
           </div>
         ) : (
           <div className={styles.empty}>아직 기록이 없어요</div>
+        )}
+
+        {/* 맨몸·시간 종목은 Epley 공식의 전제인 중량이 없어 서버가 추정하지 않는다 */}
+        {exercise.measureType === 'WEIGHT_REPS' && (
+          <>
+            <div className={styles.sectionTitle}>추정 1RM 추이</div>
+            <OneRmTrendPanel exerciseId={exercise.id} />
+          </>
         )}
       </div>
     </>
