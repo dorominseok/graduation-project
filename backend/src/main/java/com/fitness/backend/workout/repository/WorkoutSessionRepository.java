@@ -81,4 +81,13 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
      * 늘 때마다 쿼리를 고쳐야 한다.
      */
     List<WorkoutSession> findByUserIdAndPerformedOnBetween(Long userId, LocalDate from, LocalDate to);
+
+    /**
+     * 판정 신뢰도용 완료 세션 수(명세 8.2 {@code confidence}).
+     *
+     * <p>세트가 아니라 <b>세션</b>을 센다. 같은 기간에 세트 40개가 쌓였어도 그게
+     * 두 번의 운동에서 나왔다면 주당 평균이라는 말 자체가 성립하지 않는다.
+     */
+    int countByUserIdAndStatusAndPerformedOnBetween(Long userId, SessionStatus status,
+                                                    LocalDate from, LocalDate to);
 }
