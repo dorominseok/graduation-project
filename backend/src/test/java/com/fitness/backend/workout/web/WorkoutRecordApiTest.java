@@ -329,6 +329,36 @@ class WorkoutRecordApiTest {
         return "Bearer " + authService.signUp(email, "hunter2hunter2", "민석").tokens().accessToken();
     }
 
+    @Test
+    @DisplayName("세트 번호는 클라이언트가 정할 수 없다 — 보내도 서버가 매긴 순번이 나온다")
+    void setNoIsServerAssigned() throws Exception {
+        long sessionId = startLiveSession();
+
+        // 요청에 setNo를 실어도 무시된다. 받아주면 같은 번호를 두 번 보내
+        // 1세트가 두 줄이 되고, 화면이 세트를 셀 근거가 없어진다.
+        postSet(sessionId, "{\"clientSetId\":\"" + UUID.randomUUID() + "\",\"exerciseId\":"
+                + benchPress + ",\"weightKg\":60.0,\"reps\":12,\"setNo\":9}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.setNo").value(1));
+
+        postSet(sessionId, weightSet(benchPress, "70.0", 10))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.setNo").value(2));
+    }
+
+    @Test
+    @DisplayName("루틴 번호는 아직 받지 않는다 — routines 테이블이 없어 참조 없는 값이 남는다")
+    void routineIdIsNotAccepted() throws Exception {
+        // 보내도 저장되지 않는다. 응답의 routineId는 컬럼 값 그대로 null이다.
+        mvc.perform(post("/api/v1/workout-sessions")
+                        .header(HttpHeaders.AUTHORIZATION, bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"performedOn\":\"" + LocalDate.now()
+                                + "\",\"source\":\"LIVE\",\"routineId\":7}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.routineId").isEmpty());
+    }
+
     private long startLiveSession() throws Exception {
         return createSession(LocalDate.now(), "LIVE");
     }

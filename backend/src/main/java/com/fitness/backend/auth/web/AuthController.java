@@ -1,5 +1,8 @@
 package com.fitness.backend.auth.web;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import com.fitness.backend.auth.jwt.JwtProvider;
 import com.fitness.backend.auth.service.AuthService;
 import com.fitness.backend.auth.service.TokenPair;
@@ -30,6 +33,11 @@ public class AuthController {
     }
 
     /** 회원가입. 가입 후 바로 로그인 상태가 되도록 토큰을 함께 준다 — 로그인 왕복이 없다. */
+    @Operation(summary = "회원가입")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "가입 성공 — 액세스 토큰과 리프레시 쿠키 발급"),
+            @ApiResponse(responseCode = "409", description = "이미 쓰는 이메일 (DUPLICATE_EMAIL)")
+    })
     @PostMapping("/signup")
     public ResponseEntity<AuthDtos.TokenResponse> signUp(@Valid @RequestBody AuthDtos.SignUpRequest request) {
         AuthService.AuthResult result =
@@ -40,6 +48,11 @@ public class AuthController {
                         result.tokens().accessToken(), result.tokens().expiresInSeconds(), result.user()));
     }
 
+    @Operation(summary = "로그인")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "로그인 성공 — 액세스 토큰과 리프레시 쿠키 발급"),
+            @ApiResponse(responseCode = "401", description = "이메일 또는 비밀번호가 맞지 않음")
+    })
     @PostMapping("/login")
     public ResponseEntity<AuthDtos.TokenResponse> login(@Valid @RequestBody AuthDtos.LoginRequest request) {
         AuthService.AuthResult result = authService.login(request.email(), request.password());
@@ -59,6 +72,11 @@ public class AuthController {
      * 토큰이 만료되는 순간 여러 요청이 동시에 401을 받으므로, API 클라이언트가
      * 재발급을 하나로 묶고 나머지는 그 결과를 기다렸다 재시도하게 한다(명세 4.3).
      */
+    @Operation(summary = "액세스 토큰 재발급")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "재발급 성공 — 리프레시 토큰도 회전된다"),
+            @ApiResponse(responseCode = "401", description = "쿠키가 없거나 이미 쓴 토큰 — 재사용이 감지되면 해당 계열을 전부 폐기한다")
+    })
     @PostMapping("/refresh")
     public ResponseEntity<AuthDtos.RefreshResponse> refresh(HttpServletRequest request) {
         String raw = refreshCookies.read(request)
@@ -73,6 +91,10 @@ public class AuthController {
         }
     }
 
+    @Operation(summary = "로그아웃")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "리프레시 토큰 폐기와 쿠키 만료 완료")
+    })
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
                                        HttpServletRequest request) {

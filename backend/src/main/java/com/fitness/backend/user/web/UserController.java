@@ -1,5 +1,8 @@
 package com.fitness.backend.user.web;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import com.fitness.backend.auth.jwt.JwtProvider;
 import com.fitness.backend.auth.web.RefreshCookies;
 import com.fitness.backend.common.web.ApiV1Controller;
@@ -27,11 +30,20 @@ public class UserController {
         this.refreshCookies = refreshCookies;
     }
 
+    @Operation(summary = "내 정보 조회")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "프로필")
+    })
     @GetMapping
     public UserDtos.MeResponse me(@AuthenticationPrincipal JwtProvider.AuthenticatedUser principal) {
         return UserDtos.MeResponse.from(userService.get(principal.userId()));
     }
 
+    @Operation(summary = "내 정보 수정")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "수정된 프로필"),
+            @ApiResponse(responseCode = "400", description = "값이 올바르지 않음")
+    })
     @PatchMapping
     public UserDtos.MeResponse update(@AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
                                       @Valid @RequestBody UserDtos.UpdateMeRequest request) {
@@ -44,6 +56,11 @@ public class UserController {
      * <p>성공하면 리프레시 토큰이 전부 폐기되므로 쿠키도 함께 만료시킨다 — 죽은
      * 쿠키를 남겨두면 클라이언트가 그걸로 재발급을 시도하고 실패만 반복한다(4.3).
      */
+    @Operation(summary = "비밀번호 변경")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "변경 완료"),
+            @ApiResponse(responseCode = "401", description = "현재 비밀번호가 맞지 않음")
+    })
     @PatchMapping("/password")
     public ResponseEntity<Void> changePassword(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
@@ -55,6 +72,10 @@ public class UserController {
     }
 
     /** 회원 탈퇴. 계정과 기록을 되돌릴 수 없게 지우고 리프레시 쿠키도 만료시킨다. */
+    @Operation(summary = "회원 탈퇴")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "계정과 기록이 모두 삭제됨 — 되돌릴 수 없다")
+    })
     @DeleteMapping
     public ResponseEntity<Void> delete(@AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
                                        @Valid @RequestBody UserDtos.DeleteMeRequest request) {

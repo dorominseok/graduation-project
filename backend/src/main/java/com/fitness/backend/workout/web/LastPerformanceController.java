@@ -1,5 +1,8 @@
 package com.fitness.backend.workout.web;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import com.fitness.backend.auth.jwt.JwtProvider;
 import com.fitness.backend.common.web.ApiV1Controller;
 import com.fitness.backend.workout.service.WorkoutService;
@@ -29,6 +32,12 @@ public class LastPerformanceController {
     }
 
     /** 그 종목을 마지막으로 수행한 기록. 처음 하는 종목이면 {@code 204}다. */
+    @Operation(summary = "직전 수행 기록 (프리필용)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "마지막으로 그 종목을 한 날의 세트"),
+            @ApiResponse(responseCode = "204", description = "처음 하는 종목 — 오류가 아니라 정상 상태다"),
+            @ApiResponse(responseCode = "404", description = "없는 종목")
+    })
     @GetMapping("/{exerciseId}/last-performance")
     public ResponseEntity<LastPerformanceResponse> lastPerformance(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,

@@ -1,5 +1,8 @@
 package com.fitness.backend.exercise.web;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import com.fitness.backend.auth.jwt.JwtProvider;
 import com.fitness.backend.common.web.ApiV1Controller;
 import com.fitness.backend.exercise.service.ExerciseService;
@@ -29,6 +32,10 @@ public class FavoriteExerciseController {
         this.exerciseService = exerciseService;
     }
 
+    @Operation(summary = "즐겨찾기 추가")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "추가됨 — 이미 있어도 성공이다")
+    })
     @PutMapping("/{exerciseId}")
     public ResponseEntity<Void> add(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
@@ -37,6 +44,10 @@ public class FavoriteExerciseController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "즐겨찾기 해제")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "해제됨 — 이미 없어도 성공이다")
+    })
     @DeleteMapping("/{exerciseId}")
     public ResponseEntity<Void> remove(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,

@@ -1,5 +1,8 @@
 package com.fitness.backend.exercise.web;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import com.fitness.backend.auth.jwt.JwtProvider;
 import com.fitness.backend.common.web.ApiV1Controller;
 import com.fitness.backend.common.web.PageResponse;
@@ -35,6 +38,10 @@ public class ExerciseController {
         this.exerciseService = exerciseService;
     }
 
+    @Operation(summary = "종목 목록·검색")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "페이지. 로그인하면 각 종목에 즐겨찾기 여부가 붙는다")
+    })
     @GetMapping
     public PageResponse<ExerciseDtos.ExerciseResponse> list(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
@@ -60,17 +67,31 @@ public class ExerciseController {
      * <p>109종을 한 목록에 늘어놓으면 검색 말고는 찾을 방법이 없어, 부위에서
      * 계열로, 계열에서 변형으로 좁혀 들어가는 3단 구조를 쓴다.
      */
+    @Operation(summary = "탐색 분류 12종과 분류별 종목 수")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "분류 목록. 종목 선택 1단계")
+    })
     @GetMapping("/categories")
     public List<ExerciseDtos.CategoryCount> categories() {
         return exerciseService.categories();
     }
 
     /** 한 분류의 계열 목록(LOG-24). 종목 선택 2단계. */
+    @Operation(summary = "한 분류의 동작 목록")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "동작 목록. 종목 선택 2단계"),
+            @ApiResponse(responseCode = "400", description = "없는 분류")
+    })
     @GetMapping("/groups")
     public List<ExerciseDtos.GroupCount> groups(@RequestParam BrowseCategory category) {
         return exerciseService.groups(category);
     }
 
+    @Operation(summary = "종목 단건 조회")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "종목"),
+            @ApiResponse(responseCode = "404", description = "없는 종목")
+    })
     @GetMapping("/{exerciseId}")
     public ExerciseDtos.ExerciseResponse detail(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,

@@ -1,5 +1,8 @@
 package com.fitness.backend.workout.web;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import com.fitness.backend.auth.jwt.JwtProvider;
 import com.fitness.backend.common.web.ApiV1Controller;
 import com.fitness.backend.common.web.PageResponse;
@@ -55,6 +58,12 @@ public class WorkoutSessionController {
     }
 
     /** 세션 생성(명세 6.2). */
+    @Operation(summary = "세션 생성")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "빈 세션 생성 — 세트는 완료 체크할 때 저장된다"),
+            @ApiResponse(responseCode = "400", description = "미래 날짜이거나 LIVE인데 오늘이 아님"),
+            @ApiResponse(responseCode = "409", description = "진행 중인 운동이 있음 — 이어쓰기로 유도한다")
+    })
     @PostMapping
     public ResponseEntity<SessionResponse> create(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
@@ -68,6 +77,13 @@ public class WorkoutSessionController {
      *
      * <p>새로 저장하면 {@code 201}, 같은 {@code clientSetId}로 이미 있던 것이면 {@code 200}이다.
      */
+    @Operation(summary = "세트 저장")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "새로 저장됨 — 순번은 서버가 매긴다"),
+            @ApiResponse(responseCode = "200", description = "같은 clientSetId로 이미 저장된 세트 — 재전송이라 다시 만들지 않는다"),
+            @ApiResponse(responseCode = "400", description = "종목이 요구하는 값이 없음"),
+            @ApiResponse(responseCode = "404", description = "없는 세션 또는 종목")
+    })
     @PostMapping("/{sessionId}/sets")
     public ResponseEntity<WorkoutDtos.SetResponse> addSet(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
@@ -79,6 +95,12 @@ public class WorkoutSessionController {
     }
 
     /** 세션 종료(명세 6.3). 본문 없이 호출한다. */
+    @Operation(summary = "운동 종료·시간 산출")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "DONE으로 바뀌고 운동 시간이 산출됨"),
+            @ApiResponse(responseCode = "409", description = "이미 종료한 세션"),
+            @ApiResponse(responseCode = "422", description = "기록한 세트가 없음 — 종료 대신 삭제하도록 안내한다")
+    })
     @PostMapping("/{sessionId}/complete")
     public SessionResponse complete(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
@@ -92,6 +114,11 @@ public class WorkoutSessionController {
      * <p>없으면 {@code 204}다 — {@code 404}로 하면 "경로가 없다"와 구분되지 않고,
      * 빈 객체를 내리면 클라이언트가 매번 필드를 들여다봐야 한다.
      */
+    @Operation(summary = "진행 중인 세션 조회")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "이어쓸 세션"),
+            @ApiResponse(responseCode = "204", description = "진행 중인 세션 없음")
+    })
     @GetMapping("/current")
     public ResponseEntity<SessionResponse> current(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal) {
@@ -106,6 +133,10 @@ public class WorkoutSessionController {
      * <p>{@code from}·{@code to}를 생략하면 최근 30일이다. 전체를 훑는 것이 기본이 되면
      * 기록이 쌓일수록 느려지고, 화면도 기본 진입에서 그만큼을 보여주지 않는다.
      */
+    @Operation(summary = "기록 목록")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "페이지. 세트는 담지 않고 개수와 종목 목록만 준다")
+    })
     @GetMapping
     public PageResponse<SessionSummary> history(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
@@ -122,6 +153,10 @@ public class WorkoutSessionController {
     }
 
     /** 캘린더 월별 요약(명세 6.8). */
+    @Operation(summary = "월별 기록 요약")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "기록이 있는 날짜만. 달력 화면의 데이터")
+    })
     @GetMapping("/calendar")
     public CalendarResponse calendar(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
@@ -131,6 +166,11 @@ public class WorkoutSessionController {
     }
 
     /** 세션 상세(명세 6.5). */
+    @Operation(summary = "세션 상세")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "종목별로 묶고 수행 순서대로 준다"),
+            @ApiResponse(responseCode = "404", description = "없는 세션 또는 남의 세션")
+    })
     @GetMapping("/{sessionId}")
     public SessionResponse get(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
@@ -139,6 +179,11 @@ public class WorkoutSessionController {
     }
 
     /** 세션 수정(명세 6.9). 메모·날짜·시간 보정. */
+    @Operation(summary = "세션 수정 (메모·날짜·시간 보정)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "수정된 세션"),
+            @ApiResponse(responseCode = "400", description = "진행 중 기록의 날짜는 바꿀 수 없다")
+    })
     @PatchMapping("/{sessionId}")
     public SessionResponse update(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
@@ -148,6 +193,11 @@ public class WorkoutSessionController {
     }
 
     /** 세션 삭제(명세 6.10). 세트도 함께 지워진다. */
+    @Operation(summary = "세션 삭제")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "세션과 세트가 함께 삭제됨"),
+            @ApiResponse(responseCode = "404", description = "없는 세션")
+    })
     @DeleteMapping("/{sessionId}")
     public ResponseEntity<Void> delete(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
@@ -157,6 +207,11 @@ public class WorkoutSessionController {
     }
 
     /** 세트 수정(명세 6.11). */
+    @Operation(summary = "세트 값 수정")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "수정된 세트 — 측정 유형이 쓰지 않는 값은 무시한다"),
+            @ApiResponse(responseCode = "404", description = "없는 세트")
+    })
     @PatchMapping("/{sessionId}/sets/{setId}")
     public WorkoutDtos.SetResponse updateSet(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
@@ -167,6 +222,11 @@ public class WorkoutSessionController {
     }
 
     /** 세트 삭제(명세 6.12). */
+    @Operation(summary = "세트 하나 삭제")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "삭제됨 — 마지막 세트를 지워도 세션은 남는다"),
+            @ApiResponse(responseCode = "404", description = "없는 세트")
+    })
     @DeleteMapping("/{sessionId}/sets/{setId}")
     public ResponseEntity<Void> deleteSet(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
@@ -182,6 +242,11 @@ public class WorkoutSessionController {
      * <p>세트를 하나씩 지우는 것과 결과는 같지만, 요청이 한 번이라 중간에 끊겨
      * 일부만 지워지는 상태가 생기지 않는다.
      */
+    @Operation(summary = "세션에서 종목 빼기")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "그 종목의 세트가 한 번에 삭제됨 — 다른 종목은 남는다"),
+            @ApiResponse(responseCode = "404", description = "그 세션에 없는 종목")
+    })
     @DeleteMapping("/{sessionId}/exercises/{exerciseId}")
     public ResponseEntity<Void> deleteExercise(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
