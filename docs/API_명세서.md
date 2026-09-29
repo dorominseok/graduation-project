@@ -784,8 +784,7 @@ workout_session (한 번의 운동)
 ```json
 {
   "performedOn": "2026-09-01",
-  "source": "LIVE",
-  "routineId": null
+  "source": "LIVE"
 }
 ```
 
@@ -793,7 +792,7 @@ workout_session (한 번의 운동)
 |---|---|
 | `performedOn` | 필수. `LIVE`면 오늘 날짜여야 한다(자정 넘김은 시작 일자 유지). `BACKFILL`이면 과거 날짜 허용, 미래 불가 |
 | `source` | `LIVE`(기본) \| `BACKFILL`. **클라이언트가 화면에서 사용자에게 고르게 하지 않는다** — 진입 경로로 정한다. 홈에서 "운동 시작"이면 `LIVE`, 캘린더에서 과거 날짜를 눌러 "기록 추가"면 `BACKFILL`을 보낸다 |
-| `routineId` | 선택. 추천 루틴에서 진입한 경우 연결(수행률 측정용). 9월엔 `routines` 테이블이 없으므로 항상 `null`. 컬럼만 채워둔다 |
+| ~~`routineId`~~ | **요청에서 받지 않는다**(LOG-26). 추천 루틴 연결(수행률 측정용)은 `routines` 테이블이 생기는 10월부터다. 그전까지 받으면 참조 없는 값이 쌓여 나중에 FK를 걸 수 없다. 응답에는 컬럼 값 그대로 `null`이 담긴다 |
 
 **응답 `201 Created`**
 
@@ -867,8 +866,7 @@ workout_session (한 번의 운동)
   "weightKg": 70.0,
   "reps": 10,
   "durationSec": null,
-  "isWarmup": false,
-  "setNo": null
+  "isWarmup": false
 }
 ```
 
@@ -880,7 +878,7 @@ workout_session (한 번의 운동)
 | `reps` | 종목에 따라 필수/무시. 1 이상 |
 | `durationSec` | `TIME` 종목만 필수. 1 이상 |
 | `isWarmup` | 기본 `false`. `true`면 볼륨 집계 제외(8.2), 강도(%)에는 표시(7.2) |
-| `setNo` | 선택. 생략 시 서버가 `해당 세션 내 같은 exerciseId 세트 수 + 1`로 자동 부여 |
+| ~~`setNo`~~ | **요청에서 받지 않는다**(LOG-26). 서버가 `해당 세션 내 같은 exerciseId 세트 수 + 1`로 부여한다. 클라이언트가 정하게 두면 같은 번호를 두 번 보내 1세트가 두 줄이 되고, 화면이 세트를 셀 근거가 없어진다 |
 
 **멱등 처리**
 
