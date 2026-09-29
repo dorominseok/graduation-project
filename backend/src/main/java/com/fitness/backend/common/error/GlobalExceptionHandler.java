@@ -79,6 +79,11 @@ public class GlobalExceptionHandler {
      * <p>Spring Framework 7에서 {@code getAllValidationResults()}가
      * {@code getParameterValidationResults()}로 바뀌었다. Boot 3 예제를 그대로
      * 옮기면 컴파일되지 않는다.
+     *
+     * <p><b>컨트롤러에 {@code @Validated}를 붙이면 이 핸들러를 타지 않는다.</b> 그러면
+     * 프록시가 {@code ConstraintViolationException}을 던져 500으로 떨어진다 — 잘못된
+     * 쿼리 파라미터가 서버 오류로 보이므로, 파라미터 제약은 애노테이션만 달고
+     * 스프링의 기본 검증에 맡긴다.
      */
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<ErrorResponse> handleParameterValidation(

@@ -27,7 +27,6 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -44,7 +43,6 @@ import org.springframework.web.bind.annotation.RequestParam;
  * 한정해 남의 세션이 존재하는지조차 드러나지 않게 한다.
  */
 @ApiV1Controller
-@Validated
 @RequestMapping("/workout-sessions")
 public class WorkoutSessionController {
 

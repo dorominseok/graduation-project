@@ -126,6 +126,17 @@ class WorkoutHistoryApiTest {
                 .andExpect(jsonPath("$.days[0].hasDraft").value(true));
     }
 
+    @Test
+    @DisplayName("13월은 서버 오류가 아니라 400이다")
+    void calendarRejectsInvalidMonth() throws Exception {
+        mvc.perform(get("/api/v1/workout-sessions/calendar")
+                        .param("year", "2026")
+                        .param("month", "13")
+                        .header(HttpHeaders.AUTHORIZATION, bearer))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
     // ── 세션 수정 (6.9)
 
     @Test
