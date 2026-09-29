@@ -1127,7 +1127,7 @@ workout_session (한 번의 운동)
 | 파라미터 | 규칙 |
 |---|---|
 | `exerciseId` | 필수. `measureType`이 `WEIGHT_REPS`가 아니면 `400 VALIDATION_ERROR` |
-| `from`, `to` | 날짜 범위. 생략 시 최근 12주 |
+| `from`, `to` | 날짜 범위. 생략 시 `to`는 오늘, `from`은 `to`를 **포함해** 과거로 84일(12주 × 7). 8.2의 집계 구간과 같은 셈법이다 |
 
 **산출 규칙** (분석 1.3, LOG-07 — 서버가 전부 계산)
 
@@ -1356,6 +1356,7 @@ workout_session (한 번의 운동)
 | `shoulderSplitResolved` | 세션에 `delt_region`이 채워진 어깨 종목이 있으면 `true`(정상), 아직 NULL만 있으면 `false`. `false`일 때만 화면이 어깨 하위 판정을 참고치로 낮춰 표시 (8.1) |
 | `confidence.level` | `LOW` \| `NORMAL`. `doneSessionCount < threshold`이면 `LOW` |
 | `confidence.threshold` | 최근 4주 DONE 세션 임계값. 서버 설정값(기본 6, 기록 방식 5.5) |
+| `confidence.message` | `LOW`일 때만 채운다. `NORMAL`이면 `null` — 충분하다는 사실을 화면에 띄울 이유가 없다 (2026-09-29 구현 시 확정) |
 | `tiers[]` | **상위 6종**. 항상 6개, 고정 순서(`CHEST, BACK, SHOULDERS, ARMS, LEGS, CORE`) |
 | `tiers[].weeklySets` | 하위 합의 주당 평균 (서버가 합산). 소수 1자리 |
 | `tiers[].totalSets` | 기간 내 총 세트 수 |
@@ -1447,6 +1448,7 @@ workout_session (한 번의 운동)
 | `smallerSideZero` | 작은 쪽 세트가 0일 때 `true` → `verdict`는 `IMBALANCED`(큰 쪽 > 0인 경우), 화면은 "비율 계산 불가"로 표기 |
 | `verdict` | `BALANCED`(≤ 2.0) \| `IMBALANCED`(> 2.0). 양쪽 다 0이면 `INSUFFICIENT_DATA` |
 | `components` | 합산에 쓰인 하위 판정 부위 `key` 목록 (근거 표시용) |
+| `biggerSide` | 세트가 많은 쪽. 양쪽 다 `0`이면 `null`이고, 같으면 `left`다 (2026-09-29 구현 시 확정) |
 
 ### 8.4 LLM 분석 해설 (참고 — 9월 범위 밖)
 
