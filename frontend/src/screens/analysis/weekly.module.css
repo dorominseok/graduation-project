@@ -1,8 +1,9 @@
 /*
- * 주차별 부위 세트 — 하위 9종의 작은 막대 묶음.
+ * 주차별 부위 세트 — 부위마다 한 줄, 모든 줄이 같은 세로축.
  *
  * 판정색을 쓰지 않는다. 한 계열이라 색은 하나, 진행 중인 주만 흐리게.
- * 기준선은 실선 헤어라인이다(점선은 "예측"으로 읽힌다).
+ * 기준은 주 10세트 선 하나뿐이다. 처음엔 2열 카드 + 10·20 회색 선, 다음엔
+ * 10~20 초록 띠를 깔았는데 앞의 것은 격자처럼 보였고 뒤의 것은 화면이 무거웠다.
  */
 
 .section {
@@ -15,7 +16,7 @@
 .head {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-4);
 }
 
 .title {
@@ -38,28 +39,20 @@
   gap: var(--space-4);
 }
 
-.swatchBand,
+.swatchLine {
+  display: inline-block;
+  width: 14px;
+  height: 0;
+  border-top: 1.5px solid var(--text-secondary);
+}
+
 .swatchNow {
   display: inline-block;
   width: 10px;
   height: 10px;
   border-radius: 2px;
-}
-
-.swatchBand {
-  background: var(--accent-soft);
-  border: 1px solid var(--accent);
-}
-
-.swatchNow {
   background: var(--push-color);
   opacity: 0.35;
-}
-
-.note {
-  font-size: var(--font-3xs);
-  line-height: 1.5;
-  color: var(--text-tertiary);
 }
 
 .status {
@@ -69,61 +62,84 @@
   color: var(--text-tertiary);
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-8);
-}
+/* ── 줄 */
 
-.cell {
-  padding: var(--space-8) var(--space-10) var(--space-6);
+.rows {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-10) var(--space-12);
   border: 1px solid var(--card-border);
   border-radius: var(--radius-lg);
   background: var(--card-bg);
 }
 
-.cellHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: var(--space-4);
-  margin-bottom: var(--space-4);
+.axisRow,
+.row {
+  display: grid;
+  grid-template-columns: 76px 1fr 36px;
+  align-items: center;
+  gap: var(--space-8);
 }
 
-.cellLabel {
+.axisRow {
+  padding-bottom: var(--space-4);
+  font-size: 9.5px;
+  color: var(--text-tertiary);
+}
+
+.axisWeeks {
+  display: flex;
+  justify-content: space-between;
+}
+
+.axisValue {
+  text-align: right;
+}
+
+.row {
+  padding: var(--space-4) 0;
+}
+
+.row + .row {
+  border-top: 1px solid var(--divider);
+}
+
+.rowLabel {
   font-size: var(--font-xs);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-medium);
   color: var(--text-primary);
   white-space: nowrap;
 }
 
-.cellValue {
-  font-size: 10.5px;
-  color: var(--text-secondary);
-  white-space: nowrap;
+.rowValue {
+  text-align: right;
+  font-size: var(--font-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
+}
+
+.rowValueZero {
+  color: var(--text-tertiary);
+  font-weight: var(--weight-medium);
 }
 
 .chart {
   display: block;
   width: 100%;
-  height: auto;
-}
-
-/* 권장 구간 띠. 막대보다 뒤, 연하게 */
-.band {
-  fill: var(--accent-soft);
-}
-
-.bandLabel {
-  font-size: 8px;
-  fill: var(--text-tertiary);
-  font-variant-numeric: tabular-nums;
+  height: 30px;
 }
 
 .base {
   stroke: var(--tick);
   stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* 주 10세트 선. 막대 위로 지나가야 닿았는지 넘었는지 보인다 */
+.target {
+  stroke: var(--text-secondary);
+  stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
 }
 
@@ -136,13 +152,13 @@
   opacity: 0.35;
 }
 
-.axis {
-  display: flex;
-  justify-content: space-between;
-  margin-top: var(--space-3);
-  font-size: 9.5px;
+.note {
+  font-size: var(--font-3xs);
+  line-height: 1.5;
   color: var(--text-tertiary);
 }
+
+/* ── 표 */
 
 .table {
   font-size: var(--font-2xs);
