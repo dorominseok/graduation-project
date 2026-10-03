@@ -110,26 +110,4 @@ public final class AnalysisDtos {
             BigDecimal weeklySets,
             @Schema(description = "합산에 쓴 판정 부위. 근거 표시용") List<MuscleGroup> components) {
     }
-
-    @Schema(description = "주차별 부위 세트. 판정은 붙이지 않는다")
-    public record WeeklyVolumeResponse(
-            LocalDate referenceDate,
-            @Schema(description = "오래된 주부터. 마지막이 기준일이 속한 주") List<WeekRange> weeks,
-            @Schema(description = "판정 부위 9종 + 표시 전용 2종. sets는 weeks와 같은 순서·같은 길이")
-            List<WeeklyGroup> groups) {
-    }
-
-    public record WeekRange(
-            @Schema(description = "월요일") LocalDate start,
-            @Schema(description = "일요일") LocalDate end,
-            @Schema(description = "기준일이 이 주의 일요일 전이면 true. 아직 끝나지 않은 주다") boolean inProgress,
-            @Schema(description = "그 주에 종료한 운동 수") int doneSessionCount) {
-    }
-
-    public record WeeklyGroup(
-            MuscleGroup key,
-            String label,
-            @Schema(description = "false면 종아리·전완처럼 판정하지 않는 부위") boolean judged,
-            @Schema(description = "주마다 본세트 수. 주당 평균이 아니라 그 주에 한 세트 수 그대로") List<Long> sets) {
-    }
 }

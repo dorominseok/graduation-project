@@ -3,7 +3,6 @@ package com.fitness.backend.analysis.web;
 import com.fitness.backend.analysis.service.AnalysisService;
 import com.fitness.backend.analysis.web.AnalysisDtos.BalanceResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.MuscleVolumeResponse;
-import com.fitness.backend.analysis.web.AnalysisDtos.WeeklyVolumeResponse;
 import com.fitness.backend.auth.jwt.JwtProvider;
 import com.fitness.backend.common.web.ApiV1Controller;
 import io.swagger.v3.oas.annotations.Operation;
@@ -71,21 +70,5 @@ public class AnalysisController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate referenceDate) {
 
         return analysisService.balance(principal.userId(), weeks, referenceDate);
-    }
-
-    @Operation(summary = "주차별 부위 세트",
-            description = "월~일 주마다 판정 부위별 본세트 수. 판정은 붙이지 않는다 — 약점 판정은 muscle-volume이 한다")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "오래된 주부터. 마지막 주는 진행 중일 수 있다(inProgress)"),
-            @ApiResponse(responseCode = "400", description = "weeks가 범위를 벗어남")
-    })
-    @GetMapping("/weekly-volume")
-    public WeeklyVolumeResponse weeklyVolume(
-            @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
-            @RequestParam(required = false) @Min(1) @Max(MAX_WEEKS) Integer weeks,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate referenceDate) {
-
-        return analysisService.weeklyVolume(principal.userId(), weeks, referenceDate);
     }
 }

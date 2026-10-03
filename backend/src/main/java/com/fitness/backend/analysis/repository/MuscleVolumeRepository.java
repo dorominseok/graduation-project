@@ -46,25 +46,4 @@ public interface MuscleVolumeRepository extends Repository<WorkoutSet, Long> {
     List<MuscleSetCount> aggregate(@Param("userId") Long userId,
                                    @Param("from") LocalDate from,
                                    @Param("to") LocalDate to);
-
-    /**
-     * 날짜별로 나눠 센다. 조건은 {@link #aggregate}와 같다 — 주간 기록과 약점 판정이
-     * 다른 세트를 세면 같은 화면의 두 숫자가 안 맞는다.
-     */
-    @Query("""
-            select new com.fitness.backend.analysis.repository.DailyMuscleSetCount(
-                       s.performedOn, e.primaryMuscle, e.deltRegion, count(w))
-              from WorkoutSet w, WorkoutSession s, Exercise e
-             where w.sessionId = s.id
-               and w.exerciseId = e.id
-               and s.userId = :userId
-               and s.status = com.fitness.backend.workout.domain.SessionStatus.DONE
-               and w.isWarmup = false
-               and s.performedOn >= :from
-               and s.performedOn <= :to
-             group by s.performedOn, e.primaryMuscle, e.deltRegion
-            """)
-    List<DailyMuscleSetCount> aggregateByDay(@Param("userId") Long userId,
-                                             @Param("from") LocalDate from,
-                                             @Param("to") LocalDate to);
 }
