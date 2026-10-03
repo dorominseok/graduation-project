@@ -1,6 +1,7 @@
 package com.fitness.backend.exercise.repository;
 
 import com.fitness.backend.exercise.domain.BodyPart;
+import com.fitness.backend.exercise.domain.DeltRegion;
 import com.fitness.backend.exercise.domain.Equipment;
 import com.fitness.backend.exercise.domain.Exercise;
 import com.fitness.backend.exercise.domain.MeasureType;
@@ -35,6 +36,7 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
                and (:measureType is null or e.measureType = :measureType)
                and (:allMuscles = true or e.primaryMuscle in :muscles)
                and (:groupName is null or e.groupName = :groupName)
+               and (:deltRegion is null or e.deltRegion = :deltRegion)
             """)
     Page<Exercise> search(@Param("namePattern") String namePattern,
                           @Param("bodyPart") BodyPart bodyPart,
@@ -43,6 +45,7 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
                           @Param("allMuscles") boolean allMuscles,
                           @Param("muscles") Collection<String> muscles,
                           @Param("groupName") String groupName,
+                          @Param("deltRegion") DeltRegion deltRegion,
                           Pageable pageable);
 
     /**
@@ -63,6 +66,7 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
                and (:measureType is null or e.measureType = :measureType)
                and (:allMuscles = true or e.primaryMuscle in :muscles)
                and (:groupName is null or e.groupName = :groupName)
+               and (:deltRegion is null or e.deltRegion = :deltRegion)
              order by f.createdAt desc
             """)
     Page<Exercise> searchFavorites(@Param("userId") Long userId,
@@ -73,6 +77,7 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
                                    @Param("allMuscles") boolean allMuscles,
                                    @Param("muscles") Collection<String> muscles,
                                    @Param("groupName") String groupName,
+                                   @Param("deltRegion") DeltRegion deltRegion,
                                    Pageable pageable);
 
     /**
@@ -81,7 +86,7 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
      * <p>{@code primary_muscle}로 세어 돌려주고 12종으로 묶는 것은 서비스가 한다 —
      * 묶는 규칙이 {@link com.fitness.backend.exercise.domain.BrowseCategory}에 있어서다.
      */
-    @Query("select e.primaryMuscle, count(e) from Exercise e group by e.primaryMuscle")
+    @Query("select e.primaryMuscle, e.deltRegion, count(e) from Exercise e group by e.primaryMuscle, e.deltRegion")
     List<Object[]> countByPrimaryMuscle();
 
     /**
@@ -94,8 +99,10 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
             select e.groupName, count(e), min(e.id)
               from Exercise e
              where e.primaryMuscle in :muscles
+               and (:deltRegion is null or e.deltRegion = :deltRegion)
              group by e.groupName
              order by count(e) desc, e.groupName asc
             """)
-    List<Object[]> countByGroup(@Param("muscles") Collection<String> muscles);
+    List<Object[]> countByGroup(@Param("muscles") Collection<String> muscles,
+                                @Param("deltRegion") DeltRegion deltRegion);
 }

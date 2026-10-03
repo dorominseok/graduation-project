@@ -27,7 +27,7 @@ class SummaryBadgeTest {
     }
 
     @Test
-    @DisplayName("어깨(앞) 권장 이하 / 어깨(뒤) 부족 → 부족이 우선한다")
+    @DisplayName("어깨 전·측면 권장 이하 / 어깨 후면 부족 → 부족이 우선한다")
     void insufficientOutranksBelow() {
         assertEquals(SummaryBadge.PARTIAL_INSUFFICIENT, SummaryBadge.resolve(List.of(BELOW_RECOMMENDED, INSUFFICIENT)));
     }

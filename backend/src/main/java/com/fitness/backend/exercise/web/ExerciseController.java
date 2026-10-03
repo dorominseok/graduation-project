@@ -3,6 +3,7 @@ package com.fitness.backend.exercise.web;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import com.fitness.backend.analysis.domain.MuscleGroup;
 import com.fitness.backend.auth.jwt.JwtProvider;
 import com.fitness.backend.common.web.ApiV1Controller;
 import com.fitness.backend.common.web.PageResponse;
@@ -50,6 +51,7 @@ public class ExerciseController {
             @RequestParam(required = false) Equipment equipment,
             @RequestParam(required = false) MeasureType measureType,
             @RequestParam(required = false) BrowseCategory category,
+            @RequestParam(required = false) MuscleGroup muscleGroup,
             @RequestParam(required = false) String group,
             @RequestParam(defaultValue = "false") boolean favorite,
             @PageableDefault(size = 20, sort = "nameKo", direction = Sort.Direction.ASC)
@@ -58,7 +60,7 @@ public class ExerciseController {
         Long userId = principal == null ? null : principal.userId();
         return PageResponse.from(
                 exerciseService.search(userId, blankToNull(q), bodyPart, equipment,
-                        measureType, category, blankToNull(group), favorite, pageable));
+                        measureType, category, muscleGroup, blankToNull(group), favorite, pageable));
     }
 
     /**

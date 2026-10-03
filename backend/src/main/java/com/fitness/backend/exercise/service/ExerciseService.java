@@ -1,8 +1,10 @@
 package com.fitness.backend.exercise.service;
 
+import com.fitness.backend.analysis.domain.MuscleGroup;
 import com.fitness.backend.common.error.ApiException;
 import com.fitness.backend.exercise.domain.BodyPart;
 import com.fitness.backend.exercise.domain.BrowseCategory;
+import com.fitness.backend.exercise.domain.DeltRegion;
 import com.fitness.backend.exercise.domain.Equipment;
 import com.fitness.backend.exercise.domain.Exercise;
 import com.fitness.backend.exercise.domain.MeasureType;
@@ -50,21 +52,50 @@ public class ExerciseService {
      */
     public Page<ExerciseResponse> search(Long userId, String q, BodyPart bodyPart,
                                          Equipment equipment, MeasureType measureType,
-                                         BrowseCategory category, String groupName,
-                                         boolean favoriteOnly, Pageable pageable) {
+                                         BrowseCategory category, MuscleGroup muscleGroup,
+                                         String groupName, boolean favoriteOnly, Pageable pageable) {
         String namePattern = namePattern(q);
-        // 분류를 지정하지 않으면 in 절을 건너뛴다. 빈 컬렉션을 넘기면 아무것도 안 나온다.
-        boolean allMuscles = category == null;
-        Collection<String> muscles = category == null ? List.of("") : category.primaryMuscles();
+        // 분류도 판정 부위도 없으면 in 절을 건너뛴다. 빈 컬렉션을 넘기면 아무것도 안 나온다.
+        boolean allMuscles = category == null && muscleGroup == null;
+        Collection<String> muscles = allMuscles ? List.of("") : musclesOf(category, muscleGroup);
+        // 어깨 앞뒤는 분류(어깨 전·측면·후면)와 판정 부위(DELT_FRONT·REAR) 양쪽에서 올 수 있다.
+        // 서로 다른 쪽을 가리키면 겹치는 종목이 없다
+        DeltRegion fromCategory = category == null ? null : category.deltRegion();
+        DeltRegion fromGroup = muscleGroup == null ? null : muscleGroup.deltRegion();
+        if (fromCategory != null && fromGroup != null && fromCategory != fromGroup) {
+            return Page.empty(pageable);
+        }
+        DeltRegion deltRegion = fromCategory != null ? fromCategory : fromGroup;
 
         Page<Exercise> page = favoriteOnly && userId != null
                 ? exerciseRepository.searchFavorites(userId, namePattern, bodyPart, equipment, measureType,
-                        allMuscles, muscles, groupName, pageable)
+                        allMuscles, muscles, groupName, deltRegion, pageable)
                 : exerciseRepository.search(namePattern, bodyPart, equipment, measureType,
-                        allMuscles, muscles, groupName, pageable);
+                        allMuscles, muscles, groupName, deltRegion, pageable);
 
         Set<Long> favorites = favoriteIds(userId, page.getContent());
         return page.map(e -> toResponse(e, userId, favorites));
+    }
+
+    /**
+     * 탐색 분류와 판정 부위를 같이 주면 둘 다 만족하는 근육만 남긴다.
+     *
+     * <p>둘은 다른 축이다(LOG-24). 판정 부위 "뒤허벅지·둔근"은 탐색 분류의 하체와
+     * 엉덩이에 걸쳐 있어 분류 하나로는 못 고른다 — 홈의 약점에서 종목으로 바로
+     * 가려면 판정 부위로 조회할 수 있어야 한다. 겹치는 근육이 없으면 아무것도
+     * 안 나오도록 빈 문자열 하나를 넘긴다.
+     */
+    private static Collection<String> musclesOf(BrowseCategory category, MuscleGroup muscleGroup) {
+        if (category == null) {
+            return muscleGroup.primaryMuscles();
+        }
+        if (muscleGroup == null) {
+            return category.primaryMuscles();
+        }
+        List<String> both = category.primaryMuscles().stream()
+                .filter(muscleGroup.primaryMuscles()::contains)
+                .toList();
+        return both.isEmpty() ? List.of("") : both;
     }
 
     /**
@@ -74,20 +105,22 @@ public class ExerciseService {
      * 사용자가 위치로 기억한 것을 다시 찾아야 한다.
      */
     public List<CategoryCount> categories() {
-        Map<String, Long> byMuscle = exerciseRepository.countByPrimaryMuscle().stream()
-                .collect(Collectors.toMap(row -> (String) row[0], row -> (Long) row[1]));
+        List<Object[]> rows = exerciseRepository.countByPrimaryMuscle();
 
+        // 어깨 전·측면·후면은 같은 primary_muscle을 delt_region으로 가른다
         return Arrays.stream(BrowseCategory.values())
                 .map(category -> new CategoryCount(category, category.label(),
-                        category.primaryMuscles().stream()
-                                .mapToLong(muscle -> byMuscle.getOrDefault(muscle, 0L))
+                        rows.stream()
+                                .filter(row -> category.primaryMuscles().contains((String) row[0]))
+                                .filter(row -> category.deltRegion() == null || category.deltRegion() == row[1])
+                                .mapToLong(row -> (Long) row[2])
                                 .sum()))
                 .toList();
     }
 
     /** 한 분류 안의 계열 목록(LOG-24). 종목이 많은 계열이 앞에 온다. */
     public List<GroupCount> groups(BrowseCategory category) {
-        List<Object[]> rows = exerciseRepository.countByGroup(category.primaryMuscles());
+        List<Object[]> rows = exerciseRepository.countByGroup(category.primaryMuscles(), category.deltRegion());
 
         // 대표 종목의 영문명은 계열 카드 그림의 파일명을 만드는 데 쓴다. 한 분류의
         // 계열이 많아야 열 몇 개라 한 번 더 읽어도 된다.

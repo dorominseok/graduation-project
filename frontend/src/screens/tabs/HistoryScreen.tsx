@@ -6,7 +6,8 @@ import type { CalendarResponse } from '../../api'
 import { paths } from '../../app/paths'
 import styles from './history.module.css'
 
-const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
+// 주는 월요일에 시작한다(명세 1.2). 홈의 "이번 주"와 같은 기준이어야 두 화면이 안 어긋난다
+const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
 
 /** 로컬 날짜를 YYYY-MM-DD로. toISOString은 UTC로 바꿔 하루가 밀린다 */
 function toDateString(date: Date): string {
@@ -83,7 +84,8 @@ export function HistoryScreen() {
   }
 
   const todayKey = toDateString(today)
-  const firstWeekday = new Date(year, month - 1, 1).getDay()
+  // getDay()는 일요일이 0이라 월요일이 0이 되게 돌린다
+  const firstWeekday = (new Date(year, month - 1, 1).getDay() + 6) % 7
   const daysInMonth = new Date(year, month, 0).getDate()
   const dayInfo = (key: string) => calendar?.days.find((d) => d.date === key)
 

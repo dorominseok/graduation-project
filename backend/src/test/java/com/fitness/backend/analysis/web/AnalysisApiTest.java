@@ -133,7 +133,7 @@ class AnalysisApiTest {
     @DisplayName("하위가 둘인 상위에는 판정 대신 배지가 붙는다 — 합계가 한쪽 0을 가리지 않게")
     void parentWithTwoChildrenGetsBadgeNotVerdict() throws Exception {
         LocalDate reference = LocalDate.now().minusDays(1);
-        doneSession(reference, militaryPress, 10);   // 어깨(앞)만 채운다
+        doneSession(reference, militaryPress, 10);   // 어깨 전·측면만 채운다
 
         volume(1, reference)
                 .andExpect(status().isOk())

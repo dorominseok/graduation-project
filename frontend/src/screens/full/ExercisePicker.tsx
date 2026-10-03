@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useToast } from '../../components'
 import { exerciseApi, isApiError, workoutApi } from '../../api'
-import type { BrowseCategory, CategoryCount, Exercise, GroupCount } from '../../api'
+import type { BrowseCategory, CategoryCount, Exercise, GroupCount, MuscleGroupKey } from '../../api'
 import { BODY_PART_LABEL, EQUIPMENT_LABEL, MEASURE_CHIP_LABEL } from './exerciseLabels'
 import { exerciseImage, hideOnError } from './exerciseImage'
 import styles from './exercise.module.css'
@@ -14,6 +14,13 @@ const RECENT_LIMIT = 8
 export interface PickerStep {
   category: BrowseCategory | null
   group: string | null
+  /**
+   * 판정 부위로 바로 좁힌 목록 (LOG-29). 홈의 약점에서 "오늘 운동에 추가"로 들어올 때만 채운다.
+   * 탐색 분류와 축이 달라(어깨 앞·뒤, 두 분류에 걸친 뒤허벅지·둔근) 부위 → 계열 단계로는 못 연다
+   */
+  muscleGroup?: MuscleGroupKey | null
+  /** 머리줄에 적을 이름. "어깨 후면" */
+  muscleLabel?: string
 }
 
 type PickerTab = 'recent' | 'part' | 'favorite'
@@ -77,6 +84,7 @@ export function ExercisePicker({ step, onStepChange, onPick, onInfo }: ExerciseP
           q: debouncedKeyword || undefined,
           category: !searching && tab === 'part' && step.category ? step.category : undefined,
           group: !searching && tab === 'part' && step.group ? step.group : undefined,
+          muscleGroup: !searching && tab === 'part' && step.muscleGroup ? step.muscleGroup : undefined,
           favorite: !searching && tab === 'favorite' ? true : undefined,
           page: nextPage,
           size: PAGE_SIZE,
@@ -90,7 +98,7 @@ export function ExercisePicker({ step, onStepChange, onPick, onInfo }: ExerciseP
         setLoading(false)
       }
     },
-    [debouncedKeyword, searching, tab, step.category, step.group, fail],
+    [debouncedKeyword, searching, tab, step.category, step.group, step.muscleGroup, fail],
   )
 
   /**
@@ -154,7 +162,7 @@ export function ExercisePicker({ step, onStepChange, onPick, onInfo }: ExerciseP
   // 지금 보이는 것이 무엇이냐에 따라 읽을 것이 달라진다.
   useEffect(() => {
     void (async () => {
-      if (searching || tab === 'favorite' || (tab === 'part' && step.group)) {
+      if (searching || tab === 'favorite' || (tab === 'part' && (step.group || step.muscleGroup))) {
         await loadList(0, false)
       } else if (tab === 'recent') {
         await loadRecent()
@@ -162,7 +170,7 @@ export function ExercisePicker({ step, onStepChange, onPick, onInfo }: ExerciseP
         await loadGroups(step.category)
       }
     })()
-  }, [searching, tab, step.category, step.group, loadList, loadGroups, loadRecent])
+  }, [searching, tab, step.category, step.group, step.muscleGroup, loadList, loadGroups, loadRecent])
 
   const toggleFavorite = async (exercise: Exercise) => {
     const next = !exercise.isFavorite
@@ -193,11 +201,12 @@ export function ExercisePicker({ step, onStepChange, onPick, onInfo }: ExerciseP
     setTab(next)
   }
 
-  const showParts = !searching && tab === 'part' && step.category === null
+  const byMuscle = !searching && tab === 'part' && !!step.muscleGroup
+  const showParts = !searching && tab === 'part' && step.category === null && !byMuscle
   const showGroups = !searching && tab === 'part' && step.category !== null && step.group === null
   const showItems = !showParts && !showGroups
   /** 부위로 좁혀 들어온 목록. 부위 알약은 이미 아는 값이라 넣지 않는다 */
-  const scopedToPart = !searching && tab === 'part' && step.group !== null
+  const scopedToPart = (!searching && tab === 'part' && step.group !== null) || byMuscle
 
   const emptyMessage = searching
     ? '검색 결과가 없어요'
@@ -304,6 +313,21 @@ export function ExercisePicker({ step, onStepChange, onPick, onInfo }: ExerciseP
           >
             즐겨찾기
           </button>
+        </div>
+      )}
+
+      {/* 약점에서 바로 들어온 목록. 뒤로 가면 부위 그리드다 */}
+      {byMuscle && (
+        <div className={styles.crumb}>
+          <button
+            type="button"
+            className={styles.crumbBack}
+            onClick={() => onStepChange({ category: null, group: null, muscleGroup: null })}
+            aria-label="부위 목록으로"
+          >
+            ←
+          </button>
+          <span className={styles.crumbLabel}>{step.muscleLabel ?? '부위'} 종목</span>
         </div>
       )}
 
