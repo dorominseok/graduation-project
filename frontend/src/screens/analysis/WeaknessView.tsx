@@ -9,6 +9,7 @@ import {
   BAR_TICKS,
   VERDICT_TONE,
   barPercent,
+  basisLabel,
   formatMonthDay,
 } from './format'
 import type { Tone } from './format'
@@ -106,12 +107,19 @@ export function WeaknessView({ volume, balance }: WeaknessViewProps) {
   volume.displayOnly.forEach((d) => muscleLabel.set(d.key, d.label))
   const namesOf = (keys: MuscleGroupKey[]) => keys.map((k) => muscleLabel.get(k) ?? k).join(' + ')
 
+  const shortHistory = volume.basisDays < volume.periodWeeks * 7
   const period = (
     <div className={styles.periodBlock}>
       <div className={styles.period}>
-        최근 {volume.periodWeeks}주 · {formatMonthDay(volume.periodFrom)} ~ {formatMonthDay(volume.periodTo)}
+        {basisLabel(volume)} · {formatMonthDay(shortHistory ? volume.basisFrom : volume.periodFrom)} ~{' '}
+        {formatMonthDay(volume.periodTo)}
       </div>
       <div className={styles.periodSub}>부위별 주당 평균 세트 · 워밍업 제외</div>
+      {shortHistory && (
+        <div className={styles.periodSub}>
+          기록한 지 {volume.periodWeeks}주가 안 돼서, 기록을 시작한 뒤 지난 기간으로 나눠 계산해요 (최소 7일)
+        </div>
+      )}
     </div>
   )
 

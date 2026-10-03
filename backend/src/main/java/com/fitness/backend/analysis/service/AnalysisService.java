@@ -1,5 +1,6 @@
 package com.fitness.backend.analysis.service;
 
+import com.fitness.backend.analysis.domain.AveragingBasis;
 import com.fitness.backend.analysis.domain.BalanceEvaluation;
 import com.fitness.backend.analysis.domain.BalancePair;
 import com.fitness.backend.analysis.domain.BalanceSide;
@@ -63,12 +64,12 @@ public class AnalysisService {
 
     /** 명세 8.2. 상위 6종 + 하위 9종 + 표시 전용 2종을 완성해 내려준다. */
     public MuscleVolumeResponse muscleVolume(Long userId, Integer weeksParam, LocalDate referenceDateParam) {
-        Period period = period(weeksParam, referenceDateParam);
+        Period period = period(userId, weeksParam, referenceDateParam);
         Aggregate aggregate = aggregate(userId, period);
 
         List<TierResponse> tiers = new ArrayList<>();
         for (TierGroup tier : TierGroup.values()) {
-            tiers.add(toTier(tier, aggregate, period.weeks()));
+            tiers.add(toTier(tier, aggregate, period.basisDays()));
         }
 
         List<DisplayOnlyResponse> displayOnly = new ArrayList<>();
@@ -76,26 +77,27 @@ public class AnalysisService {
             if (!group.judged()) {
                 long sets = aggregate.total(group);
                 displayOnly.add(new DisplayOnlyResponse(
-                        group, group.label(), weeklyAverage(sets, period.weeks()), sets));
+                        group, group.label(), weeklyAverage(sets, period.basisDays()), sets));
             }
         }
 
         return new MuscleVolumeResponse(
                 period.referenceDate(), period.weeks(), period.from(), period.to(),
+                period.basisDays(), period.to().minusDays(period.basisDays() - 1L),
                 aggregate.shoulderSplitResolved(), confidence(userId, period),
                 List.copyOf(tiers), List.copyOf(displayOnly));
     }
 
     /** 명세 8.3. 계산 재료는 8.2와 같은 주당 평균 세트다. */
     public BalanceResponse balance(Long userId, Integer weeksParam, LocalDate referenceDateParam) {
-        Period period = period(weeksParam, referenceDateParam);
+        Period period = period(userId, weeksParam, referenceDateParam);
         Aggregate aggregate = aggregate(userId, period);
         BigDecimal threshold = properties.balanceRatioThreshold();
 
         List<PairResponse> pairs = new ArrayList<>();
         for (BalancePair pair : BalancePair.values()) {
-            SideResponse left = toSide(pair.left(), aggregate, period.weeks());
-            SideResponse right = toSide(pair.right(), aggregate, period.weeks());
+            SideResponse left = toSide(pair.left(), aggregate, period.basisDays());
+            SideResponse right = toSide(pair.right(), aggregate, period.basisDays());
             BalanceEvaluation evaluation =
                     BalanceEvaluation.of(left.weeklySets(), right.weeklySets(), threshold);
 
@@ -106,7 +108,7 @@ public class AnalysisService {
                     evaluation.verdict(), evaluation.verdict().label()));
         }
 
-        return new BalanceResponse(period.referenceDate(), period.weeks(), threshold,
+        return new BalanceResponse(period.referenceDate(), period.weeks(), period.basisDays(), threshold,
                 aggregate.shoulderSplitResolved(), List.copyOf(pairs));
     }
 
@@ -140,14 +142,14 @@ public class AnalysisService {
         return new Aggregate(totals, resolved);
     }
 
-    private TierResponse toTier(TierGroup tier, Aggregate aggregate, int weeks) {
+    private TierResponse toTier(TierGroup tier, Aggregate aggregate, int basisDays) {
         List<ChildResponse> children = new ArrayList<>();
         List<VolumeVerdict> verdicts = new ArrayList<>();
         long total = 0;
 
         for (MuscleGroup child : tier.children()) {
             long sets = aggregate.total(child);
-            BigDecimal weekly = weeklyAverage(sets, weeks);
+            BigDecimal weekly = weeklyAverage(sets, basisDays);
             VolumeVerdict verdict = VolumeVerdict.classify(weekly, properties.volumeThresholds());
 
             children.add(new ChildResponse(child, child.label(), weekly, sets, verdict, verdict.label()));
@@ -162,18 +164,18 @@ public class AnalysisService {
         SummaryBadge badge = hasChildren ? SummaryBadge.resolve(verdicts) : null;
 
         return new TierResponse(
-                tier, tier.label(), weeklyAverage(total, weeks), total, hasChildren,
+                tier, tier.label(), weeklyAverage(total, basisDays), total, hasChildren,
                 verdict, verdict == null ? null : verdict.label(),
                 badge, badge == null ? null : badge.label(),
                 List.copyOf(children));
     }
 
-    private SideResponse toSide(BalanceSide side, Aggregate aggregate, int weeks) {
+    private SideResponse toSide(BalanceSide side, Aggregate aggregate, int basisDays) {
         long total = 0;
         for (MuscleGroup component : side.components()) {
             total += aggregate.total(component);
         }
-        return new SideResponse(side, side.label(), weeklyAverage(total, weeks), side.components());
+        return new SideResponse(side, side.label(), weeklyAverage(total, basisDays), side.components());
     }
 
     /** 세트가 많은 쪽. 양쪽 다 0이면 가릴 것이 없어 {@code null}이고, 같으면 왼쪽으로 둔다. */
@@ -197,8 +199,8 @@ public class AnalysisService {
                 "최근 %d주 완료된 운동이 %d회로 적어 판정 신뢰도가 낮습니다.".formatted(period.weeks(), done));
     }
 
-    private BigDecimal weeklyAverage(long totalSets, int weeks) {
-        return VolumeVerdict.weeklyAverage(Math.toIntExact(totalSets), weeks);
+    private BigDecimal weeklyAverage(long totalSets, int basisDays) {
+        return VolumeVerdict.weeklyAverageOverDays(Math.toIntExact(totalSets), basisDays);
     }
 
     // ---------- 집계 구간 ----------
@@ -210,16 +212,24 @@ public class AnalysisService {
      * 더해 놓고 4로 나누게 되어 주당 평균이 소리 없이 부풀고, 부족 판정이 한 칸씩
      * 위로 밀린다.
      */
-    private Period period(Integer weeksParam, LocalDate referenceDateParam) {
+    private Period period(Long userId, Integer weeksParam, LocalDate referenceDateParam) {
         int weeks = weeksParam == null ? properties.weeks() : weeksParam;
         if (weeks < 1) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "집계 기간은 1주 이상이어야 합니다.");
         }
         LocalDate to = referenceDateParam == null ? LocalDate.now(clock) : referenceDateParam;
-        return new Period(weeks, to, to.minusDays((long) weeks * 7 - 1), to);
+        int windowDays = weeks * 7;
+        // 분모는 구간 길이가 아니라 기록을 시작한 뒤 지난 기간이다(LOG-31). 4주가 넘었으면 같다
+        int basisDays = AveragingBasis.days(
+                sessionRepository.findFirstDonePerformedOn(userId, to), to, windowDays, properties.minBasisDays());
+        return new Period(weeks, to, to.minusDays(windowDays - 1L), to, basisDays);
     }
 
-    private record Period(int weeks, LocalDate referenceDate, LocalDate from, LocalDate to) {
+    /**
+     * @param from      집계 구간 시작. 세트는 이 구간에서 센다
+     * @param basisDays 주당 평균을 낼 때 나눌 일수. 기록이 짧으면 구간보다 작다
+     */
+    private record Period(int weeks, LocalDate referenceDate, LocalDate from, LocalDate to, int basisDays) {
     }
 
     private record Aggregate(Map<MuscleGroup, Long> totals, boolean shoulderSplitResolved) {

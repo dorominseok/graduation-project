@@ -30,6 +30,7 @@ class AnalysisPropertiesTest {
         assertEquals(0, props.balanceRatioThreshold().compareTo(new BigDecimal("2.0")));
         assertEquals(6, props.confidenceSessionThreshold());
         assertEquals(12, props.oneRmMaxReps());
+        assertEquals(7, props.minBasisDays());
         assertEquals(Duration.ofMinutes(15), props.interSetCap());
         assertEquals(Duration.ofSeconds(90), props.lastSetBonus());
         assertEquals(Duration.ofHours(4), props.sessionCap());
