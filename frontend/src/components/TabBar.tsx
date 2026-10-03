@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { paths } from '../app/paths'
 import styles from './TabBar.module.css'
 
@@ -41,31 +41,49 @@ const icons = {
   ),
 }
 
+/**
+ * 탭과, 그 탭에 불을 켤 경로들.
+ *
+ * <p>설정은 프로필에서 들어가므로 프로필에 켠다. 종목 목록·상세는 홈·분석·기록
+ * 어디서든 들어와 어느 탭이라 말할 수 없어 아무 탭에도 켜지 않는다.
+ */
 const tabs = [
-  { to: paths.home, label: '홈', icon: icons.home, end: true },
-  { to: paths.history, label: '기록', icon: icons.history, end: false },
-  { to: paths.analysis, label: '분석', icon: icons.analysis, end: false },
-  { to: paths.group, label: '그룹', icon: icons.group, end: false },
-  { to: paths.profile, label: '프로필', icon: icons.profile, end: false },
+  { to: paths.home, label: '홈', icon: icons.home, matches: [] as string[], exact: true },
+  { to: paths.history, label: '기록', icon: icons.history, matches: [], exact: false },
+  { to: paths.analysis, label: '분석', icon: icons.analysis, matches: [], exact: false },
+  { to: paths.group, label: '그룹', icon: icons.group, matches: [], exact: false },
+  { to: paths.profile, label: '프로필', icon: icons.profile, matches: [paths.settings], exact: false },
 ]
 
+/** `base` 자체이거나 그 아래 경로인지. '/settings'는 '/settings/account'도 덮는다 */
+function under(pathname: string, base: string): boolean {
+  return pathname === base || pathname.startsWith(`${base}/`)
+}
+
 export function TabBar() {
+  const { pathname } = useLocation()
+
   return (
     <nav className={styles.root}>
-      {tabs.map((tab) => (
-        <NavLink
-          key={tab.to}
-          to={tab.to}
-          end={tab.end}
-          className={({ isActive }) => `${styles.tab} ${isActive ? styles.active : ''}`}
-        >
-          {/* 색은 .tab / .active가 정하고, 아이콘은 currentColor로 물려받는다. */}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            {tab.icon}
-          </svg>
-          <span className={styles.label}>{tab.label}</span>
-        </NavLink>
-      ))}
+      {tabs.map((tab) => {
+        const active = tab.exact
+          ? pathname === tab.to
+          : under(pathname, tab.to) || tab.matches.some((base) => under(pathname, base))
+        return (
+          <Link
+            key={tab.to}
+            to={tab.to}
+            className={`${styles.tab} ${active ? styles.active : ''}`}
+            aria-current={active ? 'page' : undefined}
+          >
+            {/* 색은 .tab / .active가 정하고, 아이콘은 currentColor로 물려받는다. */}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              {tab.icon}
+            </svg>
+            <span className={styles.label}>{tab.label}</span>
+          </Link>
+        )
+      })}
     </nav>
   )
 }

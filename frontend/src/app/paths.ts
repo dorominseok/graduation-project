@@ -17,7 +17,7 @@ export const paths = {
   group: '/group',
   profile: '/profile',
 
-  // 탭 밖 — 전체 화면
+  // 탭 밖 — 하단바를 보일지는 router.tsx가 정한다
   session: '/session',
   sessionDetail: (sessionId: number | string = ':sessionId') => `/session/${sessionId}`,
   routineDetail: (routineId: number | string = ':routineId') => `/routines/${routineId}`,
