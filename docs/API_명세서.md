@@ -315,7 +315,7 @@ Authorization: Bearer {accessToken}
 |---|---|---|---|
 | GET | `/analysis/muscle-volume` | 부위별 볼륨·부족 판정 (2계층) + 신뢰도 | ✔ |
 | GET | `/analysis/balance` | 밀기/당기기·상하체 균형 판정 | ✔ |
-| GET | `/analysis/weekly-volume` | 주차별(월~일) 부위 세트. 판정 없음 (8.6, LOG-30) | ✔ |
+| GET | `/analysis/weekly-volume` | 주차별(월~일) 부위 세트. 판정 없음. **화면 미사용** (8.6, LOG-30) | ✔ |
 
 ---
 
