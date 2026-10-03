@@ -289,3 +289,140 @@ export interface LastPerformance {
     isWarmup: boolean
   }[]
 }
+
+// ── 통계 (명세 7장)
+
+/** 종목 하나의 추정 1RM 추이 (명세 7.1). 기록이 없는 날은 점이 없다 */
+export interface OneRmTrend {
+  exerciseId: number
+  exerciseName: string
+  unit: 'kg'
+  from: string
+  to: string
+  points: {
+    date: string
+    estimatedOneRm: number
+    /** 그날 최댓값을 만든 세트. 점을 눌렀을 때 근거로 보여준다 */
+    basedOnSet: { weightKg: number; reps: number }
+  }[]
+}
+
+/** 세션 하나의 세트별 강도 (명세 7.2). */
+export interface SessionIntensity {
+  sessionId: number
+  performedOn: string
+  exercises: {
+    exerciseId: number
+    exerciseName: string
+    measureType: MeasureType
+    /** 중량·횟수 종목이 아니거나 12회 이하 세트가 없으면 null */
+    estimatedOneRm: number | null
+    sets: {
+      setNo: number
+      weightKg: number | null
+      reps: number | null
+      durationSec: number | null
+      isWarmup: boolean
+      intensityPct: number | null
+    }[]
+  }[]
+}
+
+// ── 분석 (명세 8장)
+
+export type VolumeVerdict = 'INSUFFICIENT' | 'BELOW_RECOMMENDED' | 'OPTIMAL' | 'EXCESSIVE'
+export type SummaryBadge =
+  | 'ALL_OPTIMAL'
+  | 'PARTIAL_BELOW'
+  | 'PARTIAL_INSUFFICIENT'
+  | 'PARTIAL_EXCESSIVE'
+  | 'MIXED'
+export type TierKey = 'CHEST' | 'BACK' | 'SHOULDERS' | 'ARMS' | 'LEGS' | 'CORE'
+export type MuscleGroupKey =
+  | 'CHEST'
+  | 'BACK'
+  | 'DELT_FRONT'
+  | 'DELT_REAR'
+  | 'TRICEPS'
+  | 'BICEPS'
+  | 'QUADS'
+  | 'POSTERIOR'
+  | 'CORE'
+  | 'CALVES'
+  | 'FOREARMS'
+
+/**
+ * 부위별 볼륨·부족 판정 (명세 8.2).
+ *
+ * 화면은 합산·구간 분류·배지·신뢰도를 계산하지 않는다. 받은 값을 그리기만 한다.
+ */
+export interface MuscleVolume {
+  referenceDate: string
+  periodWeeks: number
+  periodFrom: string
+  periodTo: string
+  shoulderSplitResolved: boolean
+  confidence: {
+    level: 'LOW' | 'NORMAL'
+    doneSessionCount: number
+    threshold: number
+    /** LOW일 때만 온다 */
+    message: string | null
+  }
+  /** 항상 6개, 서버가 정한 순서 */
+  tiers: {
+    key: TierKey
+    label: string
+    weeklySets: number
+    totalSets: number
+    hasChildren: boolean
+    /** 하위가 하나일 때만. 둘이면 null — 합계가 한쪽 0을 가리지 않게 */
+    verdict: VolumeVerdict | null
+    verdictLabel: string | null
+    /** 하위가 둘일 때만 */
+    summaryBadge: SummaryBadge | null
+    summaryBadgeLabel: string | null
+    children: {
+      key: MuscleGroupKey
+      label: string
+      weeklySets: number
+      totalSets: number
+      verdict: VolumeVerdict
+      verdictLabel: string
+    }[]
+  }[]
+  /** 종아리·전완. 판정하지 않는다 */
+  displayOnly: { key: MuscleGroupKey; label: string; weeklySets: number; totalSets: number }[]
+}
+
+export type BalanceVerdict = 'BALANCED' | 'IMBALANCED' | 'INSUFFICIENT_DATA'
+export type BalanceSideKey = 'PUSH' | 'PULL' | 'UPPER' | 'LOWER'
+
+export interface BalanceSide {
+  key: BalanceSideKey
+  label: string
+  weeklySets: number
+  /** 합산에 쓴 판정 부위. 근거로 보여준다 */
+  components: MuscleGroupKey[]
+}
+
+/** 밀기/당기기 · 상체/하체 균형 (명세 8.3). */
+export interface Balance {
+  referenceDate: string
+  periodWeeks: number
+  ratioThreshold: number
+  shoulderSplitResolved: boolean
+  pairs: {
+    key: 'PUSH_PULL' | 'UPPER_LOWER'
+    label: string
+    left: BalanceSide
+    right: BalanceSide
+    /** 양쪽 다 0이면 null */
+    biggerSide: BalanceSideKey | null
+    /** 작은 쪽이 0이면 null */
+    ratio: number | null
+    smallerSideZero: boolean
+    verdict: BalanceVerdict
+    verdictLabel: string
+  }[]
+}

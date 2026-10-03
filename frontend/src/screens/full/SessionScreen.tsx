@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { BottomSheet, NumberPad, useToast } from '../../components'
-import { ErrorCodes, exerciseApi, isApiError, workoutApi } from '../../api'
-import type { Exercise, MeasureType, WorkoutSession } from '../../api'
+import { ErrorCodes, exerciseApi, isApiError, statsApi, workoutApi } from '../../api'
+import type { Exercise, MeasureType, SessionIntensity, WorkoutSession } from '../../api'
 import { paths } from '../../app/paths'
 import { ExercisePicker } from './ExercisePicker'
 import type { PickerStep } from './ExercisePicker'
@@ -178,6 +178,12 @@ export function SessionScreen() {
   // 빼려는 종목의 자리. 기록된 세트가 있을 때만 채워진다
   const [removeTarget, setRemoveTarget] = useState<number | null>(null)
 
+  // 그날 추정 1RM(명세 7.2). 세트가 저장·수정·삭제될 때마다 다시 읽는다 —
+  // 화면에서 Epley를 계산하면 서버와 공식이 둘이 된다.
+  const [intensity, setIntensity] = useState<SessionIntensity | null>(null)
+  const [statsVersion, setStatsVersion] = useState(0)
+  const bumpStats = () => setStatsVersion((v) => v + 1)
+
   const fail = useCallback(
     (err: unknown) => {
       if (!isApiError(err)) throw err
@@ -226,6 +232,25 @@ export function SessionScreen() {
       alive = false
     }
   }, [sessionIdParam, backfillDate, showToast])
+
+  // 종목을 펼쳤을 때만 읽는다. 목록 화면에서는 지표를 보여주지 않는다.
+  const sessionId = session?.id ?? null
+  useEffect(() => {
+    if (sessionId === null || openedId === null) return
+    let alive = true
+    const load = async () => {
+      try {
+        const result = await statsApi.getSessionIntensity(sessionId)
+        if (alive) setIntensity(result)
+      } catch {
+        // 지표는 보조 정보다. 못 읽어도 기록은 계속할 수 있어야 해서 알리지 않는다
+      }
+    }
+    void load()
+    return () => {
+      alive = false
+    }
+  }, [sessionId, openedId, statsVersion])
 
   // 경과 시간은 서버가 주지 않는다. 시작 시각부터의 벽시계 차이를 화면이 센다.
   useEffect(() => {
@@ -361,6 +386,7 @@ export function SessionScreen() {
       try {
         await workoutApi.deleteSet(session.id, row.savedId)
         updateRow(cardIndex, rowIndex, { savedId: null })
+        bumpStats()
       } catch (err) {
         fail(err)
       } finally {
@@ -388,6 +414,7 @@ export function SessionScreen() {
         isWarmup: row.isWarmup,
       })
       updateRow(cardIndex, rowIndex, { savedId: saved.id })
+      bumpStats()
       setFlashId(row.clientSetId)
       setExpandedId(null)
 
@@ -444,6 +471,7 @@ export function SessionScreen() {
     if (row.savedId === null || !session) return
     try {
       await workoutApi.updateSet(session.id, row.savedId, { [field]: value })
+      bumpStats()
     } catch (err) {
       updateRow(cardIndex, rowIndex, { [field]: before })
       fail(err)
@@ -469,6 +497,7 @@ export function SessionScreen() {
     if (row.savedId !== null && session) {
       try {
         await workoutApi.deleteSet(session.id, row.savedId)
+        bumpStats()
       } catch (err) {
         fail(err)
         return
@@ -685,6 +714,20 @@ export function SessionScreen() {
     const prevCard = openedIndex > 0 ? cards[openedIndex - 1] : null
     const nextCard = openedIndex < cards.length - 1 ? cards[openedIndex + 1] : null
 
+    const savedRows = opened.rows.filter((row) => row.savedId !== null)
+    const savedWeights = savedRows
+      .map((row) => row.weightKg)
+      .filter((weight): weight is number => weight != null)
+    const savedMaxWeight = savedWeights.length > 0 ? Math.max(...savedWeights) : null
+    const savedWorkingSets = savedRows.filter((row) => !row.isWarmup).length
+    // 중량 딥스 같은 종목의 무게는 몸무게가 아니라 매단 무게라 1RM을 내지 않는다(명세 7.1)
+    const isAddedWeight = opened.measureType === 'WEIGHTED_BODYWEIGHT'
+    // 다른 세션의 응답이 남아 있을 수 있어 세션 번호까지 맞춰 본다
+    const openedOneRm =
+      intensity && intensity.sessionId === session?.id
+        ? (intensity.exercises.find((e) => e.exerciseId === opened.exerciseId)?.estimatedOneRm ?? null)
+        : null
+
     // 워밍업은 세트 번호에서 빠진다. 본세트만 1, 2, 3으로 센다.
     const badges = opened.rows.map((row, index) =>
       row.isWarmup
@@ -736,23 +779,42 @@ export function SessionScreen() {
           </div>
 
           {/*
-            지표 3종. 분석 API가 아직 없어 값은 비워두고 자리만 잡아둔다 —
-            나중에 값이 들어와도 줄 수가 바뀌지 않도록 모양을 먼저 고정해둔다.
+            지표 3종. 저장된 세트만 센다 — 아직 체크하지 않은 줄은 한 것이 아니다.
+            목업의 "볼륨(kg)"은 톤 방식이라 쓰지 않고(분석 설계서 1.1), 이 앱이
+            볼륨이라 부르는 본세트 수로 바꿨다.
           */}
           {showStats && (
             <div className={styles.stats}>
               {[
-                { label: '최대 무게', unit: '' },
-                { label: '최대 1RM', unit: 'kg' },
-                { label: '볼륨', unit: 'kg' },
+                {
+                  label: '최대 무게',
+                  value:
+                    savedMaxWeight == null
+                      ? '—'
+                      : `${isAddedWeight ? '+' : ''}${trimNumber(savedMaxWeight)}`,
+                  unit: savedMaxWeight == null ? '' : 'kg',
+                  note: isAddedWeight ? '추가 중량 기준' : '이번 기록',
+                },
+                {
+                  label: '최대 1RM',
+                  value: openedOneRm == null ? '—' : String(openedOneRm),
+                  unit: openedOneRm == null ? '' : 'kg',
+                  note: isAddedWeight ? '중량 종목만 추정' : '12회 이하 세트 기준',
+                },
+                {
+                  label: '볼륨',
+                  value: String(savedWorkingSets),
+                  unit: '세트',
+                  note: '워밍업 제외',
+                },
               ].map((stat) => (
                 <div key={stat.label} className={styles.stat}>
                   <div className={styles.statLabel}>{stat.label}</div>
                   <div className={styles.statValueRow}>
-                    <span className={styles.statValue}>—</span>
+                    <span className={styles.statValue}>{stat.value}</span>
                     <span className={styles.statUnit}>{stat.unit}</span>
                   </div>
-                  <div className={styles.statNote}>분석 기능 준비 중</div>
+                  <div className={styles.statNote}>{stat.note}</div>
                 </div>
               ))}
             </div>

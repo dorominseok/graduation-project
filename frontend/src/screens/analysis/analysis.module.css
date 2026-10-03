@@ -1,0 +1,459 @@
+/*
+ * 분석 탭 — 목업의 약점·통계 서브탭을 옮기되, 부위 목록은 2계층으로 새로 짰다.
+ *
+ * 막대는 목업보다 가늘고(14px → 12px) 끝만 둥글다. 바닥 쪽까지 둥글면 0에서
+ * 시작한다는 기준이 흐려진다. 과다 구간의 빗금은 뺐다 — 판정 라벨이 이미
+ * "과다"라고 말하고, 빗금은 움직이는 무늬처럼 보여 눈이 피로하다.
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-18);
+  padding: var(--space-16) var(--space-20) 40px;
+  /* 한글을 음절이 아니라 어절에서 끊는다. 안 그러면 "없어/요"처럼 갈라진다 */
+  word-break: keep-all;
+}
+
+.status {
+  padding: var(--space-32) 0;
+  text-align: center;
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+}
+
+/* ── 기간 */
+
+.periodBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.period {
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.periodSub {
+  font-size: var(--font-xs);
+  color: var(--text-secondary);
+}
+
+/* ── 신뢰도 */
+
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-10);
+  background: var(--warn-soft);
+  border-radius: var(--radius-lg);
+  padding: var(--space-12) var(--space-14);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-medium);
+  line-height: 1.45;
+  color: var(--warn);
+}
+
+.bannerIcon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--warn);
+  color: var(--on-fill);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-heavy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bannerSub {
+  font-weight: 500;
+}
+
+/* ── 부위 목록 */
+
+.tiers,
+.children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tiers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.tier {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.tierHead,
+.childHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  min-height: 24px;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+
+button.tierHead {
+  cursor: pointer;
+}
+
+.tierLabel {
+  font-size: var(--font-body);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.tierRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.sets {
+  font-size: var(--font-xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.chevron {
+  display: flex;
+  transition: transform 0.15s;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+.tierNote {
+  font-size: var(--font-3xs);
+  color: var(--warn);
+}
+
+.children {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  margin-top: var(--space-4);
+  padding: var(--space-10) var(--space-12);
+  border-left: 2px solid var(--divider);
+  background: var(--chip-bg);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.child {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.childLabel {
+  font-size: var(--font-sm);
+  color: var(--text-primary);
+}
+
+/* ── 막대 */
+
+.track {
+  position: relative;
+  height: 12px;
+  border-radius: 0 4px 4px 0;
+  background: var(--track-bg);
+  overflow: hidden;
+}
+
+.trackThin {
+  height: 8px;
+  background: var(--card-bg);
+}
+
+/* 눈금은 막대 아래에 둔다. 위에 얹으면 막대가 기준선마다 끊겨 보인다 */
+.tick {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: var(--tick);
+}
+
+.tickStrong {
+  width: 1.5px;
+  background: var(--tick-strong);
+}
+
+.fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+}
+
+.scaleNote {
+  margin-top: calc(-1 * var(--space-6));
+  font-size: var(--font-3xs);
+  color: var(--text-tertiary);
+}
+
+/* ── 판정 색. 막대와 알약이 같이 쓴다 */
+
+.fill.toneDanger {
+  background: var(--danger);
+}
+.fill.toneWarn {
+  background: var(--warn);
+}
+.fill.toneGood {
+  background: var(--accent);
+}
+.fill.toneNeutral {
+  background: var(--tick-strong);
+}
+
+.pill {
+  flex-shrink: 0;
+  padding: 3px var(--space-8);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-3xs);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+}
+
+.pill.toneDanger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.pill.toneWarn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.pill.toneGood {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.pill.toneNeutral {
+  background: var(--chip-bg);
+  color: var(--text-secondary);
+}
+
+/* ── 판정 제외 */
+
+.displayOnly {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--divider);
+}
+
+.displayOnlyTitle {
+  font-size: var(--font-2xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-tertiary);
+}
+
+.displayOnlyRow {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.displayOnlyHint {
+  font-size: var(--font-3xs);
+  color: var(--text-tertiary);
+}
+
+/* ── 균형 */
+
+.balance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-18);
+}
+
+.sectionTitle {
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.pair {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.pairHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pairTitle {
+  font-size: var(--font-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+.diverge {
+  display: flex;
+  align-items: center;
+  height: 22px;
+}
+
+.half {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.halfRight {
+  justify-content: flex-start;
+}
+
+.axis {
+  width: 1.5px;
+  height: 22px;
+  background: var(--card-border);
+}
+
+/* 가운데 축에서 자라나는 막대. 축 쪽은 각지고 바깥 끝만 둥글다 */
+.sideBar {
+  height: 18px;
+}
+
+.sideLeft {
+  background: var(--push-color);
+  border-radius: 4px 0 0 4px;
+}
+
+.sideRight {
+  background: var(--pull-color);
+  border-radius: 0 4px 4px 0;
+}
+
+.sideLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.sideLabels > span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.pairSentence {
+  font-size: var(--font-xs);
+  color: var(--text-primary);
+}
+
+.components {
+  font-size: var(--font-3xs);
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+
+/* ── 기록 없음 */
+
+.emptyCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-28) var(--space-20);
+  text-align: center;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-xl);
+}
+
+.emptyTitle {
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.emptyBody {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.emptyButton {
+  margin-top: var(--space-10);
+  height: 40px;
+  padding: 0 var(--space-18);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--on-fill);
+  font-size: var(--font-sm);
+  font-weight: var(--weight-bold);
+}
+
+/* ── 통계 서브탭 */
+
+/* 줄을 바꿔 전부 보인다. 가로로 굴리게 두면 화면 끝에 딱 맞게 끝난 칩 뒤로
+   더 있다는 게 안 보인다 — 실제로 8개 중 3개만 보이는 채로 찍혔다 */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.chip {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 var(--space-12);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+.chipOn {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: var(--weight-bold);
+}
+
+.linkButton {
+  align-self: center;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-medium);
+  padding: var(--space-6) 0;
+}
