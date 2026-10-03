@@ -1,6 +1,7 @@
 package com.fitness.backend.analysis.domain;
 
 import com.fitness.backend.exercise.domain.DeltRegion;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -91,6 +92,32 @@ public enum MuscleGroup {
             return Optional.of(deltRegion == DeltRegion.REAR ? DELT_REAR : DELT_FRONT);
         }
         return Optional.ofNullable(BY_PRIMARY_MUSCLE.get(key));
+    }
+
+    /**
+     * 이 판정 부위에 속하는 {@code primary_muscle} 값들. 종목 조회 조건으로 쓴다.
+     *
+     * <p>{@link #of}의 역방향이다. 표를 따로 두지 않고 같은 표에서 뽑아 두 방향이
+     * 어긋날 수 없게 한다.
+     */
+    public List<String> primaryMuscles() {
+        if (this == DELT_FRONT || this == DELT_REAR) {
+            return List.of(SHOULDERS);
+        }
+        return BY_PRIMARY_MUSCLE.entrySet().stream()
+                .filter(e -> e.getValue() == this)
+                .map(Map.Entry::getKey)
+                .sorted()
+                .toList();
+    }
+
+    /** 어깨 앞·뒤만 값이 있다. 나머지는 {@code null} — 조건을 걸지 않는다. */
+    public DeltRegion deltRegion() {
+        return switch (this) {
+            case DELT_FRONT -> DeltRegion.FRONT;
+            case DELT_REAR -> DeltRegion.REAR;
+            default -> null;
+        };
     }
 
     /** 어깨 종목인지. {@code shoulderSplitResolved} 계산에 쓴다. */

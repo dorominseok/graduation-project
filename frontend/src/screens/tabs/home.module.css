@@ -307,62 +307,6 @@ button.card {
   color: var(--text-secondary);
 }
 
-/* ── 성장 */
-
-.growthRow {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-12);
-  margin-top: var(--space-4);
-}
-
-.growthValue {
-  font-size: 22px;
-  font-weight: var(--weight-heavy);
-  color: var(--text-primary);
-}
-
-.growthUnit {
-  margin-left: 2px;
-  font-size: var(--font-2xs);
-  font-weight: var(--weight-medium);
-  color: var(--text-tertiary);
-}
-
-.growthSub {
-  margin-top: var(--space-2);
-  font-size: var(--font-2xs);
-  color: var(--text-secondary);
-}
-
-.up {
-  font-weight: var(--weight-bold);
-  color: var(--accent);
-}
-
-.down {
-  font-weight: var(--weight-bold);
-  color: var(--danger);
-}
-
-.spark {
-  flex-shrink: 0;
-  width: 96px;
-  height: 36px;
-  overflow: visible;
-}
-
-/* 늘여도 선 두께는 2px 그대로 */
-.spark polyline {
-  fill: none;
-  stroke: var(--push-color);
-  stroke-width: 2;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-}
-
 /* ── 최근 기록 */
 
 .recentList {
@@ -406,4 +350,111 @@ button.card {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ── 약점 행. 누르면 그 부위 종목으로 */
+
+.cardHeadButton {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+}
+
+.cardMore {
+  display: flex;
+  align-items: center;
+  font-size: var(--font-3xs);
+  color: var(--text-tertiary);
+}
+
+.weakList {
+  list-style: none;
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.weakRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+  padding: var(--space-8) 0;
+  border: none;
+  background: none;
+  text-align: left;
+}
+
+.weakRowHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.weakName {
+  font-size: var(--font-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.weakSets {
+  font-size: var(--font-xs);
+  color: var(--danger);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.weakLink {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  font-size: var(--font-2xs);
+  color: var(--accent);
+  font-weight: var(--weight-medium);
+}
+
+.weakLink svg {
+  color: var(--accent);
+  width: 14px;
+  height: 14px;
+}
+
+/* 분석 탭 하위 막대와 같은 눈금. 여기엔 "부족"만 오므로 색은 하나다 */
+.weakTrack {
+  position: relative;
+  display: block;
+  height: 8px;
+  border-radius: 0 4px 4px 0;
+  background: var(--track-bg);
+  overflow: hidden;
+}
+
+.weakTick {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: var(--tick);
+}
+
+.weakFill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  background: var(--danger);
+}
+
+.weakScale {
+  margin-top: var(--space-4);
+  font-size: var(--font-3xs);
+  color: var(--text-tertiary);
 }

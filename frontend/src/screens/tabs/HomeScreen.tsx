@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BottomSheet, Chevron, useToast } from '../../components'
-import { analysisApi, exerciseApi, isApiError, statsApi, workoutApi } from '../../api'
-import type { Balance, MuscleVolume, OneRmTrend, SessionSummary, WorkoutSession } from '../../api'
+import { analysisApi, isApiError, workoutApi } from '../../api'
+import type { Balance, MuscleVolume, SessionSummary, WorkoutSession } from '../../api'
+import { BAR_TICKS, barPercent } from '../analysis/format'
 import { useAuth } from '../../auth'
 import { paths } from '../../app/paths'
 import styles from './home.module.css'
@@ -48,16 +49,6 @@ function exerciseLine(session: SessionSummary): string {
   return names.length > 2 ? `${names.slice(0, 2).join(', ')} 외 ${names.length - 2}` : names.join(', ')
 }
 
-/** 성장 카드 후보를 고를 기간. 1RM 추이의 기본 구간과 같다 */
-const GROWTH_LOOKBACK_DAYS = 12 * 7 - 1
-/** 성장 카드 후보 수. 많이 볼수록 요청이 는다 */
-const GROWTH_CANDIDATES = 3
-
-/** 첫 점 대비 마지막 점. 점이 하나면 비교할 것이 없어 0 */
-function gainOf(trend: OneRmTrend): number {
-  const points = trend.points
-  return points[points.length - 1].estimatedOneRm - points[0].estimatedOneRm
-}
 
 /**
  * 인사말 아래 큰 줄. 0을 제목 자리에 크게 띄우지 않는다 — 월초마다 "10월 0회"가
@@ -256,8 +247,6 @@ export function HomeScreen() {
         </div>
       )}
 
-      <GrowthCard version={version} />
-
       {counts && (
         <div className={styles.card}>
           <div className={styles.cardLabel}>최근 기록</div>
@@ -319,55 +308,104 @@ export function HomeScreen() {
   )
 }
 
+/** 홈에 펼쳐 보일 부족한 부위 수. 나머지는 "외 N곳"으로 접는다 */
+const WEAK_ROWS = 3
+
 /**
- * 약점 요약.
+ * 약점.
  *
- * <p>목업은 여기에 상위 6종 막대를 판정색으로 칠했다. 그러면 분석 탭에서 막은
- * "팔 · 최적"(삼두 0세트를 가림)이 홈에서 다시 생긴다. 규칙대로 그리면 분석 탭을
- * 그대로 복사한 셈이 되어, 홈은 부족한 하위 부위 이름과 균형 경고만 적는다.
+ * <p>얼마나 부족한지(주당 세트 + 막대)와, 그래서 뭘 할 수 있는지(그 부위 종목)를
+ * 한 줄에 둔다. 이름만 나열하면 어깨(뒤)가 0세트인지 3세트인지, 어떤 종목이
+ * 어깨(뒤)인지 홈에서 알 수 없다.
  *
- * <p>"이번 주" 토글도 뺐다. 7일로 판정하면 수요일에 열었을 때 전부 부족이 된다
- * (분석 설계서 2.1이 버린 방식).
+ * <p>막대는 <b>하위 부위</b>에만 그린다. 하위가 판정 단위라 판정색을 칠해도 되고,
+ * 목업처럼 상위 6종에 칠하면 "팔 · 최적"이 삼두 0세트를 가린다(LOG-09).
+ *
+ * <p>종목으로 이어주되 "보완하세요"라고 적지는 않는다. 판정은 부족하다는 데까지만
+ * 알린다(분석 설계서 2.4) — 무엇을 할지는 루틴 추천의 몫이다.
  */
 function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Balance }) {
   const navigate = useNavigate()
-  const go = () => navigate(paths.analysis)
+  const goAnalysis = () => navigate(paths.analysis)
+
+  const head = (label: string) => (
+    <button type="button" className={styles.cardHeadButton} onClick={goAnalysis}>
+      <span className={styles.cardLabel}>{label}</span>
+      <span className={styles.cardMore}>
+        분석 보기
+        <Chevron />
+      </span>
+    </button>
+  )
 
   if (volume.confidence.doneSessionCount === 0) {
     return (
-      <button type="button" className={styles.card} onClick={go}>
-        <div className={styles.cardHead}>
-          <span className={styles.cardLabel}>약점</span>
-          <Chevron />
-        </div>
+      <div className={styles.card}>
+        {head('약점')}
         <div className={styles.weakEmpty}>운동을 기록하고 종료하면 부족한 부위를 알려드려요</div>
-      </button>
+      </div>
     )
   }
 
-  const lacking = volume.tiers.flatMap((t) => t.children).filter((c) => c.verdict === 'INSUFFICIENT')
+  // 가장 덜 한 곳부터. 같은 "부족"이어도 0세트와 3세트는 다르다
+  const lacking = volume.tiers
+    .flatMap((t) => t.children)
+    .filter((c) => c.verdict === 'INSUFFICIENT')
+    .sort((a, b) => a.weeklySets - b.weeklySets)
+  const shown = lacking.slice(0, WEAK_ROWS)
   const imbalanced = balance.pairs.filter((p) => p.verdict === 'IMBALANCED')
 
   return (
-    <button type="button" className={styles.card} onClick={go}>
-      <div className={styles.cardHead}>
-        <span className={styles.cardLabel}>약점 · 최근 {volume.periodWeeks}주</span>
-        <Chevron />
-      </div>
+    <div className={styles.card}>
+      {head(`약점 · 최근 ${volume.periodWeeks}주`)}
 
-      {lacking.length > 0 ? (
+      {lacking.length === 0 ? (
+        <div className={styles.weakTitle}>부족한 부위가 없어요</div>
+      ) : (
         <>
           <div className={styles.weakTitle}>부족한 곳 {lacking.length}</div>
-          <div className={styles.weakChips}>
-            {lacking.map((c) => (
-              <span key={c.key} className={styles.weakChip}>
-                {c.label}
-              </span>
+          <ul className={styles.weakList}>
+            {shown.map((c) => (
+              <li key={c.key}>
+                <button
+                  type="button"
+                  className={styles.weakRow}
+                  onClick={() =>
+                    navigate(
+                      `${paths.exerciseList}?muscleGroup=${c.key}&label=${encodeURIComponent(c.label)}`,
+                    )
+                  }
+                >
+                  <span className={styles.weakRowHead}>
+                    <span className={styles.weakName}>{c.label}</span>
+                    <span className={styles.weakSets}>주 {c.weeklySets}세트</span>
+                    <span className={styles.weakLink}>
+                      종목 보기
+                      <Chevron />
+                    </span>
+                  </span>
+                  <span className={styles.weakTrack} aria-hidden="true">
+                    {BAR_TICKS.map((tick) => (
+                      <span key={tick} className={styles.weakTick} style={{ left: `${barPercent(tick)}%` }} />
+                    ))}
+                    {c.weeklySets > 0 && (
+                      <span className={styles.weakFill} style={{ width: `${barPercent(c.weeklySets)}%` }} />
+                    )}
+                  </span>
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
+          {lacking.length > WEAK_ROWS && (
+            <div className={styles.weakNote}>
+              외 {lacking
+                .slice(WEAK_ROWS)
+                .map((c) => c.label)
+                .join(' · ')}
+            </div>
+          )}
+          <div className={styles.weakScale}>눈금 주 4 · 10 · 20세트 — 10세트부터 권장 구간</div>
         </>
-      ) : (
-        <div className={styles.weakTitle}>부족한 부위가 없어요</div>
       )}
 
       {imbalanced.map((p) => (
@@ -381,7 +419,7 @@ function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Bala
           완료한 운동이 {volume.confidence.doneSessionCount}회라 참고만 해주세요
         </div>
       )}
-    </button>
+    </div>
   )
 }
 
@@ -395,129 +433,4 @@ function restLine(last: SessionSummary | undefined, today: Date): string {
   if (days === 0) return '오늘 이미 한 번 운동했어요'
   if (days === 1) return '마지막 운동은 어제예요'
   return `마지막 운동 ${days}일 전 · ${formatMonthDay(last.performedOn)}`
-}
-
-/**
- * 성장 — 가장 자주 한 중량·횟수 종목의 추정 1RM 변화.
- *
- * <p>약점 카드는 부족한 것만 말한다. 늘고 있는 것을 하나 같이 보여줘야 홈이
- * 경고판이 되지 않는다. 최근 12주에 자주 한 중량·횟수 종목 셋 중 가장 많이 오른
- * 것을 고른다 — 자주 한 종목이어야 사용자가 신경 쓰는 종목이고, 그중에서 고르지
- * 않으면 횟수가 같을 때 변화 0kg인 종목이 뽑힌다(실제로 그랬다).
- *
- * <p>홈의 다른 카드와 따로 읽는다. 요청이 여러 번 이어져 늦게 오는데, 그동안
- * 나머지 홈이 기다릴 이유가 없다.
- */
-function GrowthCard({ version }: { version: number }) {
-  const navigate = useNavigate()
-  const [trend, setTrend] = useState<OneRmTrend | 'none' | null>(null)
-
-  useEffect(() => {
-    let alive = true
-    const load = async () => {
-      try {
-        const from = new Date()
-        from.setDate(from.getDate() - GROWTH_LOOKBACK_DAYS)
-        const history = await workoutApi.getHistory({ from: toDateString(from), status: 'DONE', size: 50 })
-
-        // 기록한 횟수(세션 수)로 줄 세운다
-        const frequency = new Map<number, number>()
-        history.content.forEach((session) =>
-          session.exercises.forEach((e) => frequency.set(e.id, (frequency.get(e.id) ?? 0) + 1)),
-        )
-        const ranked = [...frequency.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id)
-
-        // 맨몸·시간 종목은 1RM이 없다. 위에서부터 중량·횟수 종목 셋을 모은다
-        const candidates: OneRmTrend[] = []
-        for (const id of ranked.slice(0, 8)) {
-          if (candidates.length === GROWTH_CANDIDATES) break
-          const exercise = await exerciseApi.get(id)
-          if (exercise.measureType !== 'WEIGHT_REPS') continue
-          const result = await statsApi.getOneRmTrend(id)
-          if (result.points.length > 0) candidates.push(result)
-        }
-        if (!alive) return
-        if (candidates.length === 0) {
-          setTrend('none')
-          return
-        }
-        setTrend(candidates.reduce((best, t) => (gainOf(t) > gainOf(best) ? t : best)))
-      } catch (err) {
-        // 보조 카드라 실패해도 알리지 않고 비운다
-        if (!isApiError(err)) throw err
-        if (alive) setTrend('none')
-      }
-    }
-    void load()
-    return () => {
-      alive = false
-    }
-  }, [version])
-
-  if (trend === null) return null
-
-  if (trend === 'none') {
-    return (
-      <div className={styles.card}>
-        <div className={styles.cardLabel}>성장</div>
-        <div className={styles.weakEmpty}>무게와 횟수를 함께 기록하면 추정 1RM 변화를 보여드려요</div>
-      </div>
-    )
-  }
-
-  const points = trend.points
-  const first = points[0]
-  const last = points[points.length - 1]
-  const delta = Math.round((last.estimatedOneRm - first.estimatedOneRm) * 10) / 10
-
-  // 축 없는 작은 추세선. 값은 숫자로 적고, 선은 방향만 보여준다
-  const values = points.map((p) => p.estimatedOneRm)
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const line = points
-    .map((p, i) => {
-      const x = (i / (points.length - 1)) * 100
-      const y = max === min ? 50 : 90 - ((p.estimatedOneRm - min) / (max - min)) * 80
-      return `${x},${y}`
-    })
-    .join(' ')
-
-  return (
-    <button
-      type="button"
-      className={styles.card}
-      onClick={() => navigate(`${paths.analysis}?view=stats&exercise=${trend.exerciseId}`)}
-    >
-      <div className={styles.cardHead}>
-        <span className={styles.cardLabel}>성장 · {trend.exerciseName}</span>
-        <Chevron />
-      </div>
-      <div className={styles.growthRow}>
-        <div>
-          <div className={styles.growthValue}>
-            {last.estimatedOneRm}
-            <span className={styles.growthUnit}>kg</span>
-          </div>
-          {points.length < 2 ? (
-            <div className={styles.growthSub}>추정 1RM · 기록이 더 쌓이면 변화가 보여요</div>
-          ) : delta === 0 ? (
-            <div className={styles.growthSub}>추정 1RM · {formatMonthDay(first.date)}과 같아요</div>
-          ) : (
-            <div className={styles.growthSub}>
-              추정 1RM · {formatMonthDay(first.date)}보다{' '}
-              <span className={delta > 0 ? styles.up : styles.down}>
-                {delta > 0 ? '+' : ''}
-                {delta}kg
-              </span>
-            </div>
-          )}
-        </div>
-        {points.length >= 2 && (
-          <svg className={styles.spark} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            <polyline points={line} />
-          </svg>
-        )}
-      </div>
-    </button>
-  )
 }

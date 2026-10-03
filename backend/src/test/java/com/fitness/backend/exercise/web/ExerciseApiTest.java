@@ -339,4 +339,40 @@ class ExerciseApiTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
+
+    // ── 판정 부위로 조회 (LOG-29) — 홈의 약점에서 그 부위 종목으로 바로 간다
+
+    @Test
+    @DisplayName("판정 부위로 거르면 어깨 뒤쪽만 나온다 — 탐색 분류의 어깨는 앞뒤가 섞여 있다")
+    void muscleGroupSplitsShoulders() throws Exception {
+        mvc.perform(get("/api/v1/exercises").param("muscleGroup", "DELT_REAR").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page.totalElements").value(3))
+                .andExpect(jsonPath("$.content[*].deltRegion")
+                        .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is("REAR"))));
+    }
+
+    @Test
+    @DisplayName("뒤허벅지·둔근은 탐색 분류 둘(하체·엉덩이)에 걸쳐 있어도 한 번에 나온다")
+    void muscleGroupSpansCategories() throws Exception {
+        mvc.perform(get("/api/v1/exercises").param("muscleGroup", "POSTERIOR").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page.totalElements").value(7))
+                .andExpect(jsonPath("$.content[*].primaryMuscle").value(org.hamcrest.Matchers.everyItem(
+                        org.hamcrest.Matchers.isOneOf("hamstrings", "glutes"))));
+    }
+
+    @Test
+    @DisplayName("분류와 판정 부위를 같이 주면 둘 다 맞는 종목만, 겹치지 않으면 빈 목록이다")
+    void muscleGroupIntersectsCategory() throws Exception {
+        mvc.perform(get("/api/v1/exercises")
+                        .param("category", "LEGS").param("muscleGroup", "POSTERIOR").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].primaryMuscle")
+                        .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is("hamstrings"))));
+
+        mvc.perform(get("/api/v1/exercises").param("category", "CHEST").param("muscleGroup", "DELT_REAR"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page.totalElements").value(0));
+    }
 }

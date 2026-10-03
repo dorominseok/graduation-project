@@ -1,6 +1,7 @@
 package com.fitness.backend.exercise.repository;
 
 import com.fitness.backend.exercise.domain.BodyPart;
+import com.fitness.backend.exercise.domain.DeltRegion;
 import com.fitness.backend.exercise.domain.Equipment;
 import com.fitness.backend.exercise.domain.Exercise;
 import com.fitness.backend.exercise.domain.MeasureType;
@@ -35,6 +36,7 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
                and (:measureType is null or e.measureType = :measureType)
                and (:allMuscles = true or e.primaryMuscle in :muscles)
                and (:groupName is null or e.groupName = :groupName)
+               and (:deltRegion is null or e.deltRegion = :deltRegion)
             """)
     Page<Exercise> search(@Param("namePattern") String namePattern,
                           @Param("bodyPart") BodyPart bodyPart,
@@ -43,6 +45,7 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
                           @Param("allMuscles") boolean allMuscles,
                           @Param("muscles") Collection<String> muscles,
                           @Param("groupName") String groupName,
+                          @Param("deltRegion") DeltRegion deltRegion,
                           Pageable pageable);
 
     /**
@@ -63,6 +66,7 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
                and (:measureType is null or e.measureType = :measureType)
                and (:allMuscles = true or e.primaryMuscle in :muscles)
                and (:groupName is null or e.groupName = :groupName)
+               and (:deltRegion is null or e.deltRegion = :deltRegion)
              order by f.createdAt desc
             """)
     Page<Exercise> searchFavorites(@Param("userId") Long userId,
@@ -73,6 +77,7 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
                                    @Param("allMuscles") boolean allMuscles,
                                    @Param("muscles") Collection<String> muscles,
                                    @Param("groupName") String groupName,
+                                   @Param("deltRegion") DeltRegion deltRegion,
                                    Pageable pageable);
 
     /**

@@ -1,8 +1,10 @@
 package com.fitness.backend.exercise.service;
 
+import com.fitness.backend.analysis.domain.MuscleGroup;
 import com.fitness.backend.common.error.ApiException;
 import com.fitness.backend.exercise.domain.BodyPart;
 import com.fitness.backend.exercise.domain.BrowseCategory;
+import com.fitness.backend.exercise.domain.DeltRegion;
 import com.fitness.backend.exercise.domain.Equipment;
 import com.fitness.backend.exercise.domain.Exercise;
 import com.fitness.backend.exercise.domain.MeasureType;
@@ -50,21 +52,43 @@ public class ExerciseService {
      */
     public Page<ExerciseResponse> search(Long userId, String q, BodyPart bodyPart,
                                          Equipment equipment, MeasureType measureType,
-                                         BrowseCategory category, String groupName,
-                                         boolean favoriteOnly, Pageable pageable) {
+                                         BrowseCategory category, MuscleGroup muscleGroup,
+                                         String groupName, boolean favoriteOnly, Pageable pageable) {
         String namePattern = namePattern(q);
-        // 분류를 지정하지 않으면 in 절을 건너뛴다. 빈 컬렉션을 넘기면 아무것도 안 나온다.
-        boolean allMuscles = category == null;
-        Collection<String> muscles = category == null ? List.of("") : category.primaryMuscles();
+        // 분류도 판정 부위도 없으면 in 절을 건너뛴다. 빈 컬렉션을 넘기면 아무것도 안 나온다.
+        boolean allMuscles = category == null && muscleGroup == null;
+        Collection<String> muscles = allMuscles ? List.of("") : musclesOf(category, muscleGroup);
+        DeltRegion deltRegion = muscleGroup == null ? null : muscleGroup.deltRegion();
 
         Page<Exercise> page = favoriteOnly && userId != null
                 ? exerciseRepository.searchFavorites(userId, namePattern, bodyPart, equipment, measureType,
-                        allMuscles, muscles, groupName, pageable)
+                        allMuscles, muscles, groupName, deltRegion, pageable)
                 : exerciseRepository.search(namePattern, bodyPart, equipment, measureType,
-                        allMuscles, muscles, groupName, pageable);
+                        allMuscles, muscles, groupName, deltRegion, pageable);
 
         Set<Long> favorites = favoriteIds(userId, page.getContent());
         return page.map(e -> toResponse(e, userId, favorites));
+    }
+
+    /**
+     * 탐색 분류와 판정 부위를 같이 주면 둘 다 만족하는 근육만 남긴다.
+     *
+     * <p>둘은 다른 축이다(LOG-24). 판정 부위 "뒤허벅지·둔근"은 탐색 분류의 하체와
+     * 엉덩이에 걸쳐 있어 분류 하나로는 못 고른다 — 홈의 약점에서 종목으로 바로
+     * 가려면 판정 부위로 조회할 수 있어야 한다. 겹치는 근육이 없으면 아무것도
+     * 안 나오도록 빈 문자열 하나를 넘긴다.
+     */
+    private static Collection<String> musclesOf(BrowseCategory category, MuscleGroup muscleGroup) {
+        if (category == null) {
+            return muscleGroup.primaryMuscles();
+        }
+        if (muscleGroup == null) {
+            return category.primaryMuscles();
+        }
+        List<String> both = category.primaryMuscles().stream()
+                .filter(muscleGroup.primaryMuscles()::contains)
+                .toList();
+        return both.isEmpty() ? List.of("") : both;
     }
 
     /**

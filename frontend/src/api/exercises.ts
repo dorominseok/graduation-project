@@ -8,6 +8,7 @@ import type {
   GroupCount,
   LastPerformance,
   MeasureType,
+  MuscleGroupKey,
   Page,
 } from './types'
 
@@ -18,6 +19,11 @@ export interface ExerciseQuery {
   bodyPart?: BodyPart
   /** 탐색 분류 12종 (LOG-24). 부위 그리드에서 고른 값 */
   category?: BrowseCategory
+  /**
+   * 판정 부위 9종 (LOG-29). 홈의 약점에서 그 부위 종목으로 바로 갈 때 쓴다.
+   * 탐색 분류와 축이 달라 어깨 앞·뒤를 가르고, 뒤허벅지·둔근처럼 분류 둘에 걸친 것도 한 번에 고른다
+   */
+  muscleGroup?: MuscleGroupKey
   /** 계열. 같은 동작의 변형만 본다 */
   group?: string
   equipment?: Equipment
