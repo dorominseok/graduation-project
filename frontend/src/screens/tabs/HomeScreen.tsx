@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { BottomSheet, Chevron, useToast } from '../../components'
 import { analysisApi, isApiError, workoutApi } from '../../api'
 import type { Balance, MuscleVolume, SessionSummary, WorkoutSession } from '../../api'
-import { BAR_TICKS, barPercent } from '../analysis/format'
+import { BAR_TICKS, barPercent, basisLabel } from '../analysis/format'
 import { useAuth } from '../../auth'
 import { paths } from '../../app/paths'
 import styles from './home.module.css'
@@ -357,7 +357,7 @@ function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Bala
 
   return (
     <div className={styles.card}>
-      {head(`약점 · 최근 ${volume.periodWeeks}주`)}
+      {head(`약점 · ${basisLabel(volume)}`)}
 
       {lacking.length === 0 ? (
         <div className={styles.weakTitle}>부족한 부위가 없어요</div>
