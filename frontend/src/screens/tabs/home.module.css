@@ -196,12 +196,6 @@ button.card {
   border-color: var(--accent-strong);
 }
 
-.weekLine {
-  margin-top: var(--space-8);
-  font-size: var(--font-3xs);
-  color: var(--text-secondary);
-}
-
 /* ── 둘러보기 */
 
 .browse {

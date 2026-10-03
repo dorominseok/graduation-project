@@ -169,7 +169,6 @@ export function HomeScreen() {
   }
 
   const weekDays = new Set(counts?.week.map((s) => s.performedOn))
-  const weekSets = counts?.week.reduce((sum, s) => sum + s.setCount, 0) ?? 0
 
   return (
     <div className={styles.page}>
@@ -245,8 +244,6 @@ export function HomeScreen() {
               )
             })}
           </div>
-          {/* 시간은 적지 않는다. 분석에 쓰지 않고, 사후 입력한 운동은 시간이 없어 합계가 틀려 보인다 */}
-          <div className={styles.weekLine}>이번 주 총 {weekSets}세트</div>
         </div>
       )}
 
