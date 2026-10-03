@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { BottomSheet, NumberPad, useToast } from '../../components'
 import { ErrorCodes, exerciseApi, isApiError, statsApi, workoutApi } from '../../api'
-import type { Exercise, MeasureType, SessionIntensity, WorkoutSession } from '../../api'
+import type { Exercise, MeasureType, MuscleGroupKey, SessionIntensity, WorkoutSession } from '../../api'
 import { paths } from '../../app/paths'
 import { ExercisePicker } from './ExercisePicker'
 import type { PickerStep } from './ExercisePicker'
@@ -166,8 +166,16 @@ export function SessionScreen() {
   // 종목 고르기는 화면을 옮기지 않고 시트로 띄운다. 기록 화면이 살아 있어야
   // 아직 체크하지 않은 종목들이 그대로 남는다 — 루틴을 미리 세팅해두고
   // 하나씩 수행하는 흐름이 이걸로 가능해진다.
-  const [pickerOpen, setPickerOpen] = useState(false)
-  const [pickerStep, setPickerStep] = useState<PickerStep>({ category: null, group: null })
+  //
+  // 홈의 약점에서 "오늘 운동에 추가"로 들어오면(?pick=판정 부위) 그 부위 종목만 띄운 채
+  // 시트를 연다(LOG-29). 무슨 종목이 있는지 구경하는 게 아니라 오늘 할 운동에 바로 넣는 길이다.
+  const pickParam = params.get('pick') as MuscleGroupKey | null
+  const [pickerOpen, setPickerOpen] = useState(pickParam !== null)
+  const [pickerStep, setPickerStep] = useState<PickerStep>(() =>
+    pickParam
+      ? { category: null, group: null, muscleGroup: pickParam, muscleLabel: params.get('pickLabel') ?? undefined }
+      : { category: null, group: null },
+  )
 
   // 종목 정보와 일괄 수정도 같은 이유로 시트다.
   const [info, setInfo] = useState<Exercise | null>(null)
@@ -191,6 +199,15 @@ export function SessionScreen() {
     },
     [showToast],
   )
+
+  // 시트를 연 뒤에는 주소에서 지운다. 남겨두면 새로고침할 때마다 시트가 다시 열린다
+  useEffect(() => {
+    if (!pickParam) return
+    const next = new URLSearchParams(params)
+    next.delete('pick')
+    next.delete('pickLabel')
+    setParams(next, { replace: true })
+  }, [pickParam, params, setParams])
 
   // 지난 기록이면 그 세션을, 아니면 진행 중인 세션을 연다(명세 6.5·6.7).
   useEffect(() => {

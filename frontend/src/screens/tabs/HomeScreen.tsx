@@ -314,9 +314,9 @@ const WEAK_ROWS = 3
 /**
  * 약점.
  *
- * <p>얼마나 부족한지(주당 세트 + 막대)와, 그래서 뭘 할 수 있는지(그 부위 종목)를
- * 한 줄에 둔다. 이름만 나열하면 어깨(뒤)가 0세트인지 3세트인지, 어떤 종목이
- * 어깨(뒤)인지 홈에서 알 수 없다.
+ * <p>얼마나 부족한지(주당 세트 + 막대)와, 그래서 뭘 할 수 있는지를 한 줄에 둔다.
+ * 행을 누르면 오늘 기록 화면이 그 부위 종목 시트를 연 채로 열린다 — 종목 목록을
+ * 구경시키면 거기서 기록 화면으로 돌아와 같은 종목을 다시 골라야 한다.
  *
  * <p>막대는 <b>하위 부위</b>에만 그린다. 하위가 판정 단위라 판정색을 칠해도 되고,
  * 목업처럼 상위 6종에 칠하면 "팔 · 최적"이 삼두 0세트를 가린다(LOG-09).
@@ -371,16 +371,14 @@ function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Bala
                   type="button"
                   className={styles.weakRow}
                   onClick={() =>
-                    navigate(
-                      `${paths.exerciseList}?muscleGroup=${c.key}&label=${encodeURIComponent(c.label)}`,
-                    )
+                    navigate(`${paths.session}?pick=${c.key}&pickLabel=${encodeURIComponent(c.label)}`)
                   }
                 >
                   <span className={styles.weakRowHead}>
                     <span className={styles.weakName}>{c.label}</span>
                     <span className={styles.weakSets}>주 {c.weeklySets}세트</span>
                     <span className={styles.weakLink}>
-                      종목 보기
+                      오늘 운동에 추가
                       <Chevron />
                     </span>
                   </span>
