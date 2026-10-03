@@ -243,7 +243,7 @@ Authorization: Bearer {accessToken}
 |---|---|---|
 | `delt_region` | VARCHAR(10) NULL | `FRONT` / `REAR`. `primary_muscle = 'shoulders'`인 종목에만 값. 그 외 종목은 NULL |
 
-`primary_muscle = 'shoulders'`인 13개 종목에만 값을 채운다. 배분 기준은 LOG-09의 "어깨 전면·후면 분리 방식" 표(오버헤드 프레스·전면 레이즈·측면 레이즈 → `FRONT`, 후면 델트 → `REAR`)를 따른다.
+`primary_muscle = 'shoulders'`인 13개 종목에만 값을 채운다. 배분 기준은 LOG-09의 "어깨 전·측면·후면 분리 방식" 표(오버헤드 프레스·전면 레이즈·측면 레이즈 → `FRONT`, 후면 델트 → `REAR`)를 따른다.
 
 **(4) `user_favorite_exercises` — 신규 테이블**
 
@@ -717,7 +717,7 @@ Authorization: Bearer {accessToken}
 | `ABS` | 복부 | `abdominals` | 16 |
 | `LEGS` | 하체 | `quadriceps`, `hamstrings` | 15 |
 | `TRICEPS` | 삼두 | `triceps` | 14 |
-| `SHOULDERS_FRONT` | 어깨 전면 | `shoulders` + `delt_region = FRONT` | 10 |
+| `SHOULDERS_FRONT` | 어깨 전·측면 | `shoulders` + `delt_region = FRONT` | 10 |
 | `SHOULDERS_REAR` | 어깨 후면 | `shoulders` + `delt_region = REAR` | 3 |
 | `BACK` | 등 | `lats`, `middle back` | 8 |
 | `TRAPS` | 승모근 | `traps` | 7 |
@@ -1239,7 +1239,7 @@ workout_session (한 번의 운동)
 |---|---|---|
 | `CHEST` | 가슴 | `CHEST` |
 | `BACK` | 등 | `BACK` |
-| `SHOULDERS` | 어깨 | `DELT_FRONT`(어깨 전면), `DELT_REAR`(어깨 후면) |
+| `SHOULDERS` | 어깨 | `DELT_FRONT`(어깨 전·측면), `DELT_REAR`(어깨 후면) |
 | `ARMS` | 팔 | `TRICEPS`(삼두), `BICEPS`(이두) |
 | `LEGS` | 하체 | `QUADS`(앞허벅지), `POSTERIOR`(뒤허벅지·둔근) |
 | `CORE` | 코어 | `CORE` |
@@ -1326,7 +1326,7 @@ workout_session (한 번의 운동)
       "summaryBadge": "PARTIAL_INSUFFICIENT",
       "summaryBadgeLabel": "일부 부족",
       "children": [
-        { "key": "DELT_FRONT", "label": "어깨 전면", "weeklySets": 8.0, "totalSets": 32, "verdict": "BELOW_RECOMMENDED", "verdictLabel": "권장 이하" },
+        { "key": "DELT_FRONT", "label": "어깨 전·측면", "weeklySets": 8.0, "totalSets": 32, "verdict": "BELOW_RECOMMENDED", "verdictLabel": "권장 이하" },
         { "key": "DELT_REAR",  "label": "어깨 후면", "weeklySets": 1.0, "totalSets": 4,  "verdict": "INSUFFICIENT",     "verdictLabel": "부족" }
       ]
     },
