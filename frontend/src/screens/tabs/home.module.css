@@ -429,10 +429,10 @@ button.card {
   color: var(--warn);
 }
 .weakFill.toneDanger {
-  background: var(--danger);
+  background: var(--fill-danger);
 }
 .weakFill.toneWarn {
-  background: var(--warn);
+  background: var(--fill-warn);
 }
 
 .weakScale {
@@ -547,12 +547,12 @@ button.card {
 }
 
 .sideLeft {
-  background: var(--push-color);
+  background: var(--fill-push);
   border-radius: 4px 0 0 4px;
 }
 
 .sideRight {
-  background: var(--pull-color);
+  background: var(--fill-pull);
   border-radius: 0 4px 4px 0;
 }
 
@@ -562,4 +562,124 @@ button.card {
   font-size: var(--font-3xs);
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
+}
+
+/* ── 유리 테마 (재질은 glass.css. 기본 테마에서는 아래 규칙이 하나도 걸리지 않는다) */
+
+.card {
+  composes: g-card from global;
+}
+
+.hero {
+  composes: g-card from global;
+}
+
+.resume {
+  composes: g-tint-good from global;
+}
+
+.start {
+  composes: g-primary from global;
+}
+
+.resumePrimary {
+  composes: g-primary from global;
+}
+
+.resumeSecondary {
+  composes: g-secondary from global;
+}
+
+.sheetPrimary {
+  composes: g-primary from global;
+}
+
+.sheetDanger {
+  composes: g-danger from global;
+}
+
+.weekDotOn {
+  composes: g-gem from global;
+}
+
+:global(:root[data-theme='glass']) .page {
+  gap: var(--space-12);
+}
+
+:global(:root[data-theme='glass']) .greeting {
+  padding-top: var(--space-28);
+}
+
+:global(:root[data-theme='glass']) .greetingStats {
+  font-size: 27px;
+  letter-spacing: -0.03em;
+}
+
+:global(:root[data-theme='glass']) .card {
+  padding: var(--space-14) var(--space-16);
+}
+
+/* 오늘 운동은 홈에서 가장 먼저 누를 카드라 여백만 넉넉히 준다. 색은 다른 카드와 같다 —
+   배경 색감을 고를 수 있어서 카드에 따로 색을 넣으면 색감에 따라 어긋난다 */
+:global(:root[data-theme='glass']) .hero {
+  padding: var(--space-20);
+  border-radius: var(--radius-xl);
+}
+
+:global(:root[data-theme='glass']) .heroTitle {
+  font-size: 21px;
+  letter-spacing: -0.02em;
+}
+
+:global(:root[data-theme='glass']) .start {
+  height: 54px;
+  border-radius: var(--radius-pill);
+}
+
+:global(:root[data-theme='glass']) .resume {
+  border-radius: var(--radius-xl);
+}
+
+:global(:root[data-theme='glass']) .resumePrimary,
+:global(:root[data-theme='glass']) .resumeSecondary,
+:global(:root[data-theme='glass']) .sheetPrimary,
+:global(:root[data-theme='glass']) .sheetDanger {
+  border-radius: var(--radius-pill);
+}
+
+:global(:root[data-theme='glass']) .weakTitle {
+  font-size: var(--font-lg);
+}
+
+:global(:root[data-theme='glass']) .weakTrack,
+:global(:root[data-theme='glass']) .weakFill {
+  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+}
+
+:global(:root[data-theme='glass']) .weekDot {
+  width: 18px;
+  height: 18px;
+}
+
+:global(:root[data-theme='glass']) .weekDotToday {
+  border-color: transparent;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 축은 기본 테마의 테두리색을 빌려 쓰는데, 유리에서는 그 색이 흰색이라 사라진다 */
+:global(:root[data-theme='glass']) .axis {
+  background: var(--tick-strong);
+}
+
+:global(:root[data-theme='glass']) .sideBar {
+  height: 12px;
+}
+
+:global(:root[data-theme='glass']) .sideLeft {
+  border-radius: var(--radius-pill) 0 0 var(--radius-pill);
+}
+
+:global(:root[data-theme='glass']) .sideRight {
+  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
 }

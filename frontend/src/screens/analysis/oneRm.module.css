@@ -208,3 +208,41 @@
 .emptyHint {
   font-size: var(--font-3xs);
 }
+
+/* ── 유리 테마 */
+
+.tile {
+  composes: g-card from global;
+}
+
+.chartBox {
+  composes: g-card from global;
+}
+
+.empty {
+  composes: g-card from global;
+}
+
+:global(:root[data-theme='glass']) .tile {
+  padding: var(--space-12) var(--space-8);
+}
+
+:global(:root[data-theme='glass']) .tileValue {
+  font-size: var(--font-h3);
+  letter-spacing: -0.02em;
+}
+
+:global(:root[data-theme='glass']) .chartBox {
+  padding: var(--space-14) var(--space-10) var(--space-12);
+}
+
+/* 점 둘레의 흰 여백. 카드 색을 쓰면 유리에서는 반투명이라 선이 비쳐 여백 구실을 못 한다 */
+:global(:root[data-theme='glass']) .dot,
+:global(:root[data-theme='glass']) .dotOn {
+  stroke: oklch(99% 0.005 270);
+}
+
+:global(:root[data-theme='glass']) .readout {
+  border-radius: var(--radius-pill);
+  padding: var(--space-6) var(--space-12);
+}

@@ -43,3 +43,19 @@
   text-decoration: underline;
   padding: 0;
 }
+
+/* ── 유리 테마. 어두운 유리 — 어느 화면 위에 떠도 글자가 묻히지 않는다 */
+:global(:root[data-theme='glass']) .toast {
+  background: oklch(24% 0.03 270 / 0.8);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 20px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    0 16px 36px -12px oklch(25% 0.08 270 / 0.5);
+}
+
+:global(:root[data-theme='glass']) .danger {
+  background: oklch(45% 0.17 22 / 0.9);
+}

@@ -108,3 +108,38 @@
 .dotDraft {
   background: var(--warn);
 }
+
+/* ── 유리 테마 */
+
+.monthNav {
+  composes: g-secondary from global;
+}
+
+.grid {
+  composes: g-card from global;
+}
+
+:global(:root[data-theme='glass']) .monthLabel {
+  font-size: var(--font-h3);
+  letter-spacing: -0.02em;
+}
+
+:global(:root[data-theme='glass']) .monthNav {
+  width: 34px;
+  height: 34px;
+}
+
+/* 달력을 유리 판 하나에 담는다 */
+:global(:root[data-theme='glass']) .grid {
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+}
+
+:global(:root[data-theme='glass']) .cell {
+  border-radius: var(--radius-md);
+}
+
+:global(:root[data-theme='glass']) .cellToday {
+  background: oklch(90% 0.07 165 / 0.55);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7);
+}

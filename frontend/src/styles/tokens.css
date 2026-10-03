@@ -49,6 +49,17 @@
    */
   --pull-color: oklch(56% 0.13 152);
 
+  /*
+   * 막대 채움. 글자와 따로 둔다 — 유리 테마는 막대를 밝은 그라데이션으로 칠하고
+   * 글자는 대비를 위해 더 진하게 둔다. 기본 테마에서는 위 색 그대로다.
+   */
+  --fill-danger: var(--danger);
+  --fill-warn: var(--warn);
+  --fill-good: var(--accent);
+  --fill-neutral: var(--tick-strong);
+  --fill-push: var(--push-color);
+  --fill-pull: var(--pull-color);
+
   /* ---- 스테퍼 ---- */
   --stepper-bg: oklch(93% 0.006 90);
   --stepper-text: oklch(28% 0.01 90);
@@ -58,7 +69,11 @@
   --scrim: rgba(20, 24, 20, 0.4);
 
   /* ---- 타이포 ---- */
-  --font-sans: Pretendard, 'Pretendard Variable', -apple-system, BlinkMacSystemFont,
+  /*
+   * 웹 글꼴로 싣는 Pretendard Variable은 유리 테마만 쓴다(glass.css). 여기 두면
+   * 기본 테마 글꼴까지 바뀐다. 기기에 Pretendard가 깔려 있으면 그건 쓴다.
+   */
+  --font-sans: Pretendard, -apple-system, BlinkMacSystemFont,
     system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', 'Apple SD Gothic Neo',
     'Malgun Gothic', sans-serif;
 

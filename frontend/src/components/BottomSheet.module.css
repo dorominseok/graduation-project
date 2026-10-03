@@ -48,3 +48,17 @@
   justify-content: center;
   flex-shrink: 0;
 }
+
+/* ── 유리 테마. 시트가 화면 가장자리에서 떨어져 떠 있고, 뒤의 화면이 흐리게 비친다 */
+.sheet {
+  composes: g-thick from global;
+}
+
+:global(:root[data-theme='glass']) .sheet {
+  --under-tabbar: 0px;
+  left: var(--space-8);
+  right: var(--space-8);
+  bottom: max(var(--space-8), env(safe-area-inset-bottom));
+  border-radius: var(--radius-sheet);
+  padding-top: var(--space-20);
+}
