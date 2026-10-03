@@ -321,8 +321,12 @@ export function HomeScreen() {
  * <p>종목으로 이어주되 "보완하세요"라고 적지는 않는다. 판정은 부족하다는 데까지만
  * 알린다(분석 설계서 2.4) — 무엇을 할지는 루틴 추천의 몫이다.
  */
+/** 접힌 상태에서 보일 막대 수. 아홉 곳이 다 나오면 홈의 나머지 카드가 한참 밀린다 */
+const WEAK_ROWS = 3
+
 function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Balance }) {
   const navigate = useNavigate()
+  const [expanded, setExpanded] = useState(false)
   const goAnalysis = () => navigate(paths.analysis)
   // 오늘 기록 화면을 그 부위 종목 시트가 열린 채로 연다
   const openPick = (key: string, label: string) =>
@@ -373,9 +377,9 @@ function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Bala
         <>
           <div className={styles.weakTitle}>{title}</div>
           <ul className={styles.weakList}>
-            {/* 전부 막대로 그린다. 권장 이하야말로 10까지 얼마 남았는지가 막대로 보여야 한다 —
-                셋만 막대로 두고 나머지를 칩으로 줄였더니 같은 정보를 두 가지로 그리게 됐다 */}
-            {lacking.map((c) => {
+            {/* 펼치면 전부 막대로 그린다. 권장 이하야말로 10까지 얼마 남았는지가 막대로 보여야
+                한다 — 나머지를 칩으로 줄였더니 같은 정보를 두 가지로 그리게 됐다. 기본은 접어둔다 */}
+            {(expanded ? lacking : lacking.slice(0, WEAK_ROWS)).map((c) => {
               const tone = c.verdict === 'INSUFFICIENT' ? styles.toneDanger : styles.toneWarn
               return (
                 <li key={c.key}>
@@ -411,6 +415,19 @@ function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Bala
               )
             })}
           </ul>
+          {lacking.length > WEAK_ROWS && (
+            <button
+              type="button"
+              className={styles.weakToggle}
+              aria-expanded={expanded}
+              onClick={() => setExpanded((v) => !v)}
+            >
+              {expanded ? '접기' : `${lacking.length - WEAK_ROWS}곳 더 보기`}
+              <span className={`${styles.weakToggleIcon} ${expanded ? styles.weakToggleOpen : ''}`}>
+                <Chevron />
+              </span>
+            </button>
+          )}
           <div className={styles.weakScale}>눈금 주 4 · 10 · 20세트 — 10세트부터 권장 구간</div>
         </>
       )}
