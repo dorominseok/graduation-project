@@ -327,6 +327,9 @@ const WEAK_ROWS = 3
 function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Balance }) {
   const navigate = useNavigate()
   const goAnalysis = () => navigate(paths.analysis)
+  // 오늘 기록 화면을 그 부위 종목 시트가 열린 채로 연다
+  const openPick = (key: string, label: string) =>
+    navigate(`${paths.session}?pick=${key}&pickLabel=${encodeURIComponent(label)}`)
 
   const head = (label: string) => (
     <button type="button" className={styles.cardHeadButton} onClick={goAnalysis}>
@@ -347,11 +350,20 @@ function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Bala
     )
   }
 
-  // 가장 덜 한 곳부터. 같은 "부족"이어도 0세트와 3세트는 다르다
+  // 부족과 권장 이하를 같이 띄운다 — 둘 다 더 해야 하는 건 같다. 가장 덜 한 곳부터
+  // 세우면 부족(주 4세트 미만)이 자연히 위로 온다. 같은 "부족"이어도 0세트와 3세트는 다르다
   const lacking = volume.tiers
     .flatMap((t) => t.children)
-    .filter((c) => c.verdict === 'INSUFFICIENT')
+    .filter((c) => c.verdict === 'INSUFFICIENT' || c.verdict === 'BELOW_RECOMMENDED')
     .sort((a, b) => a.weeklySets - b.weeklySets)
+  const insufficientCount = lacking.filter((c) => c.verdict === 'INSUFFICIENT').length
+  const belowCount = lacking.length - insufficientCount
+  const title = [
+    insufficientCount > 0 ? `부족 ${insufficientCount}` : null,
+    belowCount > 0 ? `권장 이하 ${belowCount}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
   const shown = lacking.slice(0, WEAK_ROWS)
   const imbalanced = balance.pairs.filter((p) => p.verdict === 'IMBALANCED')
 
@@ -360,46 +372,62 @@ function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Bala
       {head(`약점 · ${basisLabel(volume)}`)}
 
       {lacking.length === 0 ? (
-        <div className={styles.weakTitle}>부족한 부위가 없어요</div>
+        <div className={styles.weakTitle}>모든 부위가 권장 구간이에요</div>
       ) : (
         <>
-          <div className={styles.weakTitle}>부족한 곳 {lacking.length}</div>
+          <div className={styles.weakTitle}>{title}</div>
           <ul className={styles.weakList}>
-            {shown.map((c) => (
-              <li key={c.key}>
-                <button
-                  type="button"
-                  className={styles.weakRow}
-                  onClick={() =>
-                    navigate(`${paths.session}?pick=${c.key}&pickLabel=${encodeURIComponent(c.label)}`)
-                  }
-                >
-                  <span className={styles.weakRowHead}>
-                    <span className={styles.weakName}>{c.label}</span>
-                    <span className={styles.weakSets}>주 {c.weeklySets}세트</span>
-                    <span className={styles.weakLink}>
-                      오늘 운동에 추가
-                      <Chevron />
+            {shown.map((c) => {
+              const tone = c.verdict === 'INSUFFICIENT' ? styles.toneDanger : styles.toneWarn
+              return (
+                <li key={c.key}>
+                  <button
+                    type="button"
+                    className={styles.weakRow}
+                    onClick={() => openPick(c.key, c.label)}
+                  >
+                    <span className={styles.weakRowHead}>
+                      <span className={styles.weakName}>{c.label}</span>
+                      {/* 색만으로 가르지 않고 판정 이름을 같이 적는다 */}
+                      <span className={`${styles.weakSets} ${tone}`}>
+                        주 {c.weeklySets}세트 · {c.verdictLabel}
+                      </span>
+                      <span className={styles.weakLink}>
+                        오늘 운동에 추가
+                        <Chevron />
+                      </span>
                     </span>
-                  </span>
-                  <span className={styles.weakTrack} aria-hidden="true">
-                    {BAR_TICKS.map((tick) => (
-                      <span key={tick} className={styles.weakTick} style={{ left: `${barPercent(tick)}%` }} />
-                    ))}
-                    {c.weeklySets > 0 && (
-                      <span className={styles.weakFill} style={{ width: `${barPercent(c.weeklySets)}%` }} />
-                    )}
-                  </span>
-                </button>
-              </li>
-            ))}
+                    <span className={styles.weakTrack} aria-hidden="true">
+                      {BAR_TICKS.map((tick) => (
+                        <span key={tick} className={styles.weakTick} style={{ left: `${barPercent(tick)}%` }} />
+                      ))}
+                      {c.weeklySets > 0 && (
+                        <span
+                          className={`${styles.weakFill} ${tone}`}
+                          style={{ width: `${barPercent(c.weeklySets)}%` }}
+                        />
+                      )}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
+          {/* 나머지도 눌러서 바로 추가할 수 있어야 한다 — 글자로만 두면 권장 이하는 손댈 길이 없다 */}
           {lacking.length > WEAK_ROWS && (
-            <div className={styles.weakNote}>
-              외 {lacking
-                .slice(WEAK_ROWS)
-                .map((c) => c.label)
-                .join(' · ')}
+            <div className={styles.weakMore}>
+              {lacking.slice(WEAK_ROWS).map((c) => (
+                <button
+                  key={c.key}
+                  type="button"
+                  className={`${styles.weakChip} ${
+                    c.verdict === 'INSUFFICIENT' ? styles.toneDanger : styles.toneWarn
+                  }`}
+                  onClick={() => openPick(c.key, c.label)}
+                >
+                  {c.label} {c.weeklySets}
+                </button>
+              ))}
             </div>
           )}
           <div className={styles.weakScale}>눈금 주 4 · 10 · 20세트 — 10세트부터 권장 구간</div>

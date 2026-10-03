@@ -140,13 +140,6 @@ button.card {
   color: var(--text-primary);
 }
 
-.weakChips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-6);
-  margin-top: var(--space-8);
-}
-
 .weakChip {
   padding: 3px var(--space-8);
   border-radius: var(--radius-pill);
@@ -406,7 +399,6 @@ button.card {
 
 .weakSets {
   font-size: var(--font-xs);
-  color: var(--danger);
   font-weight: var(--weight-bold);
   font-variant-numeric: tabular-nums;
 }
@@ -450,11 +442,47 @@ button.card {
   top: 0;
   height: 100%;
   border-radius: 0 4px 4px 0;
+}
+
+/* 부족은 빨강, 권장 이하는 주황. 분석 탭의 판정색과 같다 */
+.weakSets.toneDanger {
+  color: var(--danger);
+}
+.weakSets.toneWarn {
+  color: var(--warn);
+}
+.weakFill.toneDanger {
   background: var(--danger);
+}
+.weakFill.toneWarn {
+  background: var(--warn);
 }
 
 .weakScale {
   margin-top: var(--space-4);
   font-size: var(--font-3xs);
   color: var(--text-tertiary);
+}
+
+/* 막대 행 아래 나머지. 누르면 막대 행과 같이 오늘 운동에 추가로 간다 */
+.weakMore {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  margin-top: var(--space-4);
+}
+
+.weakMore .weakChip {
+  border: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.weakChip.toneDanger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.weakChip.toneWarn {
+  background: var(--warn-soft);
+  color: var(--warn);
 }
