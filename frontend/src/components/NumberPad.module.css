@@ -47,3 +47,16 @@
   font-weight: var(--weight-heavy);
   margin-top: var(--space-12);
 }
+
+/* ── 유리 테마 */
+.key {
+  composes: g-thin from global;
+}
+
+.apply {
+  composes: g-primary from global;
+}
+
+:global(:root[data-theme='glass']) .key {
+  font-size: 20px;
+}

@@ -12,3 +12,22 @@
   display: flex;
   flex-direction: column;
 }
+
+/* ── 유리 테마. 탭바가 내용 위에 떠 있어 끝에 그만큼 빈 칸을 둔다 — 없으면 마지막 카드가
+   탭바 밑에 깔린 채로 스크롤이 끝난다. 스크롤 끝의 패딩은 브라우저마다 넣기도 하고
+   빼기도 해서 패딩 대신 칸으로 둔다 */
+:global(:root[data-theme='glass']) .root {
+  position: relative;
+}
+
+/* 탭바가 덮는 화면 아래 높이. 안쪽에 따로 스크롤 영역을 둔 화면(종목 고르기)이 이만큼
+   탭바 밑으로 내려가 내용이 탭바 밑을 지나가게 한다. 시트 안에서는 0이다 */
+:global(:root[data-theme='glass']) .content {
+  --under-tabbar: var(--tabbar-height);
+}
+
+:global(:root[data-theme='glass']) .content::after {
+  content: '';
+  flex-shrink: 0;
+  height: var(--tabbar-height);
+}

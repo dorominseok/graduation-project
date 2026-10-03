@@ -1,6 +1,16 @@
+import { useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { paths } from '../app/paths'
+import { useLensMap } from './liquidLens'
 import styles from './TabBar.module.css'
+
+/**
+ * 굴절하는 테두리 띠 두께(px)와 휘는 세기. 세기의 절반이 테두리 끝에서 배경을 끌어오는
+ * 거리(px)다. 이 거리가 띠의 절반을 넘으면 배경이 접혀 거울처럼 뒤집힌 줄무늬가 생긴다
+ */
+const LENS_BEZEL = 16
+const LENS_SCALE = 12
 
 /** 목업의 탭 아이콘. 색은 currentColor로 받아 활성 상태를 CSS가 정한다. */
 const icons = {
@@ -60,15 +70,81 @@ function under(pathname: string, base: string): boolean {
   return pathname === base || pathname.startsWith(`${base}/`)
 }
 
+function isActive(tab: (typeof tabs)[number], pathname: string): boolean {
+  return tab.exact
+    ? pathname === tab.to
+    : under(pathname, tab.to) || tab.matches.some((base) => under(pathname, base))
+}
+
 export function TabBar() {
   const { pathname } = useLocation()
+  const activeIndex = tabs.findIndex((tab) => isActive(tab, pathname))
+
+  // 물방울이 있던 자리. 켜진 탭이 없는 화면(종목)에서는 그 자리에서 사라진다 —
+  // 0으로 보내면 홈 쪽으로 미끄러지면서 사라진다
+  const [dropletAt, setDropletAt] = useState(Math.max(activeIndex, 0))
+  if (activeIndex >= 0 && activeIndex !== dropletAt) setDropletAt(activeIndex)
+
+  const navRef = useRef<HTMLElement>(null)
+  const lens = useLensMap(navRef, LENS_BEZEL)
 
   return (
-    <nav className={styles.root}>
-      {tabs.map((tab) => {
-        const active = tab.exact
-          ? pathname === tab.to
-          : under(pathname, tab.to) || tab.matches.some((base) => under(pathname, base))
+    <nav ref={navRef} className={`${styles.root} ${lens ? styles.lens : ''}`}>
+      {/*
+        가장자리 굴절 필터(liquidLens.ts). 가운데는 서리 낀 흐림, 테두리 띠는 지도대로
+        휜 배경을 얹는다. 크로뮴에서 유리 테마일 때만 CSS가 이 필터를 건다.
+      */}
+      {lens && (
+        <svg className={styles.lensDefs} aria-hidden="true">
+          <filter
+            id="tabbar-lens"
+            x="0"
+            y="0"
+            width={lens.width}
+            height={lens.height}
+            filterUnits="userSpaceOnUse"
+            colorInterpolationFilters="sRGB"
+          >
+            <feImage
+              href={lens.href}
+              x="0"
+              y="0"
+              width={lens.width}
+              height={lens.height}
+              preserveAspectRatio="none"
+              result="map"
+            />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="10" edgeMode="duplicate" result="frost" />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="map"
+              scale={LENS_SCALE}
+              xChannelSelector="R"
+              yChannelSelector="G"
+              result="bent"
+            />
+            <feGaussianBlur in="bent" stdDeviation="1.5" result="bentSoft" />
+            <feColorMatrix
+              in="map"
+              type="matrix"
+              values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0"
+              result="rim"
+            />
+            <feComposite in="bentSoft" in2="rim" operator="in" result="bentRim" />
+            <feMerge>
+              <feMergeNode in="frost" />
+              <feMergeNode in="bentRim" />
+            </feMerge>
+          </filter>
+        </svg>
+      )}
+      <span
+        className={`${styles.droplet} ${activeIndex < 0 ? styles.dropletOff : ''}`}
+        style={{ '--tab': dropletAt } as CSSProperties}
+        aria-hidden="true"
+      />
+      {tabs.map((tab, index) => {
+        const active = index === activeIndex
         return (
           <Link
             key={tab.to}

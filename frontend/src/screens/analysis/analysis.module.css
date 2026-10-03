@@ -121,6 +121,14 @@ button.tierHead {
   color: var(--text-primary);
 }
 
+/* 이름과 세트 수. 세트 수는 이름 바로 옆에 붙는다 */
+.tierLeft {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
 .tierRight {
   display: flex;
   align-items: center;
@@ -216,16 +224,16 @@ button.tierHead {
 /* ── 판정 색. 막대와 알약이 같이 쓴다 */
 
 .fill.toneDanger {
-  background: var(--danger);
+  background: var(--fill-danger);
 }
 .fill.toneWarn {
-  background: var(--warn);
+  background: var(--fill-warn);
 }
 .fill.toneGood {
-  background: var(--accent);
+  background: var(--fill-good);
 }
 .fill.toneNeutral {
-  background: var(--tick-strong);
+  background: var(--fill-neutral);
 }
 
 .pill {
@@ -340,12 +348,12 @@ button.tierHead {
 }
 
 .sideLeft {
-  background: var(--push-color);
+  background: var(--fill-push);
   border-radius: 4px 0 0 4px;
 }
 
 .sideRight {
-  background: var(--pull-color);
+  background: var(--fill-pull);
   border-radius: 0 4px 4px 0;
 }
 
@@ -456,4 +464,111 @@ button.tierHead {
   font-size: var(--font-xs);
   font-weight: var(--weight-medium);
   padding: var(--space-6) 0;
+}
+
+/* ── 유리 테마 (재질은 glass.css. 기본 테마에서는 아래 규칙이 하나도 걸리지 않는다) */
+
+.banner {
+  composes: g-tint-warn from global;
+}
+
+.tiers {
+  composes: g-card from global;
+}
+
+.balance {
+  composes: g-card from global;
+}
+
+.emptyCard {
+  composes: g-card from global;
+}
+
+.emptyButton {
+  composes: g-primary from global;
+}
+
+.chip {
+  composes: g-thin from global;
+}
+
+/* 부위 목록과 균형을 유리 판 위에 올린다. 배경의 색 덩어리 위에 막대를 바로 그리면
+   막대 색이 배경색과 섞여 판정색이 흐려진다 */
+:global(:root[data-theme='glass']) .tiers {
+  gap: var(--space-14);
+  padding: var(--space-16);
+  border-radius: var(--radius-xl);
+}
+
+:global(:root[data-theme='glass']) .balance {
+  gap: var(--space-16);
+  padding: var(--space-16);
+  border-radius: var(--radius-xl);
+}
+
+:global(:root[data-theme='glass']) .banner {
+  border-radius: var(--radius-lg);
+}
+
+:global(:root[data-theme='glass']) .bannerIcon {
+  background: linear-gradient(180deg, oklch(58% 0.15 60), oklch(50% 0.14 52));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45);
+}
+
+:global(:root[data-theme='glass']) .children {
+  border-left: none;
+  border-radius: var(--radius-md);
+}
+
+:global(:root[data-theme='glass']) .track,
+:global(:root[data-theme='glass']) .fill {
+  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+}
+
+:global(:root[data-theme='glass']) .scaleNote {
+  margin-top: calc(-1 * var(--space-8));
+  padding: 0 var(--space-4);
+}
+
+:global(:root[data-theme='glass']) .displayOnly {
+  padding: var(--space-12) var(--space-4) 0;
+}
+
+/* 축은 기본 테마의 테두리색을 빌려 쓰는데, 유리에서는 그 색이 흰색이라 사라진다 */
+:global(:root[data-theme='glass']) .axis {
+  background: var(--tick-strong);
+}
+
+:global(:root[data-theme='glass']) .sideLeft {
+  border-radius: var(--radius-pill) 0 0 var(--radius-pill);
+}
+
+:global(:root[data-theme='glass']) .sideRight {
+  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+}
+
+:global(:root[data-theme='glass']) .swatch {
+  border-radius: 3px;
+}
+
+:global(:root[data-theme='glass']) .emptyCard {
+  border-radius: var(--radius-xl);
+}
+
+:global(:root[data-theme='glass']) .emptyButton {
+  border-radius: var(--radius-pill);
+}
+
+:global(:root[data-theme='glass']) .chipOn {
+  border-color: oklch(70% 0.11 165 / 0.7);
+  background: linear-gradient(180deg, oklch(93% 0.07 165 / 0.9), oklch(88% 0.08 165 / 0.7));
+  color: var(--accent-strong);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.8),
+    0 4px 12px -4px oklch(45% 0.12 165 / 0.4);
+}
+
+/* 맨 배경 위의 초록 글씨. 카드 밖이라 한 단계 진하게 둬야 대비가 맞는다 */
+:global(:root[data-theme='glass']) .linkButton {
+  color: var(--accent-strong);
 }

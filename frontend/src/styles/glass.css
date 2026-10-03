@@ -1,0 +1,368 @@
+/*
+ * 유리 테마 — 설정 › 화면 스타일에서 고른다(<html data-theme="glass">).
+ *
+ * 구조는 세 겹이다.
+ *   1. 토큰: 색·둥글기·그림자를 유리에 맞게 바꾼다. 화면 코드는 토큰만 쓰므로 대부분이
+ *      여기서 바뀐다.
+ *   2. 재질(.g-*): 반투명 흰 면 + 위쪽이 더 밝은 테두리 + 안쪽 빛 맺힘 + 옅은 그림자.
+ *      각 화면 모듈이 `composes: g-card from global`로 빌려 쓴다. 규칙이 전부
+ *      [data-theme='glass'] 아래 있어 기본 테마에서는 클래스가 붙어도 아무 일도 없다.
+ *   3. 배경: 앱 뒤에 옅은 색 덩어리 넷을 고정으로 깐다. 유리는 뒤에 색이 있어야 유리로
+ *      보인다. 색감은 설정에서 고른다(<html data-tint>) — 아래 "색감" 절.
+ *
+ * 흐림(backdrop-filter)은 내용이 뒤로 지나가는 면에만 건다 — 헤더·탭바·시트·떠 있는
+ * 타이머. 배경 위에 놓인 카드는 뒤가 부드러운 그라데이션뿐이라 흐려도 달라 보이지
+ * 않고, 목록 칸마다 흐림을 걸면 저가 폰에서 스크롤이 끊긴다.
+ *
+ * 색은 배경 덩어리가 가장 진한 자리 위에 유리를 얹은 색을 기준으로 대비를 계산해 골랐다.
+ * 유리 위 글자는 보조 글자까지 4.5:1 이상, 주 버튼의 흰 글자는 4.3(가장 밝은 위 끝)~6.5:1,
+ * 막대 끝색은 유리 대비 3:1 이상이다.
+ */
+
+/* 글자 모양 단위로 쪼갠 파일이라 화면에 나온 글자의 조각만 받는다. 기본 테마는 이 글꼴을
+   부르지 않으므로 아무것도 받지 않는다 */
+@import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
+
+:root[data-theme='glass'] {
+  color-scheme: light;
+
+  --font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui,
+    'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+
+  /* ---- 표면 ---- */
+  --phone-bg: transparent;
+  --header-bg: rgb(255 255 255 / 0.42);
+  --card-bg: rgb(255 255 255 / 0.56);
+  /* 유리 위의 회색 채움. 흰 칩을 흰 유리에 얹으면 보이지 않아 어두운 반투명으로 둔다 */
+  --chip-bg: oklch(35% 0.04 270 / 0.075);
+
+  /* ---- 선 ---- */
+  --card-border: rgb(255 255 255 / 0.72);
+  --divider: oklch(35% 0.04 270 / 0.1);
+  --dashed-border: oklch(35% 0.04 270 / 0.28);
+  --checkbox-off: oklch(35% 0.04 270 / 0.12);
+
+  /* ---- 글자 (남색 쪽으로 기울인 잉크) ---- */
+  --text-primary: oklch(23% 0.035 270);
+  --text-secondary: oklch(40% 0.035 270);
+  --text-tertiary: oklch(44% 0.03 270);
+  --on-fill: oklch(99% 0 0);
+
+  /* ---- 강조: 브랜드 초록을 청록 쪽으로 옮겨 파랑·보라 배경과 맞춘다 ---- */
+  --accent: oklch(47% 0.14 165);
+  /* 맨 배경 위에 놓이는 초록 글씨(카드 밖 링크 등)에 쓴다. 배경 위 최저 4.87:1 */
+  --accent-strong: oklch(40% 0.125 165);
+  --accent-soft: oklch(89% 0.08 165 / 0.6);
+
+  /* ---- 상태: 글자용은 진하게, 막대는 아래 채움 토큰이 밝게 ---- */
+  /* 입력 오류 글씨가 카드 없이 배경 위에 놓인다(로그인). 배경 위 최저 4.61:1 */
+  --danger: oklch(46% 0.19 22);
+  --danger-soft: oklch(91% 0.06 20 / 0.65);
+  --warn: oklch(50% 0.14 55);
+  --warn-soft: oklch(93% 0.07 75 / 0.65);
+
+  /* ---- 차트 ---- */
+  --track-bg: oklch(35% 0.04 270 / 0.09);
+  --tick: oklch(35% 0.04 270 / 0.2);
+  --tick-strong: oklch(35% 0.04 270 / 0.42);
+  --push-color: oklch(55% 0.17 258);
+  --pull-color: oklch(58% 0.14 165);
+
+  /* 막대는 왼쪽(0)에서 밝게 시작해 끝(값)에서 진해진다. 끝색이 유리 대비 3:1을 넘는다 */
+  --fill-danger: linear-gradient(90deg, oklch(70% 0.16 32), oklch(55% 0.21 22));
+  --fill-warn: linear-gradient(90deg, oklch(82% 0.13 80), oklch(62% 0.16 58));
+  --fill-good: linear-gradient(90deg, oklch(76% 0.12 160), oklch(57% 0.15 165));
+  --fill-neutral: linear-gradient(90deg, oklch(80% 0.03 270), oklch(60% 0.04 270));
+  --fill-push: linear-gradient(270deg, oklch(72% 0.12 250), oklch(55% 0.17 258));
+  --fill-pull: linear-gradient(90deg, oklch(76% 0.11 160), oklch(58% 0.14 165));
+
+  /* ---- 스테퍼 ---- */
+  --stepper-bg: oklch(35% 0.04 270 / 0.08);
+  --stepper-text: oklch(28% 0.03 270);
+
+  /* ---- 그림자: 검정이 아니라 남색으로 떨어진다. 유리 아래 그림자가 회색이면 탁하다 ---- */
+  --shadow: 0 1px 2px oklch(30% 0.05 270 / 0.06), 0 14px 36px -12px oklch(30% 0.08 270 / 0.26);
+  --scrim: oklch(25% 0.05 275 / 0.22);
+
+  /* ---- 둥글기: 유리는 더 둥글다 ---- */
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+  --radius-sheet: 30px;
+
+  /* 떠 있는 탭바(높이 64 + 아래 여백 14 + 숨 쉴 틈). 토스트가 이 위에 뜬다 */
+  --tabbar-height: 96px;
+
+  /* ---- 유리 재질 부품 ---- */
+  --g-rim: inset 0 1px 0 rgb(255 255 255 / 0.95), inset 0 -1px 0 rgb(255 255 255 / 0.28);
+  --g-drop: 0 1px 2px oklch(30% 0.05 270 / 0.05), 0 12px 30px -12px oklch(30% 0.08 270 / 0.28);
+  --g-drop-strong: 0 2px 6px oklch(30% 0.05 270 / 0.07), 0 28px 64px -18px oklch(30% 0.09 270 / 0.4);
+  --g-blur: blur(22px) saturate(180%);
+  --g-blur-strong: blur(32px) saturate(200%);
+  /* 켜짐을 나타내는 작은 초록 면. 왼쪽 위에 빛이 맺힌다 */
+  --g-gem-bg:
+    radial-gradient(110% 90% at 30% 12%, oklch(84% 0.1 160 / 0.9), transparent 52%),
+    linear-gradient(160deg, oklch(64% 0.15 160), oklch(46% 0.14 170));
+  --g-gem-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 3px 8px -2px oklch(45% 0.14 165 / 0.55);
+}
+
+/* ── 색감 ─────────────────────────────────────────────── */
+
+/*
+ * 배경 덩어리 넷(왼쪽 위 · 오른쪽 · 오른쪽 아래 · 왼쪽 아래)과 바탕 그라데이션 두 끝.
+ * 설정의 견본 동그라미도 같은 변수로 그리므로 [data-tint]만 붙이면 어디서나 그 색감이 된다.
+ *
+ * 글자·판정색은 색감과 상관없이 같다. 대비는 가장 진한 오로라에서 계산했고, 나머지는
+ * 모두 그보다 밝아 대비가 더 커진다.
+ */
+:root[data-theme='glass'],
+[data-tint='sky'] {
+  --g-b1: oklch(91% 0.05 240);
+  --g-b2: oklch(93% 0.035 265);
+  --g-b3: oklch(93% 0.04 250);
+  --g-b4: oklch(94% 0.03 215);
+  --g-base-a: oklch(97.5% 0.01 240);
+  --g-base-b: oklch(98% 0.008 260);
+}
+
+:root[data-theme='glass'][data-tint='white'],
+[data-tint='white'] {
+  --g-b1: oklch(95% 0.018 250);
+  --g-b2: oklch(96% 0.012 270);
+  --g-b3: oklch(96% 0.014 235);
+  --g-b4: oklch(97% 0.01 215);
+  --g-base-a: oklch(98.5% 0.004 250);
+  --g-base-b: oklch(99% 0.003 270);
+}
+
+:root[data-theme='glass'][data-tint='lavender'],
+[data-tint='lavender'] {
+  --g-b1: oklch(90% 0.055 290);
+  --g-b2: oklch(92% 0.045 318);
+  --g-b3: oklch(92% 0.045 270);
+  --g-b4: oklch(94% 0.03 300);
+  --g-base-a: oklch(97.5% 0.012 290);
+  --g-base-b: oklch(98% 0.01 310);
+}
+
+:root[data-theme='glass'][data-tint='mint'],
+[data-tint='mint'] {
+  --g-b1: oklch(92% 0.05 175);
+  --g-b2: oklch(93% 0.04 205);
+  --g-b3: oklch(93% 0.045 158);
+  --g-b4: oklch(95% 0.03 190);
+  --g-base-a: oklch(98% 0.012 180);
+  --g-base-b: oklch(98% 0.01 200);
+}
+
+:root[data-theme='glass'][data-tint='peach'],
+[data-tint='peach'] {
+  --g-b1: oklch(92% 0.05 60);
+  --g-b2: oklch(93% 0.04 25);
+  --g-b3: oklch(93% 0.045 80);
+  --g-b4: oklch(95% 0.03 45);
+  --g-base-a: oklch(98% 0.012 70);
+  --g-base-b: oklch(98% 0.01 40);
+}
+
+/* 처음 버전. 하늘·라벤더·복숭아·민트를 진하게 섞는다 */
+:root[data-theme='glass'][data-tint='aurora'],
+[data-tint='aurora'] {
+  --g-b1: oklch(84% 0.11 245);
+  --g-b2: oklch(84% 0.1 295);
+  --g-b3: oklch(87% 0.09 50);
+  --g-b4: oklch(88% 0.09 170);
+  --g-base-a: oklch(93% 0.03 255);
+  --g-base-b: oklch(94% 0.03 320);
+}
+
+:root[data-theme='glass'] {
+  --page-bg: var(--g-base-a);
+}
+
+/* ── 배경 ─────────────────────────────────────────────── */
+
+/* 데스크톱에서 앱 바깥. 같은 색을 더 크고 넓게 깐다 */
+:root[data-theme='glass'] body {
+  letter-spacing: -0.01em;
+  background:
+    radial-gradient(40% 55% at 18% 18%, var(--g-b1), transparent 70%),
+    radial-gradient(38% 50% at 82% 26%, var(--g-b2), transparent 70%),
+    radial-gradient(45% 55% at 78% 88%, var(--g-b3), transparent 70%),
+    radial-gradient(40% 55% at 22% 84%, var(--g-b4), transparent 70%),
+    var(--g-base-a);
+  scrollbar-color: oklch(35% 0.04 270 / 0.25) transparent;
+}
+
+/* 앱 자체. 폰에서는 이게 화면 전체다. 덩어리는 화면 모서리에 걸쳐 둔다 —
+   가운데에 두면 카드가 전부 같은 색 위에 얹혀 유리가 비치는 맛이 없다.
+   설정의 견본 동그라미(settings.module.css)도 같은 배치로 그린다 */
+:root[data-theme='glass'] #root {
+  background:
+    radial-gradient(95% 34% at 50% -8%, rgb(255 255 255 / 0.75), transparent 72%),
+    radial-gradient(72% 40% at -8% 12%, var(--g-b1), transparent 68%),
+    radial-gradient(66% 38% at 110% 34%, var(--g-b2), transparent 70%),
+    radial-gradient(80% 44% at 104% 98%, var(--g-b3), transparent 68%),
+    radial-gradient(72% 42% at -10% 80%, var(--g-b4), transparent 70%),
+    linear-gradient(170deg, var(--g-base-a), var(--g-base-b));
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.5), 0 40px 100px -30px oklch(30% 0.08 270 / 0.35);
+}
+
+/* ── 재질 ─────────────────────────────────────────────── */
+
+/* 기본 유리 — 카드. 흐림 없이 반투명과 빛 맺힘만 */
+:root[data-theme='glass'] .g-card {
+  background: linear-gradient(150deg, rgb(255 255 255 / 0.78) 0%, rgb(255 255 255 / 0.5) 100%);
+  border: 1px solid rgb(255 255 255 / 0.82);
+  box-shadow: var(--g-rim), var(--g-drop);
+}
+
+/* 얇은 유리 — 칩·작은 버튼·안쪽 판 */
+:root[data-theme='glass'] .g-thin {
+  background: rgb(255 255 255 / 0.48);
+  border: 1px solid rgb(255 255 255 / 0.72);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.85), 0 1px 2px oklch(30% 0.05 270 / 0.06);
+}
+
+/* 헤더 — 내용이 밑으로 지나가며 흐려진다. 제목과 겹치므로 탭바보다는 덜 비친다 */
+:root[data-theme='glass'] .g-chrome {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.76), rgb(255 255 255 / 0.56));
+  -webkit-backdrop-filter: var(--g-blur);
+  backdrop-filter: var(--g-blur);
+  border-bottom: 1px solid rgb(255 255 255 / 0.62);
+  box-shadow: 0 1px 0 oklch(35% 0.04 270 / 0.06), 0 10px 26px -18px oklch(30% 0.08 270 / 0.35);
+}
+
+/* 두꺼운 유리 — 시트·탭바·떠 있는 타이머 */
+:root[data-theme='glass'] .g-thick {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.84), rgb(255 255 255 / 0.62));
+  -webkit-backdrop-filter: var(--g-blur-strong);
+  backdrop-filter: var(--g-blur-strong);
+  border: 1px solid rgb(255 255 255 / 0.86);
+  box-shadow: var(--g-rim), var(--g-drop-strong);
+}
+
+/* 보조 버튼 — 유리 알약 */
+:root[data-theme='glass'] .g-secondary {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.76), rgb(255 255 255 / 0.5));
+  border: 1px solid rgb(255 255 255 / 0.86);
+  box-shadow: var(--g-rim), 0 3px 10px -3px oklch(30% 0.06 270 / 0.2);
+  color: var(--text-primary);
+}
+
+/* 주 버튼 — 채도를 뺀 세이지 그린. 진한 초록에 광택까지 얹으면 옅은 배경 위에서 혼자 튀어서,
+   채도와 광택만 덜어 냈다. 흰 글씨 대비는 위 끝 4.8:1, 아래 끝 6:1 */
+:root[data-theme='glass'] .g-primary {
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgb(255 255 255 / 0.22), transparent 60%),
+    linear-gradient(180deg, oklch(54% 0.085 168), oklch(48% 0.08 172));
+  border: 1px solid rgb(255 255 255 / 0.45);
+  color: oklch(99% 0 0);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    0 8px 20px -10px oklch(40% 0.07 170 / 0.45);
+}
+
+/* 주 버튼과 같은 재질의 빨강 — 되돌릴 수 없는 일에만 */
+:root[data-theme='glass'] .g-danger {
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgb(255 255 255 / 0.2), transparent 60%),
+    linear-gradient(180deg, oklch(57% 0.2 25), oklch(48% 0.2 20));
+  border: 1px solid oklch(80% 0.1 25 / 0.6);
+  color: oklch(99% 0 0);
+  text-shadow: 0 1px 1px oklch(25% 0.1 20 / 0.35);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.45),
+    inset 0 -4px 10px oklch(25% 0.1 20 / 0.22),
+    0 12px 26px -10px oklch(45% 0.18 22 / 0.6);
+}
+
+/* 초록이 비치는 유리 — 진행 중 배너 같은 좋은 소식 */
+:root[data-theme='glass'] .g-tint-good {
+  background: linear-gradient(135deg, oklch(91% 0.08 165 / 0.85), oklch(96% 0.04 195 / 0.55));
+  border: 1px solid rgb(255 255 255 / 0.82);
+  box-shadow: var(--g-rim), 0 14px 32px -16px oklch(45% 0.12 165 / 0.55);
+}
+
+/* 주황이 비치는 유리 — 신뢰도 낮음 같은 주의 */
+:root[data-theme='glass'] .g-tint-warn {
+  background: linear-gradient(135deg, oklch(93% 0.07 75 / 0.85), oklch(96% 0.035 55 / 0.55));
+  border: 1px solid rgb(255 255 255 / 0.82);
+  box-shadow: var(--g-rim), 0 14px 32px -16px oklch(55% 0.12 60 / 0.5);
+}
+
+/* 입력칸 — 살짝 파인 유리 */
+:root[data-theme='glass'] .g-input {
+  background: rgb(255 255 255 / 0.62);
+  border: 1px solid rgb(255 255 255 / 0.9);
+  box-shadow: inset 0 1px 3px oklch(30% 0.06 270 / 0.12), 0 1px 0 rgb(255 255 255 / 0.7);
+}
+
+:root[data-theme='glass'] .g-input:focus {
+  outline: none;
+  border-color: oklch(62% 0.13 165);
+  box-shadow: inset 0 1px 3px oklch(30% 0.06 270 / 0.1), 0 0 0 4px oklch(62% 0.13 165 / 0.22);
+}
+
+/* 세그먼트 — 파인 홈 위에 흰 유리 손잡이가 미끄러진다 */
+:root[data-theme='glass'] .g-seg {
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  background: oklch(35% 0.04 270 / 0.08);
+  box-shadow: inset 0 1px 2px oklch(30% 0.06 270 / 0.1), 0 1px 0 rgb(255 255 255 / 0.6);
+}
+
+:root[data-theme='glass'] .g-seg-on {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.98), rgb(255 255 255 / 0.84));
+  color: var(--text-primary);
+  box-shadow:
+    0 1px 2px oklch(30% 0.06 270 / 0.14),
+    0 6px 16px -6px oklch(30% 0.08 270 / 0.32),
+    inset 0 1px 0 rgb(255 255 255);
+}
+
+/* 작은 보석 — 체크·주간 점·부위 블록처럼 "켜짐"을 나타내는 작은 면 */
+:root[data-theme='glass'] .g-gem {
+  background: var(--g-gem-bg);
+  box-shadow: var(--g-gem-shadow);
+}
+
+/* 흰 바탕 선화를 유리에 녹인다. 흰색은 사라지고 선만 남는다 */
+:root[data-theme='glass'] .g-ink {
+  mix-blend-mode: multiply;
+}
+
+/* 누르면 살짝 눌린다 */
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-theme='glass'] :is(.g-primary, .g-danger, .g-secondary, .g-card, .g-thin):is(button, a) {
+    transition:
+      transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 0.22s ease;
+  }
+
+  :root[data-theme='glass'] :is(.g-primary, .g-danger, .g-secondary, .g-card, .g-thin):is(button, a):active:not(:disabled) {
+    transform: scale(0.97);
+  }
+}
+
+/* ── 대체 ─────────────────────────────────────────────── */
+
+/* 흐림을 못 하는 브라우저 — 밑이 비쳐 글자가 묻히지 않게 더 불투명하게 */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  :root[data-theme='glass'] :is(.g-chrome, .g-thick) {
+    background: rgb(252 252 255 / 0.95);
+  }
+}
+
+/* "투명도 줄이기"를 켠 기기 — 유리를 거둬낸다 */
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-theme='glass']
+    :is(.g-card, .g-chrome, .g-thick, .g-thin, .g-secondary, .g-input, .g-tint-good, .g-tint-warn) {
+    background: oklch(98% 0.008 270);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
