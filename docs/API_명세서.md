@@ -1267,7 +1267,9 @@ workout_session (한 번의 운동)
 - 기간: `performed_on ∈ [referenceDate - (weeks × 7 - 1)일, referenceDate]` (기록 저장 시각 아님)
 - `source = 'BACKFILL'` 세션 **포함** (실제 수행한 운동)
 - 세트 → 판정 부위: 종목의 `primary_muscle` 기준, 주동근에만 카운트(간접 자극 미반영)
-- 주당 평균 = `기간 내 세트 합 ÷ weeks`
+- 주당 평균 = `기간 내 세트 합 × 7 ÷ basisDays` (소수 1자리, HALF_UP). `basisDays`는 아래 참조
+
+> **`basisDays` — 기록이 4주 미만이면 분모를 줄인다 (2026-10-03, LOG-31).** 첫 완료 기록일(전체 기록 중 `referenceDate` 이전 최초)부터 `referenceDate`까지의 일수(양끝 포함)를 `[min-basis-days, weeks × 7]`로 자른 값이다(기본 `[7, 28]`). 기록이 없으면 `weeks × 7`. 28일 이상 기록했으면 `÷ weeks`와 정확히 같다. 근거는 분석 설계서 2.1 「기록이 4주 미만일 때의 분모」.
 
 > **집계 구간은 `referenceDate`를 포함해 정확히 `weeks × 7`일이다.** `weeks = 4`면 28일이며, `referenceDate = 2026-09-01`일 때 `2026-08-05 ~ 2026-09-01`이다. 양끝을 포함하는 구간이므로 하한에서 하루를 빼야 분모(`weeks`)와 분자의 기간이 맞는다. LOG-12의 "오늘 포함 28일" 확정을 계산식으로 옮긴 것이다.
 
@@ -1354,7 +1356,9 @@ workout_session (한 번의 운동)
 
 | 필드 | 설명 |
 |---|---|
-| `periodFrom` / `periodTo` | 실제 집계 구간 (화면 표기용, 서버가 계산). 양끝 포함이며 `periodTo - periodFrom + 1 = weeks × 7`일 |
+| `periodFrom` / `periodTo` | 실제 집계 구간 (화면 표기용, 서버가 계산). 양끝 포함이며 `periodTo - periodFrom + 1 = weeks × 7`일. 세트는 이 구간에서 센다 |
+| `basisDays` | 주당 평균을 낼 때 나눈 일수. 기록이 4주 미만이면 첫 기록일부터 센 일수(최소 7), 아니면 `weeks × 7` (LOG-31) |
+| `basisFrom` | `periodTo - basisDays + 1`. `basisDays < weeks × 7`이면 화면은 "최근 4주" 대신 "최근 N일 · basisFrom ~ periodTo"로 적는다 |
 | `shoulderSplitResolved` | 세션에 `delt_region`이 채워진 어깨 종목이 있으면 `true`(정상), 아직 NULL만 있으면 `false`. `false`일 때만 화면이 어깨 하위 판정을 참고치로 낮춰 표시 (8.1) |
 | `confidence.level` | `LOW` \| `NORMAL`. `doneSessionCount < threshold`이면 `LOW` |
 | `confidence.threshold` | 최근 4주 DONE 세션 임계값. 서버 설정값(기본 6, 기록 방식 5.5) |
@@ -1446,6 +1450,7 @@ workout_session (한 번의 운동)
 
 | 필드 | 설명 |
 |---|---|
+| `basisDays` | 8.2와 같은 분모. 양쪽 주당 평균이 이 값으로 계산된다 (LOG-31) |
 | `ratio` | `round(큰 쪽 / 작은 쪽, 2)`. 작은 쪽이 0이면 `null` |
 | `smallerSideZero` | 작은 쪽 세트가 0일 때 `true` → `verdict`는 `IMBALANCED`(큰 쪽 > 0인 경우), 화면은 "비율 계산 불가"로 표기 |
 | `verdict` | `BALANCED`(≤ 2.0) \| `IMBALANCED`(> 2.0). 양쪽 다 0이면 `INSUFFICIENT_DATA` |
@@ -1492,6 +1497,7 @@ workout_session (한 번의 운동)
 | 항목 | 값 | 근거 |
 |---|---|---|
 | 판정 집계 기간 | 4주 (28일), `performed_on` 기준 | 분석 2.1 |
+| 주당 평균 분모 최솟값 | 7일 (`min-basis-days`). 기록이 4주 미만이면 첫 기록일부터 센 일수로 나누되 이보다 짧게는 나누지 않는다 | 분석 2.1, LOG-31 |
 | 부족 임계 | 주 4 / 10 / 20 세트 | 분석 2.2 |
 | 균형 비율 임계 | 2.0배 | 분석 4.2 |
 | 신뢰도 임계 | 최근 4주 `DONE` 세션 6회 | 기록 방식 5.5 |
