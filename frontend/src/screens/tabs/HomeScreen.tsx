@@ -216,7 +216,10 @@ export function HomeScreen() {
         </div>
       )}
 
-      {analysis && <WeaknessCard volume={analysis.volume} balance={analysis.balance} />}
+      {analysis && <WeaknessCard volume={analysis.volume} />}
+      {analysis && analysis.volume.confidence.doneSessionCount > 0 && (
+        <BalanceCard volume={analysis.volume} balance={analysis.balance} />
+      )}
 
       {counts && (
         <div className={styles.card}>
@@ -324,7 +327,7 @@ export function HomeScreen() {
 /** 접힌 상태에서 보일 막대 수. 아홉 곳이 다 나오면 홈의 나머지 카드가 한참 밀린다 */
 const WEAK_ROWS = 3
 
-function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Balance }) {
+function WeaknessCard({ volume }: { volume: MuscleVolume }) {
   const navigate = useNavigate()
   const [expanded, setExpanded] = useState(false)
   const goAnalysis = () => navigate(paths.analysis)
@@ -365,7 +368,6 @@ function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Bala
   ]
     .filter(Boolean)
     .join(' · ')
-  const imbalanced = balance.pairs.filter((p) => p.verdict === 'IMBALANCED')
 
   return (
     <div className={styles.card}>
@@ -432,12 +434,6 @@ function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Bala
         </>
       )}
 
-      {imbalanced.map((p) => (
-        <div key={p.key} className={styles.weakBalance}>
-          {p.label} 불균형
-        </div>
-      ))}
-
       {volume.confidence.level === 'LOW' && (
         <div className={styles.weakNote}>
           완료한 운동이 {volume.confidence.doneSessionCount}회라 참고만 해주세요
@@ -457,4 +453,80 @@ function restLine(last: SessionSummary | undefined, today: Date): string {
   if (days === 0) return '오늘 이미 한 번 운동했어요'
   if (days === 1) return '마지막 운동은 어제예요'
   return `마지막 운동 ${days}일 전 · ${formatMonthDay(last.performedOn)}`
+}
+
+type Pair = Balance['pairs'][number]
+
+const PAIR_VERDICT_CLASS: Record<Pair['verdict'], string> = {
+  BALANCED: styles.pillGood,
+  IMBALANCED: styles.pillDanger,
+  INSUFFICIENT_DATA: styles.pillNeutral,
+}
+
+/** 배지 옆 한 줄. 처방("당기기를 늘리세요")은 하지 않고 비율만 적는다 */
+function pairLine(pair: Pair): string {
+  if (pair.verdict === 'INSUFFICIENT_DATA') return '두 쪽 모두 기록이 없어요'
+  const bigger = pair.biggerSide === pair.left.key ? pair.left : pair.right
+  const smaller = bigger === pair.left ? pair.right : pair.left
+  if (pair.smallerSideZero) return `${smaller.label} 기록이 없어요`
+  return `${bigger.label}가 ${pair.ratio}배`
+}
+
+/**
+ * 균형 — 밀기/당기기, 상체/하체 (명세 8.3).
+ *
+ * <p>약점 카드에서 따로 뺐다. 처음엔 불균형일 때만 약점 카드 밑에 빨간 한 줄로
+ * 붙였는데, 그러면 정상일 때는 균형을 봤다는 흔적조차 없고, "어느 부위가 부족한가"와
+ * "양쪽이 맞는가"라는 다른 질문이 한 카드에 섞였다. 두 쌍을 늘 같이 보여준다.
+ */
+function BalanceCard({ volume, balance }: { volume: MuscleVolume; balance: Balance }) {
+  const navigate = useNavigate()
+
+  return (
+    <button type="button" className={styles.card} onClick={() => navigate(paths.analysis)}>
+      <div className={styles.cardHead}>
+        <span className={styles.cardLabel}>균형 · {basisLabel(volume)}</span>
+        <Chevron />
+      </div>
+
+      {balance.pairs.map((pair) => {
+        const max = Math.max(pair.left.weeklySets, pair.right.weeklySets, 1)
+        return (
+          <div key={pair.key} className={styles.pair}>
+            <div className={styles.pairHead}>
+              <span className={styles.pairTitle}>{pair.label}</span>
+              <span className={styles.pairLine}>{pairLine(pair)}</span>
+              <span className={`${styles.pill} ${PAIR_VERDICT_CLASS[pair.verdict]}`}>{pair.verdictLabel}</span>
+            </div>
+            {/* 가운데 축에서 양쪽으로 자란다. 축 쪽은 각지고 바깥 끝만 둥글다 */}
+            <div className={styles.diverge} aria-hidden="true">
+              <span className={styles.half}>
+                <span
+                  className={`${styles.sideBar} ${styles.sideLeft}`}
+                  style={{ width: `${(pair.left.weeklySets / max) * 100}%` }}
+                />
+              </span>
+              <span className={styles.axis} />
+              <span className={`${styles.half} ${styles.halfRight}`}>
+                <span
+                  className={`${styles.sideBar} ${styles.sideRight}`}
+                  style={{ width: `${(pair.right.weeklySets / max) * 100}%` }}
+                />
+              </span>
+            </div>
+            <div className={styles.sideLabels}>
+              <span>
+                {pair.left.label} {pair.left.weeklySets}
+              </span>
+              <span>
+                {pair.right.label} {pair.right.weeklySets}
+              </span>
+            </div>
+          </div>
+        )
+      })}
+
+      <div className={styles.weakScale}>주당 평균 세트 · {balance.ratioThreshold}배까지 정상</div>
+    </button>
+  )
 }

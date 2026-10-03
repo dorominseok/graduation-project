@@ -140,13 +140,6 @@ button.card {
   color: var(--text-primary);
 }
 
-.weakBalance {
-  margin-top: var(--space-8);
-  font-size: var(--font-xs);
-  font-weight: var(--weight-medium);
-  color: var(--danger);
-}
-
 .weakNote,
 .weakEmpty {
   margin-top: var(--space-6);
@@ -481,4 +474,98 @@ button.card {
 
 .weakToggleOpen {
   transform: rotate(-90deg);
+}
+
+/* ── 균형 */
+
+.pair {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-10);
+}
+
+.pairHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.pairTitle {
+  font-size: var(--font-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.pairLine {
+  flex: 1;
+  font-size: var(--font-2xs);
+  color: var(--text-secondary);
+}
+
+.pill {
+  flex-shrink: 0;
+  padding: 2px var(--space-8);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-3xs);
+  font-weight: var(--weight-bold);
+}
+
+.pillGood {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.pillDanger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.pillNeutral {
+  background: var(--chip-bg);
+  color: var(--text-secondary);
+}
+
+.diverge {
+  display: flex;
+  align-items: center;
+  height: 16px;
+}
+
+.half {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.halfRight {
+  justify-content: flex-start;
+}
+
+.axis {
+  width: 1.5px;
+  height: 16px;
+  background: var(--card-border);
+}
+
+.sideBar {
+  height: 12px;
+}
+
+.sideLeft {
+  background: var(--push-color);
+  border-radius: 4px 0 0 4px;
+}
+
+.sideRight {
+  background: var(--pull-color);
+  border-radius: 0 4px 4px 0;
+}
+
+.sideLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-3xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
 }
