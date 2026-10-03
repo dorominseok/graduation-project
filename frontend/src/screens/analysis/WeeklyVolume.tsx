@@ -7,11 +7,21 @@ import styles from './weekly.module.css'
 // 그림 좌표. 비율을 고정하고 칸 폭에 맞춰 통째로 늘린다
 const W = 160
 const H = 64
+/** 오른쪽 끝 "10"·"20" 숫자 자리 */
+const LABEL_W = 14
 const PAD_TOP = 4
 const PAD_BOTTOM = 2
 /** 세로축 최소 높이. 20 기준선이 늘 보이도록 24까지는 잡아둔다 */
 const MIN_DOMAIN = 24
-const REFERENCE_LINES = [10, 20] as const
+/**
+ * ACSM 권장 구간(분석 설계서 2.2). 막대 뒤에 띠로 깐다.
+ *
+ * <p>막대를 판정해 칠하는 것이 아니라 기준을 배경으로 보여주는 것이다 — 주 단위로
+ * 판정하지 않는다는 원칙은 그대로 두고, 막대가 띠에 닿았는지는 위치로 읽힌다.
+ * 처음엔 10·20 선만 연한 회색으로 그었는데 격자처럼 보여 기준으로 읽히지 않았다.
+ */
+const BAND_FROM = 10
+const BAND_TO = 20
 
 /** 위쪽 두 모서리만 둥근 막대. 바닥까지 둥글면 0에서 시작한다는 기준이 흐려진다 */
 function columnPath(x: number, y: number, w: number, h: number): string {
@@ -59,15 +69,21 @@ export function WeeklyVolume() {
   const lastIndex = weeks.length - 1
   // "지난주"는 끝난 주 중 마지막. 이번 주가 진행 중이면 그 앞 주다
   const lastDone = weeks[lastIndex].inProgress ? lastIndex - 1 : lastIndex
-  const slot = W / weeks.length
+  const plotW = W - LABEL_W
+  const slot = plotW / weeks.length
   const barW = Math.min(14, slot - 4)
 
   return (
     <section className={styles.section}>
       <div className={styles.head}>
         <div className={styles.title}>주차별 부위 세트</div>
-        <div className={styles.sub}>
-          월~일 기준 · 워밍업 제외 · 선은 주 10·20세트. 판정은 약점 탭의 최근 4주 평균으로 해요
+        <div className={styles.legend}>
+          <span className={styles.legendItem}>
+            <span className={styles.swatchBand} />주 10~20세트 권장
+          </span>
+          <span className={styles.legendItem}>
+            <span className={styles.swatchNow} />진행 중인 이번 주
+          </span>
         </div>
       </div>
 
@@ -82,10 +98,19 @@ export function WeeklyVolume() {
                 {lastDone >= 0 && <span className={styles.cellValue}>지난주 {group.sets[lastDone]}</span>}
               </div>
               <svg className={styles.chart} viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
-                {REFERENCE_LINES.map((v) => (
-                  <line key={v} className={styles.ref} x1={0} x2={W} y1={yOf(v)} y2={yOf(v)} />
+                <rect
+                  className={styles.band}
+                  x={0}
+                  y={yOf(BAND_TO)}
+                  width={plotW}
+                  height={yOf(BAND_FROM) - yOf(BAND_TO)}
+                />
+                {[BAND_FROM, BAND_TO].map((v) => (
+                  <text key={v} className={styles.bandLabel} x={W - 1} y={yOf(v)} dy="0.35em" textAnchor="end">
+                    {v}
+                  </text>
                 ))}
-                <line className={styles.base} x1={0} x2={W} y1={H - PAD_BOTTOM} y2={H - PAD_BOTTOM} />
+                <line className={styles.base} x1={0} x2={plotW} y1={H - PAD_BOTTOM} y2={H - PAD_BOTTOM} />
                 {group.sets.map((v, i) => {
                   if (v === 0) return null
                   const x = i * slot + (slot - barW) / 2
@@ -107,6 +132,8 @@ export function WeeklyVolume() {
           )
         })}
       </div>
+
+      <div className={styles.note}>월~일 기준 · 워밍업 제외. 부족 판정은 약점 탭의 최근 4주 평균으로 해요</div>
 
       {/* 막대만으로는 정확한 수를 못 읽는다. 표로 전부 볼 수 있게 둔다 */}
       <details className={styles.table}>
