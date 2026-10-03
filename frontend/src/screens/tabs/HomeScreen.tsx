@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BottomSheet, Chevron, useToast } from '../../components'
-import { analysisApi, isApiError, workoutApi } from '../../api'
-import type { Balance, MuscleVolume, SessionSummary, WorkoutSession } from '../../api'
+import { analysisApi, exerciseApi, isApiError, statsApi, workoutApi } from '../../api'
+import type { Balance, MuscleVolume, OneRmTrend, SessionSummary, WorkoutSession } from '../../api'
 import { useAuth } from '../../auth'
 import { paths } from '../../app/paths'
 import styles from './home.module.css'
@@ -21,9 +21,42 @@ function mondayOf(date: Date): Date {
   return monday
 }
 
+const WEEKDAYS_SUN = ['일', '월', '화', '수', '목', '금', '토']
+
 function formatMonthDay(isoDate: string): string {
   const [, month, day] = isoDate.split('-').map(Number)
   return `${month}월 ${day}일`
+}
+
+/** "9월 29일 (화)" */
+function formatDayWithWeekday(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  return `${month}월 ${day}일 (${WEEKDAYS_SUN[new Date(year, month - 1, day).getDay()]})`
+}
+
+/** 오늘과 며칠 떨어졌는지. 시각이 아니라 날짜로 센다 */
+function daysSince(isoDate: string, today: Date): number {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  const then = Date.UTC(year, month - 1, day)
+  const now = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
+  return Math.round((now - then) / 86_400_000)
+}
+
+/** "랫풀다운: 와이드 그립, 바벨 컬 외 1" — 카드 한 줄에 들어가게 둘까지만 */
+function exerciseLine(session: SessionSummary): string {
+  const names = session.exercises.map((e) => e.nameKo)
+  return names.length > 2 ? `${names.slice(0, 2).join(', ')} 외 ${names.length - 2}` : names.join(', ')
+}
+
+/** 성장 카드 후보를 고를 기간. 1RM 추이의 기본 구간과 같다 */
+const GROWTH_LOOKBACK_DAYS = 12 * 7 - 1
+/** 성장 카드 후보 수. 많이 볼수록 요청이 는다 */
+const GROWTH_CANDIDATES = 3
+
+/** 첫 점 대비 마지막 점. 점이 하나면 비교할 것이 없어 0 */
+function gainOf(trend: OneRmTrend): number {
+  const points = trend.points
+  return points[points.length - 1].estimatedOneRm - points[0].estimatedOneRm
 }
 
 /**
@@ -40,6 +73,8 @@ interface Counts {
   month: number
   total: number
   week: SessionSummary[]
+  /** 가장 최근에 종료한 운동 둘. 누적을 세는 요청에서 같이 받는다 */
+  recent: SessionSummary[]
 }
 
 /**
@@ -88,7 +123,7 @@ export function HomeScreen() {
           workoutApi.getCurrent(),
           workoutApi.getHistory({ from: monthStart, to: toDateString(now), status: 'DONE', size: 1 }),
           // 날짜를 생략하면 서버가 최근 30일만 보므로 시작일을 아주 앞으로 둔다
-          workoutApi.getHistory({ from: '2000-01-01', to: toDateString(now), status: 'DONE', size: 1 }),
+          workoutApi.getHistory({ from: '2000-01-01', to: toDateString(now), status: 'DONE', size: 2 }),
           workoutApi.getHistory({
             from: toDateString(mondayOf(now)),
             to: toDateString(now),
@@ -104,6 +139,7 @@ export function HomeScreen() {
           month: month.page.totalElements,
           total: total.page.totalElements,
           week: week.content,
+          recent: total.content,
         })
         setAnalysis({ volume, balance })
       } catch (err) {
@@ -175,10 +211,18 @@ export function HomeScreen() {
         </div>
       )}
 
-      {!loading && !current && (
-        <button type="button" className={styles.start} onClick={() => navigate(paths.session)}>
-          운동 시작
-        </button>
+      {/*
+        목업의 루틴 추천 카드 자리. 루틴이 들어오는 10월5주에는 이 카드가 루틴 카드가 된다 —
+        그전까지는 얼마나 쉬었는지와 시작 버튼을 둔다.
+      */}
+      {!loading && !current && counts && (
+        <div className={styles.hero}>
+          <div className={styles.heroTitle}>오늘 운동</div>
+          <div className={styles.heroSub}>{restLine(counts.recent[0], today)}</div>
+          <button type="button" className={styles.start} onClick={() => navigate(paths.session)}>
+            운동 시작
+          </button>
+        </div>
       )}
 
       {analysis && <WeaknessCard volume={analysis.volume} balance={analysis.balance} />}
@@ -209,6 +253,37 @@ export function HomeScreen() {
           </div>
           {/* 시간은 적지 않는다. 분석에 쓰지 않고, 사후 입력한 운동은 시간이 없어 합계가 틀려 보인다 */}
           <div className={styles.weekLine}>이번 주 총 {weekSets}세트</div>
+        </div>
+      )}
+
+      <GrowthCard version={version} />
+
+      {counts && (
+        <div className={styles.card}>
+          <div className={styles.cardLabel}>최근 기록</div>
+          {counts.recent.length === 0 ? (
+            <div className={styles.weakEmpty}>종료한 운동이 여기 쌓여요</div>
+          ) : (
+            <ul className={styles.recentList}>
+              {counts.recent.map((session) => (
+                <li key={session.id}>
+                  <button
+                    type="button"
+                    className={styles.recentItem}
+                    onClick={() => navigate(paths.sessionDetail(session.id))}
+                  >
+                    <span className={styles.recentText}>
+                      <span className={styles.recentDate}>{formatDayWithWeekday(session.performedOn)}</span>
+                      <span className={styles.recentMeta}>
+                        {exerciseLine(session)} · {session.setCount}세트
+                      </span>
+                    </span>
+                    <Chevron />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
@@ -306,6 +381,143 @@ function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Bala
           완료한 운동이 {volume.confidence.doneSessionCount}회라 참고만 해주세요
         </div>
       )}
+    </button>
+  )
+}
+
+/**
+ * 오늘 운동 카드의 한 줄. 무엇을 했는지는 최근 기록 카드가 말하므로 여기서는
+ * 얼마나 쉬었는지만 적는다.
+ */
+function restLine(last: SessionSummary | undefined, today: Date): string {
+  if (!last) return '첫 운동을 시작해보세요'
+  const days = daysSince(last.performedOn, today)
+  if (days === 0) return '오늘 이미 한 번 운동했어요'
+  if (days === 1) return '마지막 운동은 어제예요'
+  return `마지막 운동 ${days}일 전 · ${formatMonthDay(last.performedOn)}`
+}
+
+/**
+ * 성장 — 가장 자주 한 중량·횟수 종목의 추정 1RM 변화.
+ *
+ * <p>약점 카드는 부족한 것만 말한다. 늘고 있는 것을 하나 같이 보여줘야 홈이
+ * 경고판이 되지 않는다. 최근 12주에 자주 한 중량·횟수 종목 셋 중 가장 많이 오른
+ * 것을 고른다 — 자주 한 종목이어야 사용자가 신경 쓰는 종목이고, 그중에서 고르지
+ * 않으면 횟수가 같을 때 변화 0kg인 종목이 뽑힌다(실제로 그랬다).
+ *
+ * <p>홈의 다른 카드와 따로 읽는다. 요청이 여러 번 이어져 늦게 오는데, 그동안
+ * 나머지 홈이 기다릴 이유가 없다.
+ */
+function GrowthCard({ version }: { version: number }) {
+  const navigate = useNavigate()
+  const [trend, setTrend] = useState<OneRmTrend | 'none' | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    const load = async () => {
+      try {
+        const from = new Date()
+        from.setDate(from.getDate() - GROWTH_LOOKBACK_DAYS)
+        const history = await workoutApi.getHistory({ from: toDateString(from), status: 'DONE', size: 50 })
+
+        // 기록한 횟수(세션 수)로 줄 세운다
+        const frequency = new Map<number, number>()
+        history.content.forEach((session) =>
+          session.exercises.forEach((e) => frequency.set(e.id, (frequency.get(e.id) ?? 0) + 1)),
+        )
+        const ranked = [...frequency.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id)
+
+        // 맨몸·시간 종목은 1RM이 없다. 위에서부터 중량·횟수 종목 셋을 모은다
+        const candidates: OneRmTrend[] = []
+        for (const id of ranked.slice(0, 8)) {
+          if (candidates.length === GROWTH_CANDIDATES) break
+          const exercise = await exerciseApi.get(id)
+          if (exercise.measureType !== 'WEIGHT_REPS') continue
+          const result = await statsApi.getOneRmTrend(id)
+          if (result.points.length > 0) candidates.push(result)
+        }
+        if (!alive) return
+        if (candidates.length === 0) {
+          setTrend('none')
+          return
+        }
+        setTrend(candidates.reduce((best, t) => (gainOf(t) > gainOf(best) ? t : best)))
+      } catch (err) {
+        // 보조 카드라 실패해도 알리지 않고 비운다
+        if (!isApiError(err)) throw err
+        if (alive) setTrend('none')
+      }
+    }
+    void load()
+    return () => {
+      alive = false
+    }
+  }, [version])
+
+  if (trend === null) return null
+
+  if (trend === 'none') {
+    return (
+      <div className={styles.card}>
+        <div className={styles.cardLabel}>성장</div>
+        <div className={styles.weakEmpty}>무게와 횟수를 함께 기록하면 추정 1RM 변화를 보여드려요</div>
+      </div>
+    )
+  }
+
+  const points = trend.points
+  const first = points[0]
+  const last = points[points.length - 1]
+  const delta = Math.round((last.estimatedOneRm - first.estimatedOneRm) * 10) / 10
+
+  // 축 없는 작은 추세선. 값은 숫자로 적고, 선은 방향만 보여준다
+  const values = points.map((p) => p.estimatedOneRm)
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const line = points
+    .map((p, i) => {
+      const x = (i / (points.length - 1)) * 100
+      const y = max === min ? 50 : 90 - ((p.estimatedOneRm - min) / (max - min)) * 80
+      return `${x},${y}`
+    })
+    .join(' ')
+
+  return (
+    <button
+      type="button"
+      className={styles.card}
+      onClick={() => navigate(`${paths.analysis}?view=stats&exercise=${trend.exerciseId}`)}
+    >
+      <div className={styles.cardHead}>
+        <span className={styles.cardLabel}>성장 · {trend.exerciseName}</span>
+        <Chevron />
+      </div>
+      <div className={styles.growthRow}>
+        <div>
+          <div className={styles.growthValue}>
+            {last.estimatedOneRm}
+            <span className={styles.growthUnit}>kg</span>
+          </div>
+          {points.length < 2 ? (
+            <div className={styles.growthSub}>추정 1RM · 기록이 더 쌓이면 변화가 보여요</div>
+          ) : delta === 0 ? (
+            <div className={styles.growthSub}>추정 1RM · {formatMonthDay(first.date)}과 같아요</div>
+          ) : (
+            <div className={styles.growthSub}>
+              추정 1RM · {formatMonthDay(first.date)}보다{' '}
+              <span className={delta > 0 ? styles.up : styles.down}>
+                {delta > 0 ? '+' : ''}
+                {delta}kg
+              </span>
+            </div>
+          )}
+        </div>
+        {points.length >= 2 && (
+          <svg className={styles.spark} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <polyline points={line} />
+          </svg>
+        )}
+      </div>
     </button>
   )
 }
