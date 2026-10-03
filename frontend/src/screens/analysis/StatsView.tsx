@@ -5,6 +5,7 @@ import type { Exercise } from '../../api'
 import { paths } from '../../app/paths'
 import { useToast } from '../../components'
 import { OneRmTrendPanel } from './OneRmTrendPanel'
+import { WeeklyVolume } from './WeeklyVolume'
 import styles from './analysis.module.css'
 
 /** 칩으로 띄울 종목 수. 가로로 굴려야 보이는 칩은 사실상 없는 칩이다 */
@@ -24,16 +25,27 @@ interface StatsViewProps {
 }
 
 /**
- * 통계 서브탭 — 종목별 추정 1RM 추이 (명세 7.1).
+ * 통계 서브탭 — 주차별 부위 세트(LOG-30)와 종목별 추정 1RM 추이(명세 7.1).
  *
- * <p>목업의 통계 탭에서 부위별 7주 추이와 총 볼륨(톤)을 뺐다. 앞의 것은 내려줄
- * API가 없고(명세 9.1 후속 과제), 뒤의 것은 톤 방식 자체를 쓰지 않기로 했다
- * (분석 설계서 1.1 — 맨몸 종목에서 무너지고 종목 간 무게 차이로 왜곡된다).
+ * <p>목업의 총 볼륨(톤)은 뺐다. 톤 방식 자체를 쓰지 않기로 했다(분석 설계서 1.1 —
+ * 맨몸 종목에서 무너지고 종목 간 무게 차이로 왜곡된다).
+ */
+export function StatsView(props: StatsViewProps) {
+  return (
+    <>
+      <WeeklyVolume />
+      <OneRmSection {...props} />
+    </>
+  )
+}
+
+/**
+ * 종목별 추정 1RM 추이.
  *
  * <p>칩은 최근 12주에 완료한 기록에서 중량·횟수 종목만 고른다. 전용 API를 두지
  * 않은 것은 기록 선택 화면의 "최근 사용"과 같은 이유다 — 기록이 이미 답을 갖고 있다.
  */
-export function StatsView({ selectedId, onSelect }: StatsViewProps) {
+function OneRmSection({ selectedId, onSelect }: StatsViewProps) {
   const navigate = useNavigate()
   const { showToast } = useToast()
   const [chips, setChips] = useState<Exercise[] | null>(null)

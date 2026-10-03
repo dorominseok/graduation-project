@@ -336,7 +336,85 @@ class AnalysisApiTest {
         mvc.perform(get("/api/v1/analysis/muscle-volume")).andExpect(status().isUnauthorized());
     }
 
+    // ── 주차별 기록 (LOG-30)
+
+    /** 고정한 수요일. 그 주 월요일은 9/21, 일요일은 9/27이다 */
+    private static final LocalDate WEDNESDAY = LocalDate.of(2026, 9, 23);
+
+    @Test
+    @DisplayName("주는 월요일에 시작하고, 기준일이 속한 주가 마지막이며 아직 진행 중이다")
+    void weeksStartOnMondayAndLastIsInProgress() throws Exception {
+        weekly(3, WEDNESDAY)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.weeks.length()").value(3))
+                .andExpect(jsonPath("$.weeks[0].start").value("2026-09-07"))
+                .andExpect(jsonPath("$.weeks[2].start").value("2026-09-21"))
+                .andExpect(jsonPath("$.weeks[2].end").value("2026-09-27"))
+                .andExpect(jsonPath("$.weeks[2].inProgress").value(true))
+                .andExpect(jsonPath("$.weeks[1].inProgress").value(false));
+    }
+
+    @Test
+    @DisplayName("일요일 세트와 다음 월요일 세트는 다른 주에 들어간다")
+    void sundayAndMondayFallInDifferentWeeks() throws Exception {
+        doneSession(LocalDate.of(2026, 9, 20), benchPress, 3);   // 일요일 — 지난주
+        doneSession(LocalDate.of(2026, 9, 21), benchPress, 5);   // 월요일 — 이번 주
+
+        weekly(2, WEDNESDAY)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.groups[0].key").value("CHEST"))
+                .andExpect(jsonPath("$.groups[0].sets[0]").value(3))
+                .andExpect(jsonPath("$.groups[0].sets[1]").value(5))
+                .andExpect(jsonPath("$.weeks[0].doneSessionCount").value(1))
+                .andExpect(jsonPath("$.weeks[1].doneSessionCount").value(1));
+    }
+
+    @Test
+    @DisplayName("판정은 붙이지 않고 그 주에 한 세트 수를 그대로 준다 — 주당 평균이 아니다")
+    void weeklyCarriesRawCountsWithoutVerdict() throws Exception {
+        doneSession(LocalDate.of(2026, 9, 22), militaryPress, 4);
+
+        weekly(1, WEDNESDAY)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.groups[2].key").value("DELT_FRONT"))
+                .andExpect(jsonPath("$.groups[2].sets[0]").value(4))
+                .andExpect(jsonPath("$.groups[2].verdict").doesNotExist())
+                // 판정 부위 9종 + 표시 전용 2종
+                .andExpect(jsonPath("$.groups.length()").value(11))
+                .andExpect(jsonPath("$.groups[9].key").value("CALVES"))
+                .andExpect(jsonPath("$.groups[9].judged").value(false));
+    }
+
+    @Test
+    @DisplayName("워밍업·진행 중 기록, 기준일 뒤의 기록은 세지 않는다")
+    void weeklyUsesSameConditionsAsJudgement() throws Exception {
+        long done = backfillSession(LocalDate.of(2026, 9, 22));
+        postSet(done, weightSet(benchPress)).andExpect(status().isCreated());
+        postSet(done, warmupSet(benchPress)).andExpect(status().isCreated());
+        complete(done);
+
+        long draft = backfillSession(LocalDate.of(2026, 9, 22));
+        postSet(draft, weightSet(benchPress)).andExpect(status().isCreated());
+
+        // 수요일 기준으로 보는데 목요일 기록이 있다 — 과거 시점 조회에 섞이면 안 된다
+        doneSession(LocalDate.of(2026, 9, 24), benchPress, 2);
+
+        weekly(1, WEDNESDAY)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.groups[0].sets[0]").value(1));
+    }
+
+    @Test
+    @DisplayName("주 수가 범위를 벗어나면 400")
+    void weeklyRejectsOutOfRangeWeeks() throws Exception {
+        weekly(0, null).andExpect(status().isBadRequest());
+    }
+
     // ── 도우미
+
+    private ResultActions weekly(Integer weeks, LocalDate referenceDate) throws Exception {
+        return mvc.perform(withPeriod(get("/api/v1/analysis/weekly-volume"), weeks, referenceDate));
+    }
 
     private ResultActions volume(Integer weeks, LocalDate referenceDate) throws Exception {
         return mvc.perform(withPeriod(get("/api/v1/analysis/muscle-volume"), weeks, referenceDate));

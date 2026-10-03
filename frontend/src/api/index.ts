@@ -51,6 +51,7 @@ export type {
   UpdateSetRequest,
   UserSummary,
   VolumeVerdict,
+  WeeklyVolume,
   WorkoutSession,
   WorkoutSet,
 } from './types'

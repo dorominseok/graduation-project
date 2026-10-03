@@ -435,3 +435,14 @@ export interface Balance {
     verdictLabel: string
   }[]
 }
+
+/**
+ * 주차별 부위 세트 (LOG-30). 판정은 없다 — 주마다 얼마나 했는지 보는 기록이다.
+ * `groups[].sets`는 `weeks`와 같은 순서·같은 길이다.
+ */
+export interface WeeklyVolume {
+  referenceDate: string
+  /** 오래된 주부터. 마지막이 이번 주 */
+  weeks: { start: string; end: string; inProgress: boolean; doneSessionCount: number }[]
+  groups: { key: MuscleGroupKey; label: string; judged: boolean; sets: number[] }[]
+}

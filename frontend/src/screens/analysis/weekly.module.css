@@ -1,0 +1,157 @@
+/*
+ * 주차별 부위 세트 — 하위 9종의 작은 막대 묶음.
+ *
+ * 판정색을 쓰지 않는다. 한 계열이라 색은 하나, 진행 중인 주만 흐리게.
+ * 기준선은 실선 헤어라인이다(점선은 "예측"으로 읽힌다).
+ */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  word-break: keep-all;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.title {
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.sub {
+  font-size: var(--font-3xs);
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+
+.status {
+  padding: var(--space-20) 0;
+  text-align: center;
+  font-size: var(--font-sm);
+  color: var(--text-tertiary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-8);
+}
+
+.cell {
+  padding: var(--space-8) var(--space-10) var(--space-6);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+}
+
+.cellHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.cellLabel {
+  font-size: var(--font-xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.cellValue {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.ref {
+  stroke: var(--divider);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.base {
+  stroke: var(--tick);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.bar {
+  fill: var(--push-color);
+}
+
+.barNow {
+  fill: var(--push-color);
+  opacity: 0.35;
+}
+
+.axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-3);
+  font-size: 9.5px;
+  color: var(--text-tertiary);
+}
+
+.table {
+  font-size: var(--font-2xs);
+  color: var(--text-secondary);
+}
+
+.table summary {
+  cursor: pointer;
+  font-weight: var(--weight-medium);
+}
+
+.tableScroll {
+  margin-top: var(--space-8);
+  overflow-x: auto;
+}
+
+.table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th,
+.table td {
+  padding: var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--divider);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table th[scope='row'],
+.table thead th:first-child {
+  text-align: left;
+  color: var(--text-primary);
+  font-weight: var(--weight-medium);
+}
+
+.table thead th {
+  color: var(--text-tertiary);
+  font-weight: var(--weight-medium);
+}
+
+.table td {
+  color: var(--text-primary);
+}
+
+.colNow {
+  opacity: 0.55;
+}
