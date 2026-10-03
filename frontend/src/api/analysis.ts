@@ -1,5 +1,5 @@
 import { request } from './client'
-import type { Balance, MuscleVolume, WeeklyVolume } from './types'
+import type { Balance, MuscleVolume } from './types'
 
 /**
  * 부위별 볼륨·부족 판정 (명세 8.2).
@@ -14,9 +14,4 @@ export function getMuscleVolume(): Promise<MuscleVolume> {
 /** 밀기/당기기 · 상체/하체 균형 (명세 8.3). 볼륨과 같은 기간을 본다. */
 export function getBalance(): Promise<Balance> {
   return request<Balance>('/analysis/balance')
-}
-
-/** 주차별 부위 세트 (LOG-30). 월~일 주 단위, 기본 8주(이번 주 포함). */
-export function getWeeklyVolume(): Promise<WeeklyVolume> {
-  return request<WeeklyVolume>('/analysis/weekly-volume')
 }
