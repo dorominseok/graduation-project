@@ -68,10 +68,25 @@ public enum VolumeVerdict {
         if (weeks <= 0) {
             throw new IllegalArgumentException("집계 주 수는 1 이상이어야 한다: " + weeks);
         }
+        return weeklyAverageOverDays(totalSets, weeks * 7);
+    }
+
+    /**
+     * 기간(일) 동안의 세트 합을 주당 평균으로 환산한다. {@code 합 × 7 ÷ 일수}, 소수 1자리.
+     *
+     * <p>분모가 주가 아니라 일인 것은 기록을 시작한 지 4주가 안 된 사용자 때문이다
+     * ({@link AveragingBasis}, LOG-31). 17일째인 사람을 2주나 3주로 끊어 나누면
+     * 하루 차이로 판정이 한 칸씩 뛴다. 28일이면 {@code ÷ 4}와 정확히 같은 값이 나온다 —
+     * 곱하고 나누는 7이 약분되므로 반올림 결과도 같다.
+     */
+    public static BigDecimal weeklyAverageOverDays(int totalSets, int days) {
+        if (days <= 0) {
+            throw new IllegalArgumentException("집계 일수는 1 이상이어야 한다: " + days);
+        }
         if (totalSets < 0) {
             throw new IllegalArgumentException("세트 합은 음수일 수 없다: " + totalSets);
         }
-        return BigDecimal.valueOf(totalSets)
-                .divide(BigDecimal.valueOf(weeks), 1, RoundingMode.HALF_UP);
+        return BigDecimal.valueOf((long) totalSets * 7)
+                .divide(BigDecimal.valueOf(days), 1, RoundingMode.HALF_UP);
     }
 }

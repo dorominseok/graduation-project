@@ -32,6 +32,10 @@ public final class AnalysisDtos {
             @Schema(description = "집계 구간 시작일. 양끝 포함이라 periodTo - periodFrom + 1 = weeks × 7")
             LocalDate periodFrom,
             LocalDate periodTo,
+            @Schema(description = "주당 평균을 낼 때 나눈 일수. 기록이 4주 미만이면 첫 기록일부터 센 일수(최소 7), 아니면 28")
+            int basisDays,
+            @Schema(description = "basisDays의 시작일. periodTo - basisDays + 1")
+            LocalDate basisFrom,
             @Schema(description = "어깨 앞뒤 구분이 선 상태인지. false면 화면이 어깨 판정을 참고치로 낮춰 표시한다")
             boolean shoulderSplitResolved,
             ConfidenceResponse confidence,
@@ -82,6 +86,7 @@ public final class AnalysisDtos {
     public record BalanceResponse(
             LocalDate referenceDate,
             int periodWeeks,
+            @Schema(description = "주당 평균을 낼 때 나눈 일수. muscle-volume과 같다") int basisDays,
             @Schema(description = "이 배수를 넘으면 불균형") BigDecimal ratioThreshold,
             boolean shoulderSplitResolved,
             List<PairResponse> pairs) {

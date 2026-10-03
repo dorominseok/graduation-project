@@ -201,6 +201,57 @@ class AnalysisApiTest {
         volume(53, null).andExpect(status().isBadRequest());
     }
 
+    // ── 기록이 4주 미만일 때의 분모 (LOG-31)
+
+    @Test
+    @DisplayName("첫 주에 12세트면 주 12세트다 — 28일로 나눠 '3세트 · 부족'이 되지 않는다")
+    void newUserIsNotDilutedByEmptyWeeks() throws Exception {
+        LocalDate reference = LocalDate.now().minusDays(1);
+        doneSession(reference.minusDays(2), benchPress, 12);
+
+        volume(null, reference)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.basisDays").value(7))
+                .andExpect(jsonPath("$.basisFrom").value(reference.minusDays(6).toString()))
+                .andExpect(jsonPath("$.tiers[0].totalSets").value(12))
+                .andExpect(jsonPath("$.tiers[0].weeklySets").value(12.0))
+                .andExpect(jsonPath("$.tiers[0].verdict").value("OPTIMAL"));
+    }
+
+    @Test
+    @DisplayName("기록을 시작한 지 17일이면 17일로 나눈다")
+    void basisIsElapsedDaysSinceFirstRecord() throws Exception {
+        LocalDate reference = LocalDate.now().minusDays(1);
+        doneSession(reference.minusDays(16), benchPress, 6);
+        doneSession(reference, benchPress, 6);
+
+        volume(null, reference)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.basisDays").value(17))
+                // 12 × 7 ÷ 17 = 4.94
+                .andExpect(jsonPath("$.tiers[0].weeklySets").value(4.9));
+
+        balance(null, reference)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.basisDays").value(17))
+                .andExpect(jsonPath("$.pairs[0].left.weeklySets").value(4.9));
+    }
+
+    @Test
+    @DisplayName("구간보다 오래 기록했으면 지금까지처럼 28일(÷ 4)로 나눈다 — 쉰 기간도 평균에 들어간다")
+    void longHistoryKeepsFullWindow() throws Exception {
+        LocalDate reference = LocalDate.now().minusDays(1);
+        // 구간(28일) 밖의 첫 기록. 이 뒤로 3주를 쉬었다
+        doneSession(reference.minusDays(40), barbellCurl, 3);
+        doneSession(reference, benchPress, 12);
+
+        volume(null, reference)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.basisDays").value(28))
+                .andExpect(jsonPath("$.tiers[0].weeklySets").value(3.0))
+                .andExpect(jsonPath("$.tiers[0].verdict").value("INSUFFICIENT"));
+    }
+
     // ── 균형 (8.3)
 
     @Test

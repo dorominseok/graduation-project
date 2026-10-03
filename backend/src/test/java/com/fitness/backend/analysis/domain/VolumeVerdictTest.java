@@ -69,6 +69,27 @@ class VolumeVerdictTest {
         @Test
         void rejectsNonPositiveWeeks() {
             assertThrows(IllegalArgumentException.class, () -> VolumeVerdict.weeklyAverage(10, 0));
+            assertThrows(IllegalArgumentException.class, () -> VolumeVerdict.weeklyAverageOverDays(10, 0));
+        }
+
+        @ParameterizedTest(name = "{0}세트 / {1}일 → {2}")
+        @CsvSource({
+                "12, 7,  12.0",  // 첫 주에 12세트 — 28일로 나누면 3.0 · 부족이 된다(LOG-31)
+                "12, 17, 4.9",   // 84 / 17 = 4.94
+                "40, 28, 10.0",  // 28일은 ÷ 4와 같다
+                "0,  9,  0.0",
+        })
+        void convertsOverDays(int totalSets, int days, String expected) {
+            assertEquals(0, VolumeVerdict.weeklyAverageOverDays(totalSets, days).compareTo(new BigDecimal(expected)));
+        }
+
+        @ParameterizedTest(name = "{0}세트: 28일 기준과 4주 기준이 같다")
+        @CsvSource({"0", "13", "15", "16", "48", "81", "137"})
+        @DisplayName("28일로 나누면 기존 ÷ 4와 반올림까지 같다 — 4주 넘게 기록한 사람의 판정은 안 바뀐다")
+        void twentyEightDaysEqualsFourWeeks(int totalSets) {
+            // 비교 대상은 이전 계산식(합 ÷ 4) 그대로다. weeklyAverage(…, 4)와 비교하면 같은 코드를 두 번 부르는 셈이라 의미가 없다
+            BigDecimal before = BigDecimal.valueOf(totalSets).divide(BigDecimal.valueOf(4), 1, java.math.RoundingMode.HALF_UP);
+            assertEquals(before, VolumeVerdict.weeklyAverageOverDays(totalSets, 28));
         }
     }
 

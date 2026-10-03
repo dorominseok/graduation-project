@@ -49,6 +49,14 @@ export function formatMonthDay(isoDate: string): string {
   return `${month}월 ${day}일`
 }
 
+/**
+ * 판정 기간 표기. 기록이 4주가 안 되면 실제로 나눈 일수를 적는다(LOG-31) —
+ * "최근 4주"라고 써놓고 17일로 나누면 화면과 계산이 다른 말을 한다.
+ */
+export function basisLabel(volume: { periodWeeks: number; basisDays: number }): string {
+  return volume.basisDays >= volume.periodWeeks * 7 ? `최근 ${volume.periodWeeks}주` : `최근 ${volume.basisDays}일`
+}
+
 /** "2026-09-03" → "9/3". 차트 축처럼 자리가 좁은 곳에 쓴다 */
 export function formatShortDate(isoDate: string): string {
   const [, month, day] = isoDate.split('-').map(Number)

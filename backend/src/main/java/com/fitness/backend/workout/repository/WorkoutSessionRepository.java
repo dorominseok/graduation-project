@@ -90,4 +90,19 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
      */
     int countByUserIdAndStatusAndPerformedOnBetween(Long userId, SessionStatus status,
                                                     LocalDate from, LocalDate to);
+
+    /**
+     * 기준일 이전(포함) 첫 완료 기록일. 주당 평균의 분모를 정한다(LOG-31).
+     *
+     * <p>집계 구간(28일) 안이 아니라 <b>전체 기록</b>에서 찾는다. 두 달 전에 시작한
+     * 사람이 최근 28일 중 앞 2주를 쉬었다면, 그 2주도 평균에 들어가야 맞다 —
+     * 구간 안의 첫 기록일로 자르면 쉰 기간이 지워진다.
+     */
+    @Query("""
+            select min(s.performedOn) from WorkoutSession s
+             where s.userId = :userId
+               and s.status = com.fitness.backend.workout.domain.SessionStatus.DONE
+               and s.performedOn <= :to
+            """)
+    LocalDate findFirstDonePerformedOn(@Param("userId") Long userId, @Param("to") LocalDate to);
 }

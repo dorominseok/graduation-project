@@ -361,6 +361,13 @@ export interface MuscleVolume {
   periodWeeks: number
   periodFrom: string
   periodTo: string
+  /**
+   * 주당 평균을 낼 때 나눈 일수 (LOG-31). 기록이 4주 미만이면 첫 기록일부터 센
+   * 일수(최소 7), 아니면 28. 기록이 짧은 사람을 28일로 나누면 판정이 희석된다
+   */
+  basisDays: number
+  /** basisDays의 시작일 */
+  basisFrom: string
   shoulderSplitResolved: boolean
   confidence: {
     level: 'LOW' | 'NORMAL'
@@ -410,6 +417,8 @@ export interface BalanceSide {
 export interface Balance {
   referenceDate: string
   periodWeeks: number
+  /** muscle-volume과 같은 분모 */
+  basisDays: number
   ratioThreshold: number
   shoulderSplitResolved: boolean
   pairs: {

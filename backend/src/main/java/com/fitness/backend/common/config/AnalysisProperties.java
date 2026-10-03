@@ -39,6 +39,12 @@ public record AnalysisProperties(
         /** 추정 1RM 산출 대상 반복 횟수 상한(LOG-07). */
         @Min(1) int oneRmMaxReps,
 
+        /**
+         * 주당 평균 분모의 최솟값(일). 기록을 시작한 지 이보다 짧아도 이 일수로 나눈다(LOG-31).
+         * 첫날 5세트를 하루로 나누면 "주 35세트 · 과다"가 되기 때문이다.
+         */
+        @Min(1) int minBasisDays,
+
         /** 운동 시간 산출 보정(기록 방식 4.2). */
         @NotNull Duration interSetCap,
         @NotNull Duration lastSetBonus,
