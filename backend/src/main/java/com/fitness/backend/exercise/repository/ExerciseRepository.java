@@ -86,7 +86,7 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
      * <p>{@code primary_muscle}로 세어 돌려주고 12종으로 묶는 것은 서비스가 한다 —
      * 묶는 규칙이 {@link com.fitness.backend.exercise.domain.BrowseCategory}에 있어서다.
      */
-    @Query("select e.primaryMuscle, count(e) from Exercise e group by e.primaryMuscle")
+    @Query("select e.primaryMuscle, e.deltRegion, count(e) from Exercise e group by e.primaryMuscle, e.deltRegion")
     List<Object[]> countByPrimaryMuscle();
 
     /**
@@ -99,8 +99,10 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
             select e.groupName, count(e), min(e.id)
               from Exercise e
              where e.primaryMuscle in :muscles
+               and (:deltRegion is null or e.deltRegion = :deltRegion)
              group by e.groupName
              order by count(e) desc, e.groupName asc
             """)
-    List<Object[]> countByGroup(@Param("muscles") Collection<String> muscles);
+    List<Object[]> countByGroup(@Param("muscles") Collection<String> muscles,
+                                @Param("deltRegion") DeltRegion deltRegion);
 }

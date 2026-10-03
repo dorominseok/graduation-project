@@ -19,7 +19,7 @@ export interface PickerStep {
    * 탐색 분류와 축이 달라(어깨 앞·뒤, 두 분류에 걸친 뒤허벅지·둔근) 부위 → 계열 단계로는 못 연다
    */
   muscleGroup?: MuscleGroupKey | null
-  /** 머리줄에 적을 이름. "어깨(뒤)" */
+  /** 머리줄에 적을 이름. "어깨 후면" */
   muscleLabel?: string
 }
 

@@ -17,7 +17,13 @@ public enum BrowseCategory {
 
     CHEST("가슴", "chest"),
     BACK("등", "lats", "middle back"),
-    SHOULDERS("어깨", "shoulders"),
+    /**
+     * 어깨는 판정과 같이 전면·후면으로 나눈다(LOG-33). 하나로 두면 홈 약점에서 "어깨 후면
+     * 부족"을 보고 종목을 추가하러 왔을 때 앞뒤가 섞인 13종에서 후면 3종을 직접 골라내야 한다.
+     * 측면 레이즈는 판정과 같이 전면에 둔다 — 밀기로 집계하는 분류다(분석 설계서 4.3).
+     */
+    SHOULDERS_FRONT("어깨 전면", DeltRegion.FRONT, "shoulders"),
+    SHOULDERS_REAR("어깨 후면", DeltRegion.REAR, "shoulders"),
     TRAPS("승모근", "traps"),
     TRICEPS("삼두", "triceps"),
     BICEPS("이두", "biceps"),
@@ -29,10 +35,16 @@ public enum BrowseCategory {
     CALVES("종아리", "calves");
 
     private final String label;
+    private final DeltRegion deltRegion;
     private final List<String> primaryMuscles;
 
     BrowseCategory(String label, String... primaryMuscles) {
+        this(label, null, primaryMuscles);
+    }
+
+    BrowseCategory(String label, DeltRegion deltRegion, String... primaryMuscles) {
         this.label = label;
+        this.deltRegion = deltRegion;
         this.primaryMuscles = List.of(primaryMuscles);
     }
 
@@ -43,5 +55,10 @@ public enum BrowseCategory {
     /** 이 분류에 속하는 {@code primary_muscle} 값들. 조회 조건으로 그대로 쓴다 */
     public List<String> primaryMuscles() {
         return primaryMuscles;
+    }
+
+    /** 어깨 전면·후면만 값이 있다. 나머지는 {@code null} — 조건을 걸지 않는다 */
+    public DeltRegion deltRegion() {
+        return deltRegion;
     }
 }
