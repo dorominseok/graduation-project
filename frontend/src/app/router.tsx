@@ -38,7 +38,10 @@ export const router = createBrowserRouter([
   {
     element: <RequireAuth />,
     children: [
-      // 탭 안 — 하단 탭 5개
+      // 하단 탭이 보이는 화면 — 탭 5개와, 둘러보는 화면들
+      //
+      // 종목·설정은 탭이 아니지만 하단바를 남긴다. 구경하다 다른 탭으로 바로 갈 수
+      // 있어야 하고, 떠나도 잃을 게 없다. 어느 탭에 불을 켤지는 TabBar가 경로로 정한다.
       {
         element: <AppShell />,
         children: [
@@ -47,10 +50,18 @@ export const router = createBrowserRouter([
           { path: paths.analysis, element: <AnalysisScreen /> },
           { path: paths.group, element: <GroupScreen /> },
           { path: paths.profile, element: <ProfileScreen /> },
+          { path: paths.exerciseList, element: <ExerciseListScreen /> },
+          { path: paths.exerciseDetail(), element: <ExerciseDetailScreen /> },
+          { path: paths.settings, element: <SettingsScreen /> },
+          { path: paths.accountSettings, element: <AccountSettingsScreen /> },
+          { path: paths.personalInfo, element: <PersonalInfoScreen /> },
         ],
       },
 
-      // 탭 밖 — 전체 화면
+      // 하단 탭을 숨기는 화면 — 하던 일이 있는 곳
+      //
+      // 기록 화면은 아직 체크하지 않은 세트를 화면 안에만 들고 있다. 하단바가 있으면
+      // 탭 하나 잘못 눌러 적어둔 세트가 통째로 사라진다. 나가는 길은 ← 하나로 둔다.
       //
       // react-router는 순서가 아니라 구체성으로 매칭하므로 '/routines/fallback'이
       // '/routines/:routineId'보다 항상 우선한다. 정적 경로를 위에 둔 건 읽기 편하라고.
@@ -61,11 +72,6 @@ export const router = createBrowserRouter([
           { path: paths.sessionDetail(), element: <SessionScreen /> },
           { path: paths.routineFallback, element: <RoutineFallbackScreen /> },
           { path: paths.routineDetail(), element: <RoutineDetailScreen /> },
-          { path: paths.exerciseList, element: <ExerciseListScreen /> },
-          { path: paths.exerciseDetail(), element: <ExerciseDetailScreen /> },
-          { path: paths.settings, element: <SettingsScreen /> },
-          { path: paths.accountSettings, element: <AccountSettingsScreen /> },
-          { path: paths.personalInfo, element: <PersonalInfoScreen /> },
           { path: paths.feedback, element: <FeedbackScreen /> },
         ],
       },
