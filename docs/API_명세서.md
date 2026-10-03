@@ -580,7 +580,7 @@ Authorization: Bearer {accessToken}
 |---|---|---|
 | `q` | string | `nameKo` / `nameEn` 부분 일치 검색 |
 | `bodyPart` | enum | 6종 중 하나로 필터 |
-| `category` | enum | **탐색 분류 12종** 중 하나로 필터 (5.6, LOG-24) |
+| `category` | enum | **탐색 분류 13종** 중 하나로 필터 (5.6, LOG-24·LOG-33) |
 | `group` | string | **계열**로 필터. `category`와 함께 쓴다 (5.7, LOG-24) |
 | `muscleGroup` | enum | **판정 부위 9종**(8.1 하위 `key`) 중 하나로 필터. 어깨 앞·뒤는 `delt_region`까지 가른다. `category`와 같이 주면 두 조건을 모두 만족하는 종목만 (LOG-29) |
 | `equipment` | enum | 기구로 필터 |
@@ -617,7 +617,7 @@ Authorization: Bearer {accessToken}
 | 탭 | 산출 |
 |---|---|
 | 최근 사용 | 프론트가 `GET /workout-sessions` 이력에서 최근 등장 `exerciseId` 순으로 계산. 별도 엔드포인트 없음. 근거 필드는 6.6 응답의 `exercises[].id`이며, 배열이 수행 순서로 정렬돼 있으므로 세션을 `performedOn` 내림차순으로 훑으며 처음 만나는 순서가 곧 최근 사용 순이다 |
-| 부위별 | **3단 드릴다운** (LOG-24). `GET /exercises/categories`로 분류 12종과 개수를 한 번에 받고 → `GET /exercises/groups?category=`로 계열을 받고 → `GET /exercises?category=&group=`으로 변형을 받는다. 부위마다 1회씩 6번 세던 방식은 폐기 |
+| 부위별 | **3단 드릴다운** (LOG-24). `GET /exercises/categories`로 분류 13종과 개수를 한 번에 받고 → `GET /exercises/groups?category=`로 계열을 받고 → `GET /exercises?category=&group=`으로 변형을 받는다. 부위마다 1회씩 6번 세던 방식은 폐기 |
 | 즐겨찾기 | `GET /exercises?favorite=true&sort=` — 서버가 `user_favorite_exercises` 기준. 정렬은 `createdAt,desc` 고정(별표 누른 순) |
 
 ### 5.3 GET /exercises/{id}
@@ -694,7 +694,7 @@ Authorization: Bearer {accessToken}
 
 종목 선택 1단계 (LOG-24). 5.2보다 앞선 단계지만 나중에 신설해 번호가 뒤에 붙었다.
 
-**응답 `200 OK`** — 분류 12종 배열. 페이지 envelope을 쓰지 않는다(항상 12개, 고정).
+**응답 `200 OK`** — 분류 13종 배열. 페이지 envelope을 쓰지 않는다(항상 13개, 고정).
 
 ```json
 [
@@ -709,7 +709,7 @@ Authorization: Bearer {accessToken}
 | `label` | 화면에 적을 한글 이름. 서버가 준다 — 클라이언트마다 다르게 부르면 안 된다 |
 | `count` | 그 분류의 종목 수. `GROUP BY primary_muscle` 한 번으로 12개를 모두 센다 |
 
-**분류 12종과 `primary_muscle` 대응**
+**분류 13종과 `primary_muscle` 대응**
 
 | 분류 | `label` | `primary_muscle` | 종목 수 |
 |---|---|---|---|
@@ -717,7 +717,8 @@ Authorization: Bearer {accessToken}
 | `ABS` | 복부 | `abdominals` | 16 |
 | `LEGS` | 하체 | `quadriceps`, `hamstrings` | 15 |
 | `TRICEPS` | 삼두 | `triceps` | 14 |
-| `SHOULDERS` | 어깨 | `shoulders` | 13 |
+| `SHOULDERS_FRONT` | 어깨 전면 | `shoulders` + `delt_region = FRONT` | 10 |
+| `SHOULDERS_REAR` | 어깨 후면 | `shoulders` + `delt_region = REAR` | 3 |
 | `BACK` | 등 | `lats`, `middle back` | 8 |
 | `TRAPS` | 승모근 | `traps` | 7 |
 | `BICEPS` | 이두 | `biceps` | 7 |
@@ -1238,7 +1239,7 @@ workout_session (한 번의 운동)
 |---|---|---|
 | `CHEST` | 가슴 | `CHEST` |
 | `BACK` | 등 | `BACK` |
-| `SHOULDERS` | 어깨 | `DELT_FRONT`(어깨(앞)), `DELT_REAR`(어깨(뒤)) |
+| `SHOULDERS` | 어깨 | `DELT_FRONT`(어깨 전면), `DELT_REAR`(어깨 후면) |
 | `ARMS` | 팔 | `TRICEPS`(삼두), `BICEPS`(이두) |
 | `LEGS` | 하체 | `QUADS`(앞허벅지), `POSTERIOR`(뒤허벅지·둔근) |
 | `CORE` | 코어 | `CORE` |
@@ -1325,8 +1326,8 @@ workout_session (한 번의 운동)
       "summaryBadge": "PARTIAL_INSUFFICIENT",
       "summaryBadgeLabel": "일부 부족",
       "children": [
-        { "key": "DELT_FRONT", "label": "어깨(앞)", "weeklySets": 8.0, "totalSets": 32, "verdict": "BELOW_RECOMMENDED", "verdictLabel": "권장 이하" },
-        { "key": "DELT_REAR",  "label": "어깨(뒤)", "weeklySets": 1.0, "totalSets": 4,  "verdict": "INSUFFICIENT",     "verdictLabel": "부족" }
+        { "key": "DELT_FRONT", "label": "어깨 전면", "weeklySets": 8.0, "totalSets": 32, "verdict": "BELOW_RECOMMENDED", "verdictLabel": "권장 이하" },
+        { "key": "DELT_REAR",  "label": "어깨 후면", "weeklySets": 1.0, "totalSets": 4,  "verdict": "INSUFFICIENT",     "verdictLabel": "부족" }
       ]
     },
     {
@@ -1522,7 +1523,7 @@ workout_session (한 번의 운동)
 | `exercises.delt_region` 값 채우기 | `primary_muscle = 'shoulders'`인 13개 종목에 `FRONT`/`REAR` 입력. 배분 기준은 LOG-09 표 | 완료 (9월 1주) |
 | `V4__add_client_set_id.sql` | `workout_sets.client_set_id`(UUID NOT NULL) + `UNIQUE (session_id, client_set_id)`. 세트 저장 멱등 키(6.4). `V3`가 이미 적용된 뒤이므로 별도 버전으로 올린다 | 완료 (9월 1주) |
 | `V5__exercises_name_ko_collate_c.sql` | `exercises.nameKo` 정렬을 `C` 콜레이션으로. 한글 이름 정렬이 DB 로케일에 따라 달라지는 것을 고정 | 완료 (9월 3주) |
-| `V6__add_exercise_group.sql` | `exercises.group_name`(VARCHAR 40) + 인덱스. 종목 선택 3단 탐색의 계열 축(5.7, LOG-24). 분류 12종은 컬럼 없이 `primary_muscle`에서 파생하므로 이 한 컬럼이 전부다 | 완료 (9월 4주) |
+| `V6__add_exercise_group.sql` | `exercises.group_name`(VARCHAR 40) + 인덱스. 종목 선택 3단 탐색의 계열 축(5.7, LOG-24). 분류 13종은 컬럼 없이 `primary_muscle`·`delt_region`에서 파생하므로 이 한 컬럼이 전부다 | 완료 (9월 4주) |
 | 계열 값 채우기 | 109종 전부에 `group_name` 입력(40개 계열). 시드 CSV와 `R__seed_exercises.sql`에서 관리 | 완료 (9월 4주) |
 | `password_reset_tokens` 테이블 | 비밀번호 재설정(4.8 주석). 문서 곳곳에 `V5`로 적혀 있으나 `V5`·`V6`이 이미 쓰여 실제로는 **`V7`**이다. d1에서 떼어 검증 이후로 미뤘다(LOG-25) | 검증 이후 |
 | 세션 생성 멱등 키 | `BACKFILL` 세션의 재전송 중복 방지(`clientSessionId`). 6.2 주석의 미결 항목이며, 오프라인 쓰기 큐 범위와 함께 판단 | 미정 |
