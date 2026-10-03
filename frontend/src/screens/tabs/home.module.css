@@ -140,15 +140,6 @@ button.card {
   color: var(--text-primary);
 }
 
-.weakChip {
-  padding: 3px var(--space-8);
-  border-radius: var(--radius-pill);
-  background: var(--danger-soft);
-  color: var(--danger);
-  font-size: var(--font-2xs);
-  font-weight: var(--weight-bold);
-}
-
 .weakBalance {
   margin-top: var(--space-8);
   font-size: var(--font-xs);
@@ -367,19 +358,18 @@ button.card {
 
 .weakList {
   list-style: none;
-  margin: var(--space-8) 0 0;
+  margin: var(--space-4) 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
 }
 
 .weakRow {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-4);
   width: 100%;
-  padding: var(--space-8) 0;
+  padding: var(--space-6) 0;
   border: none;
   background: none;
   text-align: left;
@@ -462,27 +452,4 @@ button.card {
   margin-top: var(--space-4);
   font-size: var(--font-3xs);
   color: var(--text-tertiary);
-}
-
-/* 막대 행 아래 나머지. 누르면 막대 행과 같이 오늘 운동에 추가로 간다 */
-.weakMore {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-6);
-  margin-top: var(--space-4);
-}
-
-.weakMore .weakChip {
-  border: none;
-  font-variant-numeric: tabular-nums;
-}
-
-.weakChip.toneDanger {
-  background: var(--danger-soft);
-  color: var(--danger);
-}
-
-.weakChip.toneWarn {
-  background: var(--warn-soft);
-  color: var(--warn);
 }

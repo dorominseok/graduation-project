@@ -308,9 +308,6 @@ export function HomeScreen() {
   )
 }
 
-/** 홈에 펼쳐 보일 부족한 부위 수. 나머지는 "외 N곳"으로 접는다 */
-const WEAK_ROWS = 3
-
 /**
  * 약점.
  *
@@ -364,7 +361,6 @@ function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Bala
   ]
     .filter(Boolean)
     .join(' · ')
-  const shown = lacking.slice(0, WEAK_ROWS)
   const imbalanced = balance.pairs.filter((p) => p.verdict === 'IMBALANCED')
 
   return (
@@ -377,7 +373,9 @@ function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Bala
         <>
           <div className={styles.weakTitle}>{title}</div>
           <ul className={styles.weakList}>
-            {shown.map((c) => {
+            {/* 전부 막대로 그린다. 권장 이하야말로 10까지 얼마 남았는지가 막대로 보여야 한다 —
+                셋만 막대로 두고 나머지를 칩으로 줄였더니 같은 정보를 두 가지로 그리게 됐다 */}
+            {lacking.map((c) => {
               const tone = c.verdict === 'INSUFFICIENT' ? styles.toneDanger : styles.toneWarn
               return (
                 <li key={c.key}>
@@ -413,23 +411,6 @@ function WeaknessCard({ volume, balance }: { volume: MuscleVolume; balance: Bala
               )
             })}
           </ul>
-          {/* 나머지도 눌러서 바로 추가할 수 있어야 한다 — 글자로만 두면 권장 이하는 손댈 길이 없다 */}
-          {lacking.length > WEAK_ROWS && (
-            <div className={styles.weakMore}>
-              {lacking.slice(WEAK_ROWS).map((c) => (
-                <button
-                  key={c.key}
-                  type="button"
-                  className={`${styles.weakChip} ${
-                    c.verdict === 'INSUFFICIENT' ? styles.toneDanger : styles.toneWarn
-                  }`}
-                  onClick={() => openPick(c.key, c.label)}
-                >
-                  {c.label} {c.weeklySets}
-                </button>
-              ))}
-            </div>
-          )}
           <div className={styles.weakScale}>눈금 주 4 · 10 · 20세트 — 10세트부터 권장 구간</div>
         </>
       )}
