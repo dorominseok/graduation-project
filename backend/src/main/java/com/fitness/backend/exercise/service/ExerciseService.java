@@ -58,7 +58,7 @@ public class ExerciseService {
         // 분류도 판정 부위도 없으면 in 절을 건너뛴다. 빈 컬렉션을 넘기면 아무것도 안 나온다.
         boolean allMuscles = category == null && muscleGroup == null;
         Collection<String> muscles = allMuscles ? List.of("") : musclesOf(category, muscleGroup);
-        // 어깨 앞뒤는 분류(어깨 전면·후면)와 판정 부위(DELT_FRONT·REAR) 양쪽에서 올 수 있다.
+        // 어깨 앞뒤는 분류(어깨 전·측면·후면)와 판정 부위(DELT_FRONT·REAR) 양쪽에서 올 수 있다.
         // 서로 다른 쪽을 가리키면 겹치는 종목이 없다
         DeltRegion fromCategory = category == null ? null : category.deltRegion();
         DeltRegion fromGroup = muscleGroup == null ? null : muscleGroup.deltRegion();
@@ -107,7 +107,7 @@ public class ExerciseService {
     public List<CategoryCount> categories() {
         List<Object[]> rows = exerciseRepository.countByPrimaryMuscle();
 
-        // 어깨 전면·후면은 같은 primary_muscle을 delt_region으로 가른다
+        // 어깨 전·측면·후면은 같은 primary_muscle을 delt_region으로 가른다
         return Arrays.stream(BrowseCategory.values())
                 .map(category -> new CategoryCount(category, category.label(),
                         rows.stream()

@@ -19,7 +19,7 @@ public enum MuscleGroup {
 
     CHEST("가슴", true),
     BACK("등", true),
-    DELT_FRONT("어깨 전면", true),
+    DELT_FRONT("어깨 전·측면", true),
     DELT_REAR("어깨 후면", true),
     TRICEPS("삼두", true),
     BICEPS("이두", true),

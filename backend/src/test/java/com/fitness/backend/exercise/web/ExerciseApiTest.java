@@ -380,7 +380,7 @@ class ExerciseApiTest {
     @DisplayName("어깨는 탐색에서도 전면 10종·후면 3종으로 나뉜다 — 약점의 '어깨 후면'과 같은 단위다")
     void shoulderCategoriesSplitByDeltRegion() throws Exception {
         String categories = getBody("/api/v1/exercises/categories");
-        assertThat(categories).contains("\"category\":\"SHOULDERS_FRONT\",\"label\":\"어깨 전면\",\"count\":10");
+        assertThat(categories).contains("\"category\":\"SHOULDERS_FRONT\",\"label\":\"어깨 전·측면\",\"count\":10");
         assertThat(categories).contains("\"category\":\"SHOULDERS_REAR\",\"label\":\"어깨 후면\",\"count\":3");
 
         mvc.perform(get("/api/v1/exercises").param("category", "SHOULDERS_REAR").param("size", "100"))
@@ -391,7 +391,7 @@ class ExerciseApiTest {
     }
 
     @Test
-    @DisplayName("어깨 전면 분류에 어깨 후면 판정 부위를 같이 주면 겹치는 종목이 없다")
+    @DisplayName("어깨 전·측면 분류에 어깨 후면 판정 부위를 같이 주면 겹치는 종목이 없다")
     void conflictingDeltRegionsYieldNothing() throws Exception {
         mvc.perform(get("/api/v1/exercises")
                         .param("category", "SHOULDERS_FRONT").param("muscleGroup", "DELT_REAR"))
