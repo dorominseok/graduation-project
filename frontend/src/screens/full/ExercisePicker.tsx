@@ -46,6 +46,14 @@ interface ExercisePickerProps {
  * <p>단계 상태를 밖에서 받는 것은 쓰임마다 보관처가 다르기 때문이다 — 둘러보기
  * 화면은 URL에 두어 뒤로가기가 통하게 하고, 시트는 그냥 지역 상태로 둔다.
  */
+/**
+ * 부위 그림. 대상 근육만 붉게 칠한 해부도로, `public/parts/`에 분류 이름대로 둔다
+ * (SHOULDERS_FRONT → shoulders-front.webp).
+ */
+function partImage(category: BrowseCategory): string {
+  return `/parts/${category.toLowerCase().replaceAll('_', '-')}.webp`
+}
+
 export function ExercisePicker({ step, onStepChange, onPick, onInfo }: ExercisePickerProps) {
   const { showToast } = useToast()
 
@@ -365,8 +373,8 @@ export function ExercisePicker({ step, onStepChange, onPick, onInfo }: ExerciseP
               }}
               disabled={item.count === 0}
             >
-              {/* 부위 그림이 들어갈 자리 */}
-              <span className={styles.partShape} />
+              {/* 이름이 바로 아래 있어 그림은 꾸밈으로 둔다 */}
+              <img className={styles.partShot} src={partImage(item.category)} alt="" width={480} height={360} />
               <span className={styles.partName}>
                 {item.label}
                 <span className={styles.partCount}>{item.count}</span>
