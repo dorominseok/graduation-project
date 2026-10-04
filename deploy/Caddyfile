@@ -1,8 +1,7 @@
 # 웹서버. 인증서는 Caddy가 Let's Encrypt에서 받아 오고 만료 전에 알아서 갱신한다.
 # 도메인은 .env의 DOMAIN — 무료 주소에서 유료 도메인으로 옮길 때 여기는 그대로다.
-{
-	email {$ACME_EMAIL}
-}
+# 발급 기관에 이메일은 주지 않는다. Let's Encrypt가 2025년에 만료 알림 메일을 없앴고,
+# 갱신은 Caddy가 알아서 한다.
 
 {$DOMAIN} {
 	encode zstd gzip

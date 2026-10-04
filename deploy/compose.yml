@@ -48,7 +48,6 @@ services:
     restart: unless-stopped
     environment:
       DOMAIN: ${DOMAIN:?.env에 DOMAIN을 넣어야 한다}
-      ACME_EMAIL: ${ACME_EMAIL:?.env에 ACME_EMAIL을 넣어야 한다}
     ports:
       - "80:80"
       - "443:443"

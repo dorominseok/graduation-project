@@ -106,7 +106,7 @@ git clone https://github.com/dorominseok/graduation-project.git
 cd graduation-project
 bash deploy/setup-server.sh        # 처음이면 끝난 뒤 exit → 다시 접속
 cd deploy
-cp .env.example .env               # DOMAIN, ACME_EMAIL을 채우고
+cp .env.example .env               # DOMAIN을 채우고
 openssl rand -base64 32            # 두 번 실행해 POSTGRES_PASSWORD, JWT_SECRET에 넣는다
 docker compose up -d --build
 ```
