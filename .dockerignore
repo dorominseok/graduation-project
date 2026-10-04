@@ -1,0 +1,8 @@
+# 루트를 맥락으로 쓰는 빌드는 웹서버 이미지(deploy/web.Dockerfile) 하나다.
+# 필요한 것만 넣는다 — 백엔드 빌드 산출물·문서·목업이 맥락에 실리지 않게
+*
+!frontend/
+!deploy/Caddyfile
+frontend/node_modules/
+frontend/dist/
+frontend/dev-dist/
