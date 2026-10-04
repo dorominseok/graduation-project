@@ -18,3 +18,24 @@
   background: var(--accent);
   color: var(--on-fill);
 }
+
+/* ── 유리 테마. 파인 홈 위에 흰 유리 손잡이 — iOS 세그먼트와 같은 모양 */
+.root {
+  composes: g-seg from global;
+}
+
+.active {
+  composes: g-seg-on from global;
+}
+
+:global(:root[data-theme='glass']) .tab {
+  height: 32px;
+  border-radius: var(--radius-pill);
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+:global(:root[data-theme='glass']) .tab:not(.active) {
+  background: transparent;
+}

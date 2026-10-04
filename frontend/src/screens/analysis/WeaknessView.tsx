@@ -164,9 +164,13 @@ export function WeaknessView({ volume, balance }: WeaknessViewProps) {
           const expanded = open.has(tier.key)
           const head = (
             <>
-              <span className={styles.tierLabel}>{tier.label}</span>
-              <span className={styles.tierRight}>
+              {/* 세트 수는 이름 옆에 둔다. 오른쪽 끝에 두면 막대의 20세트 눈금 바로 위에 놓여
+                  "막대가 저기까지"로 잘못 읽힌다 */}
+              <span className={styles.tierLeft}>
+                <span className={styles.tierLabel}>{tier.label}</span>
                 <span className={styles.sets}>{tier.weeklySets}세트</span>
+              </span>
+              <span className={styles.tierRight}>
                 {tier.verdict && tier.verdictLabel && (
                   <Pill tone={VERDICT_TONE[tier.verdict]}>{tier.verdictLabel}</Pill>
                 )}
@@ -212,9 +216,11 @@ export function WeaknessView({ volume, balance }: WeaknessViewProps) {
                   {tier.children.map((child) => (
                     <li key={child.key} className={styles.child}>
                       <div className={styles.childHead}>
-                        <span className={styles.childLabel}>{child.label}</span>
-                        <span className={styles.tierRight}>
+                        <span className={styles.tierLeft}>
+                          <span className={styles.childLabel}>{child.label}</span>
                           <span className={styles.sets}>{child.weeklySets}세트</span>
+                        </span>
+                        <span className={styles.tierRight}>
                           <Pill tone={VERDICT_TONE[child.verdict]}>{child.verdictLabel}</Pill>
                         </span>
                       </div>

@@ -290,3 +290,95 @@
   color: var(--text-secondary);
 }
 
+
+/* ── 유리 테마 */
+
+.search {
+  composes: g-input from global;
+}
+
+.tabs {
+  composes: g-seg from global;
+}
+
+.tabOn {
+  composes: g-seg-on from global;
+}
+
+.crumbBack {
+  composes: g-secondary from global;
+}
+
+.partCard {
+  composes: g-card from global;
+}
+
+.groupCard {
+  composes: g-card from global;
+}
+
+.item {
+  composes: g-card from global;
+}
+
+.more {
+  composes: g-secondary from global;
+}
+
+/* 선화는 흰 바탕이다. 곱하기로 섞으면 흰색이 빠지고 선만 유리 위에 남는다 */
+.groupThumb {
+  composes: g-ink from global;
+}
+
+.shot {
+  composes: g-ink from global;
+}
+
+:global(:root[data-theme='glass']) .search {
+  border-radius: var(--radius-pill);
+  padding: 0 var(--space-16);
+}
+
+:global(:root[data-theme='glass']) .tab {
+  height: 32px;
+  border-radius: var(--radius-pill);
+}
+
+:global(:root[data-theme='glass']) .tab:not(.tabOn) {
+  background: transparent;
+}
+
+:global(:root[data-theme='glass']) .partCard,
+:global(:root[data-theme='glass']) .item {
+  border-radius: var(--radius-xl);
+}
+
+/* 부위 그림 자리. 열세 칸이 다 같은 색이라 진하면 버튼처럼 보인다 — 옅은 초록 유리로 둔다 */
+:global(:root[data-theme='glass']) .partShape {
+  border-radius: 9px;
+  background:
+    radial-gradient(100% 80% at 30% 10%, rgb(255 255 255 / 0.75), transparent 55%),
+    linear-gradient(160deg, oklch(86% 0.08 160), oklch(70% 0.12 168));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 3px 8px -3px oklch(50% 0.12 165 / 0.4);
+}
+
+/* 종목 목록 화면에서는 안쪽 스크롤 영역을 탭바 밑까지 내린다. 탭바 위에서 끊으면 잘린
+   끝선 너머로 배경이 비쳐 카드가 칼로 자른 듯 보인다. 끝까지 내리면 마지막 줄이 탭바
+   위로 올라오도록 그만큼 비워 둔다. 시트 안에서는 --under-tabbar가 0이라 그대로다 */
+:global(:root[data-theme='glass']) .page {
+  margin-bottom: calc(-1 * var(--under-tabbar, 0px));
+}
+
+/* 스크롤 영역은 카드 그림자까지 잘라낸다. 좌우·위로 그림자만큼 넓혀 잘리는 선이 화면
+   가장자리에 가게 한다 — 안 그러면 목록 둘레에 옅은 네모가 보인다 */
+:global(:root[data-theme='glass']) .partGrid,
+:global(:root[data-theme='glass']) .scroll {
+  margin: calc(-1 * var(--space-8)) calc(-1 * var(--space-20)) 0;
+  padding: var(--space-8) var(--space-20) var(--under-tabbar, 0px);
+}
+
+:global(:root[data-theme='glass']) .more {
+  border-radius: var(--radius-pill);
+}

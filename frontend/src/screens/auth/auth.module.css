@@ -99,6 +99,7 @@
 .switch {
   background: none;
   border: none;
+  text-decoration: none;
   color: var(--text-secondary);
   font-size: var(--font-sm);
   margin-top: var(--space-16);
@@ -108,4 +109,48 @@
 .switchAccent {
   color: var(--accent);
   font-weight: var(--weight-bold);
+}
+
+/* ── 유리 테마 */
+
+.input {
+  composes: g-input from global;
+}
+
+.submit {
+  composes: g-primary from global;
+}
+
+/* 이름에 브랜드 초록에서 파랑으로 번지는 빛을 입힌다. 큰 글자라 배경 대비 3:1이면 된다 */
+:global(:root[data-theme='glass']) .brand {
+  width: fit-content;
+  font-size: 34px;
+  letter-spacing: -0.04em;
+  background: linear-gradient(100deg, oklch(50% 0.14 160), oklch(48% 0.12 205) 50%, oklch(50% 0.17 262));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+:global(:root[data-theme='glass']) .pageTitle {
+  font-size: 28px;
+  letter-spacing: -0.03em;
+}
+
+:global(:root[data-theme='glass']) .input {
+  border-radius: var(--radius-lg);
+}
+
+:global(:root[data-theme='glass']) .inputError {
+  border-color: var(--danger);
+}
+
+:global(:root[data-theme='glass']) .submit {
+  height: 54px;
+  border-radius: var(--radius-pill);
+}
+
+/* 맨 배경 위의 초록 글씨라 한 단계 진하게 */
+:global(:root[data-theme='glass']) .switchAccent {
+  color: var(--accent-strong);
 }

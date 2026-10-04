@@ -41,3 +41,42 @@
 .trailing {
   flex-shrink: 0;
 }
+
+/* ── 유리 테마. 헤더가 스크롤에 붙어 있고 내용이 그 밑으로 지나가며 흐려진다 */
+.root {
+  composes: g-chrome from global;
+}
+
+.back {
+  composes: g-secondary from global;
+}
+
+:global(:root[data-theme='glass']) .root {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 56px;
+  padding-left: var(--space-10);
+}
+
+:global(:root[data-theme='glass']) .noBack {
+  height: 60px;
+  padding-left: var(--space-20);
+}
+
+/* 탭 첫 화면은 제목이 곧 화면 이름이라 크게 둔다 */
+:global(:root[data-theme='glass']) .noBack .title {
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+:global(:root[data-theme='glass']) .back {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+}
+
+:global(:root[data-theme='glass']) .back svg {
+  width: 20px;
+  height: 20px;
+}
