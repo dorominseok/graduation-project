@@ -7,16 +7,24 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // devOptions.enabled defaults to false: no service worker in `npm run dev`.
-      // Only the manifest is registered at this stage.
+      // 서비스워커는 11월이다(구축 기록 11.2). 빌드가 sw.js를 만들어도 등록하지 않는다 —
+      // 등록되면 배포한 새 화면이 캐시에 막혀 사용자에게 늦게 보인다.
+      // manifest와 아이콘만으로 홈 화면 설치는 된다.
+      injectRegister: false,
       manifest: {
-        name: '운동 습관 분석 헬스 웹앱',
-        short_name: 'FitLog',
+        name: '밸런스핏',
+        short_name: '밸런스핏',
+        description: '운동 기록을 분석해 부족한 부위를 찾아주는 앱',
+        lang: 'ko',
         start_url: '/',
         display: 'standalone',
         background_color: '#ffffff',
         theme_color: '#ffffff',
-        icons: [],
+        icons: [
+          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
       },
     }),
   ],

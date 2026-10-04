@@ -1,0 +1,40 @@
+# 웹서버. 인증서는 Caddy가 Let's Encrypt에서 받아 오고 만료 전에 알아서 갱신한다.
+# 도메인은 .env의 DOMAIN — 무료 주소에서 유료 도메인으로 옮길 때 여기는 그대로다.
+# 발급 기관에 이메일은 주지 않는다. Let's Encrypt가 2025년에 만료 알림 메일을 없앴고,
+# 갱신은 Caddy가 알아서 한다.
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# API는 백엔드로. 화면과 같은 주소에서 나가므로 CORS가 없다(구축 기록 10.2)
+	handle /api/* {
+		reverse_proxy backend:8080
+	}
+
+	# actuator는 상태 확인 하나만 연다. Swagger·나머지 actuator는 바깥에 내놓지 않는다
+	handle /actuator/health {
+		reverse_proxy backend:8080
+	}
+
+	handle {
+		root * /srv
+		# 화면 경로(/analysis 등)는 파일이 아니라 앱이 그린다. 없는 파일은 index.html로 —
+		# 안 그러면 새로고침이나 링크로 들어온 화면이 404다
+		try_files {path} /index.html
+		file_server
+	}
+
+	# 파일 이름에 내용 해시가 붙은 빌드 산출물은 1년 캐시. 나머지 화면 파일(index.html 등)은
+	# 매번 새로 확인해야 배포한 새 화면이 바로 보인다. API 응답의 캐시 헤더는 백엔드가 정한다
+	@hashed path /assets/*
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+	@page not path /assets/* /api/* /actuator/*
+	header @page Cache-Control "no-cache"
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}

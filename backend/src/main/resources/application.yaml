@@ -96,10 +96,24 @@ spring:
       hibernate:
         format_sql: false
 
+server:
+  # 웹서버(Caddy)가 HTTPS를 받아 http로 넘긴다. X-Forwarded-* 헤더로 원래 요청이 https였고
+  # 누가 보냈는지를 알게 한다. 컨테이너 내부망 주소에서 온 헤더만 믿는다(Tomcat 기본값)
+  forward-headers-strategy: native
+
 app:
   jwt:
+    # 운영은 개발용 기본 키로 뜨면 안 된다. JWT_SECRET이 없으면 기동을 실패시킨다
+    secret: ${JWT_SECRET}
     # 배포는 HTTPS가 전제다. 이 값이 false면 리프레시 쿠키가 저장되지 않는다.
     cookie-secure: true
+
+# API 문서는 개발 중 계약 확인용이다. 운영에서는 만들지도 않는다
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
 
 management:
   endpoint:
