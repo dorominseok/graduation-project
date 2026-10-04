@@ -79,7 +79,7 @@ export function LoginScreen() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
+            placeholder="이메일"
             autoComplete="email"
           />
           {errors.email && <div className={styles.error}>{errors.email}</div>}
