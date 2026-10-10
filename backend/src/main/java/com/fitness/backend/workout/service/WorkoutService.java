@@ -192,6 +192,27 @@ public class WorkoutService {
         return toResponse(session, sets);
     }
 
+    /**
+     * 하루의 세션 상세들(LOG-38). 그룹 멤버의 기록을 날짜로 열 때 쓴다.
+     *
+     * <p>권한은 보지 않는다 — 부르는 쪽(그룹)이 같은 그룹 멤버인지 먼저 확인한다.
+     * 세트와 종목은 그날 세션들 것을 한 번씩만 읽는다.
+     */
+    public List<SessionResponse> sessionsOn(Long userId, LocalDate date) {
+        List<WorkoutSession> sessions = sessionRepository.findByUserIdAndPerformedOnOrderByIdAsc(userId, date);
+        if (sessions.isEmpty()) {
+            return List.of();
+        }
+        List<WorkoutSet> sets = setRepository
+                .findBySessionIdInOrderByRecordedAtAsc(sessions.stream().map(WorkoutSession::getId).toList());
+        Map<Long, Exercise> exercises = loadExercises(sets);
+        Map<Long, List<WorkoutSet>> bySession = sets.stream()
+                .collect(Collectors.groupingBy(WorkoutSet::getSessionId));
+        return sessions.stream()
+                .map(session -> toResponse(session, bySession.getOrDefault(session.getId(), List.of()), exercises))
+                .toList();
+    }
+
     /** 세션 상세(명세 6.5). */
     public SessionResponse getSession(Long userId, Long sessionId) {
         WorkoutSession session = mustFindSession(userId, sessionId);
@@ -255,9 +276,19 @@ public class WorkoutService {
 
     /** 캘린더 월별 요약(명세 6.8). 기록이 있는 날짜만 담는다. */
     public CalendarResponse calendar(Long userId, int year, int month) {
+        return calendar(userId, year, month, false);
+    }
+
+    /**
+     * 캘린더 월별 요약. {@code doneOnly}면 끝난 운동만 센다 — 그룹 멤버의 캘린더는 진행 중인
+     * 기록을 보이지 않는다(LOG-38).
+     */
+    public CalendarResponse calendar(Long userId, int year, int month, boolean doneOnly) {
         YearMonth yearMonth = YearMonth.of(year, month);
         List<WorkoutSession> sessions = sessionRepository.findByUserIdAndPerformedOnBetween(
-                userId, yearMonth.atDay(1), yearMonth.atEndOfMonth());
+                userId, yearMonth.atDay(1), yearMonth.atEndOfMonth()).stream()
+                .filter(session -> !doneOnly || session.isDone())
+                .toList();
 
         Map<LocalDate, List<WorkoutSession>> byDate = sessions.stream()
                 .collect(Collectors.groupingBy(WorkoutSession::getPerformedOn, TreeMap::new, Collectors.toList()));
@@ -427,8 +458,11 @@ public class WorkoutService {
      * 종목 순서가 곧 <b>수행 순서</b>가 된다(각 종목의 가장 이른 저장 시각 순).
      */
     private SessionResponse toResponse(WorkoutSession session, List<WorkoutSet> sets) {
-        Map<Long, Exercise> exercises = loadExercises(sets);
+        return toResponse(session, sets, loadExercises(sets));
+    }
 
+    /** 종목을 미리 읽어 둔 경우. 세션 여러 개를 묶을 때 세션마다 종목을 다시 읽지 않는다 */
+    private SessionResponse toResponse(WorkoutSession session, List<WorkoutSet> sets, Map<Long, Exercise> exercises) {
         Map<Long, List<WorkoutSet>> byExercise = new LinkedHashMap<>();
         for (WorkoutSet set : sets) {
             byExercise.computeIfAbsent(set.getExerciseId(), key -> new ArrayList<>()).add(set);

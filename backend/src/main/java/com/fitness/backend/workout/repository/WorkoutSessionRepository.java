@@ -3,6 +3,7 @@ package com.fitness.backend.workout.repository;
 import com.fitness.backend.workout.domain.SessionStatus;
 import com.fitness.backend.workout.domain.WorkoutSession;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -23,6 +24,16 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
     Optional<WorkoutSession> findByUserIdAndStatus(Long userId, SessionStatus status);
 
     boolean existsByUserIdAndStatus(Long userId, SessionStatus status);
+
+    /**
+     * 그룹 멤버들의 기간 내 세션(LOG-38). 멤버마다 조회하면 멤버 수만큼 쿼리가 나가므로
+     * 한 번에 읽어 메모리에서 사람별로 묶는다. 일주일 치라 많아야 수십 건이다.
+     */
+    List<WorkoutSession> findByUserIdInAndPerformedOnBetween(Collection<Long> userIds,
+                                                             LocalDate from, LocalDate to);
+
+    /** 하루의 세션. 하루에 여러 번 운동할 수 있어(명세 6.1) 시작한 순서로 준다 */
+    List<WorkoutSession> findByUserIdAndPerformedOnOrderByIdAsc(Long userId, LocalDate performedOn);
 
     /**
      * 히스토리 목록(명세 6.6).
