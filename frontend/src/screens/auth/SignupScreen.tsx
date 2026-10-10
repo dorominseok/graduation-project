@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { paths } from '../../app/paths'
 import { ErrorCodes, isApiError } from '../../api'
 import { GoogleButton, googleEnabled, useAuth } from '../../auth'
 import { useToast } from '../../components'
 import { validateEmail, validateNickname, validatePassword } from './validation'
+import { cameFromInvite, redirectTarget } from './redirect'
 import styles from './auth.module.css'
 
 /**
@@ -14,7 +15,10 @@ import styles from './auth.module.css'
  */
 export function SignupScreen() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { signUp, loginWithGoogle } = useAuth()
+  // 초대 링크로 왔다가 가입하는 경우 참여 화면으로 돌아간다. 그 밖에는 홈
+  const redirectTo = redirectTarget(location.state)
   const { showToast } = useToast()
 
   const [email, setEmail] = useState('')
@@ -47,7 +51,7 @@ export function SignupScreen() {
 
     try {
       await signUp(email, password, nickname)
-      navigate(paths.home, { replace: true })
+      navigate(redirectTo, { replace: true })
     } catch (err) {
       if (!isApiError(err)) throw err
 
@@ -77,7 +81,7 @@ export function SignupScreen() {
   const handleGoogle = async (credential: string) => {
     try {
       await loginWithGoogle(credential)
-      navigate(paths.home, { replace: true })
+      navigate(redirectTo, { replace: true })
     } catch (err) {
       if (!isApiError(err)) throw err
       showToast({ message: err.message, tone: 'danger' })
@@ -89,6 +93,9 @@ export function SignupScreen() {
       <div className={styles.signupTitleBlock}>
         <div className={styles.pageTitle}>회원가입</div>
         <div className={styles.tagline}>기록을 시작하려면 계정을 만들어주세요</div>
+        {cameFromInvite(location.state) && (
+          <div className={`${styles.inviteNotice} ${styles.inviteNoticeSignup}`}>가입하면 초대받은 그룹의 참여 화면으로 이어져요.</div>
+        )}
       </div>
 
       <div className={styles.fields}>
@@ -147,7 +154,7 @@ export function SignupScreen() {
         가입하면 <Link to={paths.privacy}>개인정보처리방침</Link>에 동의하는 것으로 봅니다.
       </p>
 
-      <Link to={paths.login} className={styles.switch}>
+      <Link to={paths.login} state={location.state} className={styles.switch}>
         이미 계정이 있으신가요? <span className={styles.switchAccent}>로그인</span>
       </Link>
     </form>

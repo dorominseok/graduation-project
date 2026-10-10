@@ -55,13 +55,14 @@ const icons = {
  * 탭과, 그 탭에 불을 켤 경로들.
  *
  * <p>설정은 프로필에서 들어가므로 프로필에 켠다. 종목 목록·상세는 홈·분석·기록
- * 어디서든 들어와 어느 탭이라 말할 수 없어 아무 탭에도 켜지 않는다.
+ * 어디서든 들어와 어느 탭이라 말할 수 없어 아무 탭에도 켜지 않는다. 초대 링크(/join)는
+ * 그룹으로 들어가는 문이라 그룹에 켠다.
  */
 const tabs = [
   { to: paths.home, label: '홈', icon: icons.home, matches: [] as string[], exact: true },
   { to: paths.history, label: '기록', icon: icons.history, matches: [], exact: false },
   { to: paths.analysis, label: '분석', icon: icons.analysis, matches: [], exact: false },
-  { to: paths.group, label: '그룹', icon: icons.group, matches: [], exact: false },
+  { to: paths.group, label: '그룹', icon: icons.group, matches: ['/join'], exact: false },
   { to: paths.profile, label: '프로필', icon: icons.profile, matches: [paths.settings], exact: false },
 ]
 

@@ -447,3 +447,112 @@ export interface Balance {
     verdictLabel: string
   }[]
 }
+
+// ── 친구 그룹 (명세 10장, LOG-38)
+
+/** 내 그룹 목록 한 줄. */
+export interface GroupSummary {
+  id: number
+  name: string
+  memberCount: number
+  isOwner: boolean
+  /** 오늘 완료한 운동이 있는 멤버 수 */
+  todayWorkedOutCount: number
+  /** 목록 카드의 멤버 얼굴. 들어온 순서 */
+  members: { userId: number; nickname: string; isMe: boolean; todayStatus: TodayStatus }[]
+}
+
+/**
+ * 오늘 운동했나. 손으로 체크하지 않고 기록에서 정한다(LOG-38).
+ * 그룹에는 끝난 운동만 보이므로 "운동 중"은 없다.
+ */
+export type TodayStatus = 'DONE' | 'NONE'
+
+export interface MemberActivity {
+  userId: number
+  nickname: string
+  isOwner: boolean
+  isMe: boolean
+  joinedAt: string
+  today: {
+    status: TodayStatus
+    /** 응원할 대상. 운동하지 않았으면 null */
+    sessionId: number | null
+    cheerCount: number
+    cheeredByMe: boolean
+  }
+  /** 이번 주(월~일). 완료한 운동만 센다 */
+  week: {
+    sessionCount: number
+    /** 시간 없는 사후 입력은 빠진다 */
+    totalDurationSec: number
+    workoutDates: string[]
+  }
+}
+
+/** 그룹 상세 — 멤버별 오늘·이번 주. 멤버는 들어온 순서다. */
+export interface GroupDetail {
+  id: number
+  name: string
+  /** 멤버 누구나 받는다. 다시 만드는 것만 방장이 한다 */
+  inviteCode: string
+  isOwner: boolean
+  today: string
+  /** 이번 주 월요일 */
+  weekStart: string
+  members: MemberActivity[]
+}
+
+/** 초대 링크로 들어왔을 때 참여 전에 보여줄 정보. */
+export interface InvitePreview {
+  groupId: number
+  name: string
+  memberCount: number
+  ownerNickname: string | null
+  alreadyMember: boolean
+  full: boolean
+}
+
+export interface JoinResult {
+  groupId: number
+  name: string
+  alreadyMember: boolean
+}
+
+export interface CheerState {
+  cheerCount: number
+  cheeredByMe: boolean
+}
+
+/** 멤버의 운동 한 번. 세션 상세(명세 6.5)에서 메모·세트 id를 뺀 것이다. */
+export interface MemberSession extends CheerState {
+  id: number
+  status: SessionStatus
+  source: SessionSource
+  startedAt: string | null
+  endedAt: string | null
+  /** 보정값 우선. 시간 없는 사후 입력은 null */
+  durationSec: number | null
+  exercises: {
+    exerciseId: number
+    exerciseName: string
+    /** 동작 그림 파일 이름(exerciseImage)을 만든다 */
+    exerciseNameEn: string | null
+    measureType: MeasureType
+    sets: {
+      setNo: number
+      weightKg: number | null
+      reps: number | null
+      durationSec: number | null
+      isWarmup: boolean
+    }[]
+  }[]
+}
+
+/** 멤버의 하루 기록(읽기 전용). */
+export interface MemberDay {
+  userId: number
+  nickname: string
+  date: string
+  sessions: MemberSession[]
+}

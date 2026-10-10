@@ -126,6 +126,25 @@
   text-decoration: underline;
 }
 
+/* 초대 링크로 들어왔을 때. 로그인 뒤 어디로 가는지 알려준다 */
+.inviteNotice {
+  padding: var(--space-10) var(--space-12);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  font-size: var(--font-xs);
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+/* 로그인은 브랜드 아래 여백을 반쯤 당겨 붙이고, 가입은 제목 묶음 안에서 띄운다 */
+.inviteNoticeLogin {
+  margin: calc(var(--space-16) * -1) 0 var(--space-20);
+}
+
+.inviteNoticeSignup {
+  margin-top: var(--space-12);
+}
+
 .switch {
   background: none;
   border: none;

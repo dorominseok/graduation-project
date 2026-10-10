@@ -30,6 +30,7 @@
   gap: var(--space-4);
 }
 
+.page p + p,
 .page p + ul,
 .page ul + p {
   margin-top: var(--space-6);

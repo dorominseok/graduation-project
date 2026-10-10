@@ -1,0 +1,642 @@
+/*
+ * 친구 그룹 (LOG-38). 목업에는 그룹 화면이 "준비 중"으로만 있어, 홈의 카드·주간 점과
+ * 설정의 행 문법을 빌려 그린다. 폼과 시트 안의 행은 설정 모듈(settings.module.css)을 그대로 쓴다.
+ *
+ * 순위·점수는 두지 않는다. 그룹의 성격이 경쟁이 아니라 서로의 운동이 보이는 것이다(기능명세 2.6).
+ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-16) var(--space-16) var(--space-24);
+  word-break: keep-all;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-14) var(--space-16);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  color: inherit;
+  text-decoration: none;
+}
+
+.cardLabel {
+  font-size: var(--font-2xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-tertiary);
+}
+
+.bigLine {
+  font-size: var(--font-h3);
+  font-weight: var(--weight-heavy);
+  color: var(--text-primary);
+}
+
+.subLine {
+  font-size: var(--font-xs);
+  color: var(--text-secondary);
+}
+
+/* ── 버튼 */
+
+.actions {
+  display: flex;
+  gap: var(--space-8);
+}
+
+/* 나란히 놓인 두 버튼은 반씩. 세로로 쌓일 때 flex를 주면 높이가 눌리므로 여기서만 준다 */
+.actions > * {
+  flex: 1;
+}
+
+.primary,
+.secondary {
+  width: 100%;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  font-family: inherit;
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+
+.primary {
+  border: none;
+  background: var(--accent);
+  color: var(--on-fill);
+}
+
+.secondary {
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.primary:disabled,
+.secondary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* 헤더 오른쪽 ⋯ */
+.iconButton {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 메뉴 시트에서 위험한 행 묶음을 떼어 둔다 */
+.menuGap {
+  margin-top: var(--space-12);
+}
+
+/* ── 빈 상태 */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-24) var(--space-20);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-xl);
+  background: var(--card-bg);
+}
+
+.emptyTitle {
+  font-size: var(--font-lg);
+  font-weight: var(--weight-heavy);
+  color: var(--text-primary);
+}
+
+.emptyText {
+  font-size: var(--font-sm);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+/* ── 그룹 목록 */
+
+.groupRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.groupMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.groupName {
+  font-size: var(--font-lg);
+  font-weight: var(--weight-heavy);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 목록 카드 — 들어가기 전에도 현황이 보이게 크게 */
+
+.groupCard {
+  gap: var(--space-14);
+  padding: var(--space-18) var(--space-18) var(--space-16);
+}
+
+.faces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-10);
+}
+
+.face {
+  width: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.faceAvatar {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--font-md);
+  font-weight: var(--weight-heavy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 오른쪽 아래 초록 체크 — 오늘 운동함 */
+.faceBadge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 17px;
+  height: 17px;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--card-bg);
+  color: var(--on-fill);
+  font-size: 9px;
+  font-weight: var(--weight-heavy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.faceBadgeDone {
+  background: var(--accent);
+}
+
+.faceMore {
+  background: var(--checkbox-off);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+}
+
+.faceName {
+  max-width: 100%;
+  font-size: var(--font-3xs);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 멤버 */
+
+.memberList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.member {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  padding: var(--space-12) var(--space-14);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+}
+
+/* 누르면 그 멤버의 기록으로. 응원 버튼은 이 링크 밖에 둔다 — 링크 안에 버튼을 넣을 수 없다 */
+.memberLink {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  color: inherit;
+  text-decoration: none;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--font-md);
+  font-weight: var(--weight-heavy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 나는 테두리로 구분한다. 색을 바꾸면 "나만 다른 상태"로 읽힌다 */
+.avatarMe {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.memberMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.nickname {
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag {
+  flex-shrink: 0;
+  padding: 1px var(--space-6);
+  border-radius: var(--radius-pill);
+  background: var(--checkbox-off);
+  font-size: 10.5px;
+  font-weight: var(--weight-bold);
+  color: var(--text-secondary);
+}
+
+.weekLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--font-2xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 월~일 일곱 점. 홈의 "이번 주"와 같은 모양을 작게 */
+.dots {
+  display: flex;
+  gap: 3px;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-pill);
+  background: var(--checkbox-off);
+  border: 1.5px solid transparent;
+}
+
+.dotOn {
+  background: var(--accent);
+}
+
+.dotToday {
+  border-color: var(--accent-strong);
+}
+
+/* 오른쪽 열 — 오늘 상태와 응원 */
+.side {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-6);
+}
+
+.status {
+  padding: 2px var(--space-8);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-3xs);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+}
+
+.statusDone {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+/* ── 응원 */
+
+.cheer {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 28px;
+  padding: 0 var(--space-10);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-pill);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--font-2xs);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.cheerOn {
+  border-color: var(--accent-soft);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+/* 내 운동에 받은 응원. 누를 수 없고 수만 보인다 */
+.cheerStatic {
+  cursor: default;
+}
+
+.cheerIcon {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── 초대 */
+
+.codeBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-16);
+  border-radius: var(--radius-lg);
+  background: var(--accent-soft);
+}
+
+.code {
+  font-size: 30px;
+  font-weight: var(--weight-heavy);
+  letter-spacing: 0.18em;
+  color: var(--accent-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.codeHint {
+  font-size: var(--font-2xs);
+  color: var(--text-secondary);
+}
+
+.notice {
+  padding: var(--space-12) var(--space-14);
+  border-radius: var(--radius-md);
+  background: var(--warn-soft);
+  font-size: var(--font-xs);
+  line-height: 1.55;
+  color: var(--text-primary);
+}
+
+.notice a {
+  color: inherit;
+}
+
+/* ── 멤버의 하루 기록 — 종목마다 카드, 세트는 칸으로 */
+
+.session {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+.session + .session {
+  margin-top: var(--space-12);
+}
+
+.sessionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: 0 var(--space-4);
+}
+
+.sessionMeta {
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.sessionRight {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+}
+
+.sessionSets {
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.exerciseCard {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.exerciseHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  min-height: 64px;
+  padding: var(--space-10) var(--space-16);
+  border-bottom: 1px solid var(--divider);
+}
+
+.exerciseName {
+  font-size: var(--font-md);
+  font-weight: var(--weight-heavy);
+  color: var(--text-primary);
+}
+
+.exerciseShots {
+  flex-shrink: 0;
+  display: flex;
+  gap: var(--space-4);
+}
+
+.exerciseShot {
+  width: 56px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.setGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-12) var(--space-4);
+  padding: var(--space-14) var(--space-8);
+}
+
+.setCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.setLabel {
+  font-size: var(--font-3xs);
+  color: var(--text-tertiary);
+}
+
+.setValue {
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.setUnit {
+  margin-left: 1px;
+  font-size: var(--font-3xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+/* 워밍업 칸은 흐리게. 본세트 수에도 넣지 않는다 */
+.warmup {
+  opacity: 0.55;
+}
+
+/* 멤버 캘린더 — 기록 탭과 같은 배치 */
+.calendarPage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: var(--space-8);
+  padding: var(--space-12) var(--space-12) var(--space-12);
+}
+
+.calendarSummary {
+  flex-shrink: 0;
+  padding: 0 var(--space-8);
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+/* ── 유리 테마 */
+
+.card {
+  composes: g-card from global;
+}
+
+.member {
+  composes: g-card from global;
+}
+
+.empty {
+  composes: g-card from global;
+}
+
+.primary {
+  composes: g-primary from global;
+}
+
+.secondary {
+  composes: g-secondary from global;
+}
+
+.cheer {
+  composes: g-secondary from global;
+}
+
+.dotOn {
+  composes: g-gem from global;
+}
+
+:global(:root[data-theme='glass']) .card,
+:global(:root[data-theme='glass']) .member {
+  border-radius: var(--radius-xl);
+}
+
+:global(:root[data-theme='glass']) .primary,
+:global(:root[data-theme='glass']) .secondary {
+  border-radius: var(--radius-pill);
+}
+
+:global(:root[data-theme='glass']) .avatar {
+  background: rgb(255 255 255 / 0.7);
+  box-shadow: inset 0 1px 0 rgb(255 255 255), 0 2px 6px -2px oklch(30% 0.06 270 / 0.25);
+  color: var(--accent-strong);
+}
+
+:global(:root[data-theme='glass']) .faceAvatar {
+  background: rgb(255 255 255 / 0.7);
+  box-shadow: inset 0 1px 0 rgb(255 255 255), 0 2px 6px -2px oklch(30% 0.06 270 / 0.25);
+  color: var(--accent-strong);
+}
+
+:global(:root[data-theme='glass']) .faceBadge {
+  border-color: rgb(255 255 255 / 0.9);
+}
+
+:global(:root[data-theme='glass']) .groupCard {
+  padding: var(--space-20);
+}
+
+:global(:root[data-theme='glass']) .avatarMe {
+  box-shadow: 0 0 0 2px var(--accent-strong);
+}
+
+:global(:root[data-theme='glass']) .cheerOn {
+  background: oklch(92% 0.06 165 / 0.85);
+  border-color: rgb(255 255 255 / 0.8);
+  color: var(--accent-strong);
+}
+
+:global(:root[data-theme='glass']) .exerciseShot {
+  mix-blend-mode: multiply;
+}
+
+:global(:root[data-theme='glass']) .exerciseHead {
+  border-bottom-color: rgb(255 255 255 / 0.7);
+}
+
+:global(:root[data-theme='glass']) .codeBox {
+  background: oklch(92% 0.06 165 / 0.6);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7);
+}
