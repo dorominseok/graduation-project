@@ -23,6 +23,7 @@ public enum ErrorCode {
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "로그인이 만료되었습니다."),
     TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "다시 로그인해주세요."),
+    GOOGLE_LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "구글 로그인을 확인하지 못했습니다. 다시 시도해주세요."),
 
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "대상을 찾을 수 없습니다."),

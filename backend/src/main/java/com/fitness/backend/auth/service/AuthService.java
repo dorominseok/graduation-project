@@ -1,6 +1,8 @@
 package com.fitness.backend.auth.service;
 
 import com.fitness.backend.auth.domain.RefreshToken;
+import com.fitness.backend.auth.google.GoogleIdentity;
+import com.fitness.backend.auth.google.GoogleTokenVerifier;
 import com.fitness.backend.auth.jwt.JwtProperties;
 import com.fitness.backend.auth.jwt.JwtProvider;
 import com.fitness.backend.auth.jwt.OpaqueTokenFactory;
@@ -32,6 +34,7 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final OpaqueTokenFactory opaqueTokenFactory;
     private final JwtProperties jwtProperties;
+    private final GoogleTokenVerifier googleTokenVerifier;
     private final Clock clock;
 
     public AuthService(UserRepository userRepository,
@@ -40,6 +43,7 @@ public class AuthService {
                        JwtProvider jwtProvider,
                        OpaqueTokenFactory opaqueTokenFactory,
                        JwtProperties jwtProperties,
+                       GoogleTokenVerifier googleTokenVerifier,
                        Clock clock) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -47,6 +51,7 @@ public class AuthService {
         this.jwtProvider = jwtProvider;
         this.opaqueTokenFactory = opaqueTokenFactory;
         this.jwtProperties = jwtProperties;
+        this.googleTokenVerifier = googleTokenVerifier;
         this.clock = clock;
     }
 
@@ -69,10 +74,51 @@ public class AuthService {
     public AuthResult login(String email, String rawPassword) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ApiException(ErrorCode.INVALID_CREDENTIALS));
-        if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
+        // 구글로만 가입한 계정도 같은 오류다. 다르게 알려주면 가입 방법이 드러난다
+        if (!user.hasPassword() || !passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
             throw new ApiException(ErrorCode.INVALID_CREDENTIALS);
         }
         return new AuthResult(user, issueTokens(user));
+    }
+
+    /**
+     * 구글 로그인(LOG-37). 처음이면 그 자리에서 가입하고, 이후로는 로그인한다 — 버튼 하나다.
+     *
+     * <p>찾는 순서: ① 구글 회원번호로 묶인 계정 → ② 같은 이메일로 가입한 계정에 묶기 →
+     * ③ 새로 가입. ②는 구글이 그 이메일의 소유를 확인한 경우({@code email_verified})에만
+     * 한다. 확인되지 않은 이메일로 묶으면 남의 이메일을 적은 구글 계정이 그 사람의 기록을
+     * 가져갈 수 있다.
+     */
+    public AuthResult googleLogin(String credential) {
+        GoogleIdentity google = googleTokenVerifier.verify(credential);
+        User user = userRepository.findByGoogleId(google.subject())
+                .orElseGet(() -> linkOrSignUp(google));
+        return new AuthResult(user, issueTokens(user));
+    }
+
+    private User linkOrSignUp(GoogleIdentity google) {
+        if (google.email() == null || !google.emailVerified()) {
+            throw new ApiException(ErrorCode.GOOGLE_LOGIN_FAILED);
+        }
+        return userRepository.findByEmail(google.email())
+                .map(existing -> {
+                    // 이미 다른 구글 계정이 묶여 있다. 구글이 옛 이메일을 다른 계정에 넘긴 드문 경우다
+                    if (existing.getGoogleId() != null) {
+                        throw new ApiException(ErrorCode.EMAIL_ALREADY_EXISTS);
+                    }
+                    existing.linkGoogle(google.subject());
+                    return existing;
+                })
+                .orElseGet(() -> userRepository.save(
+                        User.signUpWithGoogle(google.email(), google.subject(), nicknameOf(google))));
+    }
+
+    /** 닉네임은 구글 이름으로. 없으면 이메일 앞부분. 닉네임 규칙(1~50자)에 맞춘다. */
+    private static String nicknameOf(GoogleIdentity google) {
+        String name = google.name() != null && !google.name().isBlank()
+                ? google.name().strip()
+                : google.email().substring(0, google.email().indexOf('@'));
+        return name.length() > 50 ? name.substring(0, 50) : name;
     }
 
     /**

@@ -62,6 +62,22 @@ public class AuthController {
                         result.tokens().accessToken(), result.tokens().expiresInSeconds(), result.user()));
     }
 
+    /** 구글 로그인. 처음이면 가입까지 한다 — 응답은 로그인과 같다(LOG-37). */
+    @Operation(summary = "구글 로그인")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "로그인(또는 가입) 성공 — 액세스 토큰과 리프레시 쿠키 발급"),
+            @ApiResponse(responseCode = "401", description = "구글 토큰 검증 실패 (GOOGLE_LOGIN_FAILED)"),
+            @ApiResponse(responseCode = "409", description = "이메일이 이미 다른 구글 계정에 묶여 있음")
+    })
+    @PostMapping("/google")
+    public ResponseEntity<AuthDtos.TokenResponse> google(@Valid @RequestBody AuthDtos.GoogleLoginRequest request) {
+        AuthService.AuthResult result = authService.googleLogin(request.credential());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshCookies.issue(result.tokens().refreshTokenRaw()).toString())
+                .body(AuthDtos.TokenResponse.of(
+                        result.tokens().accessToken(), result.tokens().expiresInSeconds(), result.user()));
+    }
+
     /**
      * 액세스 토큰 재발급. 본문 없이 쿠키만으로 인증한다.
      *

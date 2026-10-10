@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BottomSheet, Chevron, ScreenHeader, useToast } from '../../components'
 import { ErrorCodes, authApi, isApiError } from '../../api'
-import { useAuth } from '../../auth'
+import { GoogleButton, useAuth } from '../../auth'
 import { paths } from '../../app/paths'
 import { validatePassword } from '../auth/validation'
 import styles from './settings.module.css'
@@ -11,6 +11,8 @@ type Sheet = 'password' | 'withdraw' | null
 
 /**
  * 계정 설정 — 이메일 확인, 비밀번호 변경, 회원 탈퇴.
+ *
+ * 구글로만 가입한 계정은 비밀번호가 없어 비밀번호 변경을 숨기고, 탈퇴 확인을 구글로 받는다(LOG-37).
  *
  * 이메일은 읽기 전용이다. 로그인 식별자라 바꾸려면 중복 검사와 기존 세션 처리가
  * 따라붙는데, 지인 10명 검증에서 바꿀 이유가 없다(LOG-21).
@@ -34,14 +36,24 @@ export function AccountSettingsScreen() {
               <span className={styles.rowLabel}>이메일</span>
               <span className={styles.rowValue}>{user.email}</span>
             </div>
-            <button
-              type="button"
-              className={styles.row}
-              onClick={() => setSheet('password')}
-            >
-              <span className={styles.rowLabel}>비밀번호 변경</span>
-              <Chevron />
-            </button>
+            {user.loginMethods.google && (
+              <div className={`${styles.row} ${styles.rowStatic}`}>
+                <span className={styles.rowLabel}>로그인</span>
+                <span className={styles.rowValue}>
+                  {user.loginMethods.password ? '이메일 · 구글' : '구글'}
+                </span>
+              </div>
+            )}
+            {user.loginMethods.password && (
+              <button
+                type="button"
+                className={styles.row}
+                onClick={() => setSheet('password')}
+              >
+                <span className={styles.rowLabel}>비밀번호 변경</span>
+                <Chevron />
+              </button>
+            )}
           </div>
         </div>
 
@@ -84,6 +96,7 @@ export function AccountSettingsScreen() {
         title="회원 탈퇴"
       >
         <WithdrawForm
+          withPassword={user.loginMethods.password}
           onDone={() => {
             setSheet(null)
             // 계정이 사라져 로그아웃을 부를 대상이 없다. 로컬 상태만 비운다.
@@ -196,7 +209,7 @@ function ChangePasswordForm({ onDone }: { onDone: () => void | Promise<void> }) 
   )
 }
 
-function WithdrawForm({ onDone }: { onDone: () => void }) {
+function WithdrawForm({ withPassword, onDone }: { withPassword: boolean; onDone: () => void }) {
   const { showToast } = useToast()
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string>()
@@ -213,7 +226,7 @@ function WithdrawForm({ onDone }: { onDone: () => void }) {
     setSaving(true)
 
     try {
-      await authApi.deleteMe(password)
+      await authApi.deleteMe({ password })
       onDone()
     } catch (err) {
       if (!isApiError(err)) throw err
@@ -225,6 +238,39 @@ function WithdrawForm({ onDone }: { onDone: () => void }) {
     } finally {
       setSaving(false)
     }
+  }
+
+  /** 구글로만 가입한 계정. 구글 로그인을 한 번 더 해서 본인임을 확인한다. */
+  const handleGoogle = async (credential: string) => {
+    if (saving) return
+    setError(undefined)
+    setSaving(true)
+    try {
+      await authApi.deleteMe({ googleCredential: credential })
+      onDone()
+    } catch (err) {
+      if (!isApiError(err)) throw err
+      if (err.code === ErrorCodes.INVALID_CREDENTIALS) {
+        setError('이 계정에 연결된 구글 계정으로 확인해주세요')
+        return
+      }
+      showToast({ message: err.message, tone: 'danger' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!withPassword) {
+    return (
+      <div className={styles.sheetBody}>
+        <p className={styles.hint}>
+          계정과 모든 운동 기록이 지워집니다. 되돌릴 수 없습니다. 확인을 위해 구글 계정으로 한 번
+          더 로그인해주세요.
+        </p>
+        <GoogleButton onCredential={handleGoogle} />
+        {error && <div className={styles.error}>{error}</div>}
+      </div>
+    )
   }
 
   return (

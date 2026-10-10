@@ -9,6 +9,7 @@ export const paths = {
   // 탭 밖 — 인증
   login: '/login',
   signup: '/signup',
+  privacy: '/privacy',
 
   // 탭 안
   home: '/',

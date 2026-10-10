@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { paths } from '../../app/paths'
 import { ErrorCodes, isApiError } from '../../api'
-import { useAuth } from '../../auth'
+import { GoogleButton, googleEnabled, useAuth } from '../../auth'
 import { useToast } from '../../components'
 import { validateEmail, validateNickname, validatePassword } from './validation'
 import styles from './auth.module.css'
@@ -14,7 +14,7 @@ import styles from './auth.module.css'
  */
 export function SignupScreen() {
   const navigate = useNavigate()
-  const { signUp } = useAuth()
+  const { signUp, loginWithGoogle } = useAuth()
   const { showToast } = useToast()
 
   const [email, setEmail] = useState('')
@@ -73,6 +73,17 @@ export function SignupScreen() {
     }
   }
 
+  /** 구글은 가입과 로그인이 같은 요청이다. 이미 가입했으면 그대로 로그인된다. */
+  const handleGoogle = async (credential: string) => {
+    try {
+      await loginWithGoogle(credential)
+      navigate(paths.home, { replace: true })
+    } catch (err) {
+      if (!isApiError(err)) throw err
+      showToast({ message: err.message, tone: 'danger' })
+    }
+  }
+
   return (
     <form className={styles.signup} onSubmit={handleSubmit} noValidate>
       <div className={styles.signupTitleBlock}>
@@ -124,6 +135,17 @@ export function SignupScreen() {
       <button type="submit" className={styles.submit} disabled={submitting}>
         {submitting ? '가입 중…' : '가입하기'}
       </button>
+
+      {googleEnabled && (
+        <>
+          <div className={styles.divider}>또는</div>
+          <GoogleButton onCredential={handleGoogle} text="signup_with" />
+        </>
+      )}
+
+      <p className={styles.notice}>
+        가입하면 <Link to={paths.privacy}>개인정보처리방침</Link>에 동의하는 것으로 봅니다.
+      </p>
 
       <Link to={paths.login} className={styles.switch}>
         이미 계정이 있으신가요? <span className={styles.switchAccent}>로그인</span>

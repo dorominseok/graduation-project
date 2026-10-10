@@ -14,6 +14,8 @@ export interface AuthContextValue {
   status: AuthStatus
   user: MeResponse | null
   login: (email: string, password: string) => Promise<void>
+  /** 구글 로그인. 처음이면 서버가 가입까지 한다(LOG-37). */
+  loginWithGoogle: (credential: string) => Promise<void>
   signUp: (email: string, password: string, nickname: string) => Promise<void>
   logout: () => Promise<void>
   /**

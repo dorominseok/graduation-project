@@ -46,12 +46,23 @@ export interface Profile {
   goal: TrainingGoal | null
 }
 
+/**
+ * 이 계정의 로그인 방법 (LOG-37).
+ *
+ * 구글로만 가입한 계정은 비밀번호가 없다 — 비밀번호 변경을 숨기고, 탈퇴 확인을 구글로 받는다.
+ */
+export interface LoginMethods {
+  password: boolean
+  google: boolean
+}
+
 /** 프로필 조회·수정 응답 (명세 4.5·4.6). */
 export interface MeResponse {
   userId: number
   email: string
   nickname: string
   profile: Profile
+  loginMethods: LoginMethods
   createdAt: string
 }
 

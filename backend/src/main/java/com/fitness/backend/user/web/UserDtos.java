@@ -19,12 +19,21 @@ public final class UserDtos {
      * 늘 때 최상위 필드가 흩어지지 않게 하기 위함이다(명세 4.5).
      */
     public record MeResponse(Long userId, String email, String nickname,
-                             Profile profile, OffsetDateTime createdAt) {
+                             Profile profile, LoginMethods loginMethods, OffsetDateTime createdAt) {
 
         public static MeResponse from(User user) {
             return new MeResponse(user.getId(), user.getEmail(), user.getNickname(),
-                    new Profile(user.getGoal()), user.getCreatedAt());
+                    new Profile(user.getGoal()),
+                    new LoginMethods(user.hasPassword(), user.getGoogleId() != null),
+                    user.getCreatedAt());
         }
+    }
+
+    /**
+     * 이 계정의 로그인 방법(LOG-37). 화면이 비밀번호 변경을 보일지, 탈퇴 확인을 비밀번호와
+     * 구글 중 무엇으로 받을지 정한다.
+     */
+    public record LoginMethods(boolean password, boolean google) {
     }
 
     /** 프로필은 훈련 목표 1종이다. 키·체중·경력은 제외했다(LOG-11, LOG-14). */
@@ -46,10 +55,11 @@ public final class UserDtos {
     /**
      * 회원 탈퇴 요청(명세 4.7).
      *
-     * <p>비밀번호를 다시 받는 것은 액세스 토큰만으로 실행되는 되돌릴 수 없는
-     * 동작이기 때문이다.
+     * <p>본인 확인을 다시 받는 것은 액세스 토큰만으로 실행되는 되돌릴 수 없는
+     * 동작이기 때문이다. 비밀번호가 있는 계정은 비밀번호로, 구글로만 가입한 계정은
+     * 구글 로그인을 한 번 더 해서 받은 ID 토큰({@code googleCredential})으로 확인한다(LOG-37).
      */
-    public record DeleteMeRequest(@NotBlank(message = "필수 항목입니다.") String password) {
+    public record DeleteMeRequest(String password, String googleCredential) {
     }
 
     /**

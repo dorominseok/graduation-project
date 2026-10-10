@@ -1,0 +1,45 @@
+.page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-16) var(--space-20) var(--space-32);
+  color: var(--text-primary);
+  font-size: var(--font-sm);
+  line-height: 1.65;
+}
+
+.lead {
+  color: var(--text-secondary);
+  margin-bottom: var(--space-20);
+}
+
+.page section {
+  margin-bottom: var(--space-20);
+}
+
+.page h2 {
+  font-size: var(--font-body);
+  font-weight: var(--weight-bold);
+  margin-bottom: var(--space-6);
+}
+
+.page ul {
+  padding-left: 1.1em;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.page p + ul,
+.page ul + p {
+  margin-top: var(--space-6);
+}
+
+.page a {
+  color: var(--accent);
+}
+
+.date {
+  color: var(--text-tertiary);
+  font-size: var(--font-2xs);
+}

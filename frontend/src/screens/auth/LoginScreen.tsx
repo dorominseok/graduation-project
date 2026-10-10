@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { paths } from '../../app/paths'
 import { ErrorCodes, isApiError } from '../../api'
-import { useAuth } from '../../auth'
+import { GoogleButton, googleEnabled, useAuth } from '../../auth'
 import { useToast } from '../../components'
 import { validateEmail, validatePassword } from './validation'
 import styles from './auth.module.css'
@@ -15,7 +15,7 @@ interface FromState {
 export function LoginScreen() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login } = useAuth()
+  const { login, loginWithGoogle } = useAuth()
   const { showToast } = useToast()
 
   const [email, setEmail] = useState('')
@@ -64,6 +64,16 @@ export function LoginScreen() {
     }
   }
 
+  const handleGoogle = async (credential: string) => {
+    try {
+      await loginWithGoogle(credential)
+      navigate(redirectTo, { replace: true })
+    } catch (err) {
+      if (!isApiError(err)) throw err
+      showToast({ message: err.message, tone: 'danger' })
+    }
+  }
+
   return (
     <form className={styles.login} onSubmit={handleSubmit} noValidate>
       <div className={styles.brandBlock}>
@@ -102,6 +112,13 @@ export function LoginScreen() {
       <button type="submit" className={styles.submit} disabled={submitting}>
         {submitting ? '로그인 중…' : '로그인'}
       </button>
+
+      {googleEnabled && (
+        <>
+          <div className={styles.divider}>또는</div>
+          <GoogleButton onCredential={handleGoogle} />
+        </>
+      )}
 
       <Link to={paths.signup} className={styles.switch}>
         계정이 없으신가요? <span className={styles.switchAccent}>회원가입</span>

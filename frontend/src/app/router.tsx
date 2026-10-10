@@ -23,6 +23,7 @@ import { AccountSettingsScreen } from '../screens/full/AccountSettingsScreen'
 import { PersonalInfoScreen } from '../screens/full/PersonalInfoScreen'
 import { FeedbackScreen } from '../screens/full/FeedbackScreen'
 import { DevComponentsScreen } from '../screens/DevComponentsScreen'
+import { PrivacyScreen } from '../screens/full/PrivacyScreen'
 
 export const router = createBrowserRouter([
   // 탭 밖 — 인증. 로그인 전에 닿아야 하므로 가드 밖에 둔다.
@@ -31,6 +32,8 @@ export const router = createBrowserRouter([
     children: [
       { path: paths.login, element: <LoginScreen /> },
       { path: paths.signup, element: <SignupScreen /> },
+      // 개인정보처리방침은 가입 전에도, 구글 동의 화면에서도 열린다
+      { path: paths.privacy, element: <PrivacyScreen /> },
     ],
   },
 
