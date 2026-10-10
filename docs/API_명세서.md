@@ -5,7 +5,8 @@
 > 작성 시점: 2026년 8월 5주 (프론트–백엔드 연동 직전)
 > 개정: 2026-09-02 (LOG-13·14·16 반영) / 2026-09-04 (정합성 정정 — 커밋 `c824be6`)
 > 대상 범위: **9월 1~3주 구현분** — 인증·프로필 / 운동 기록 / 통계·분석
-> 제외 범위: 루틴 추천(UC-03-03~06), 뱃지(UC-04), 친구 그룹(UC-05), 알림(UC-06) — 10~11월 별도 명세
+> 제외 범위: 루틴 추천(UC-03-03~06), 뱃지(UC-04), 알림(UC-06) — 10~11월 별도 명세
+> 추가: 친구 그룹(UC-05)은 10장 (2026-10-11, LOG-38)
 
 ---
 
@@ -20,6 +21,7 @@
 | 운동 기록 (세션·세트) | UC-02-01, UC-02-02, UC-02-03, UC-02-06 | 6장 |
 | 통계 (1RM 추이, 세트별 강도) | UC-02-04 | 7장 |
 | 약점·불균형 분석 | UC-03-01, UC-03-02 | 8장 |
+| 친구 그룹 | UC-05-01 ~ UC-05-07 | 10장 |
 
 ### 0.2 설계 결정 반영 대응표
 
@@ -150,6 +152,7 @@ Authorization: Bearer {accessToken}
 | 409 | `EMAIL_ALREADY_EXISTS` | 회원가입 이메일 중복. 구글 로그인에서 그 이메일이 이미 다른 구글 계정에 묶여 있을 때도 (4.9) |
 | 409 | `DRAFT_SESSION_EXISTS` | 이미 진행 중인 `DRAFT` 세션이 있는 상태에서 새 `LIVE` 세션 생성 시도 (6.2) |
 | 409 | `SESSION_ALREADY_COMPLETED` | 이미 `DONE`인 세션에 종료 재요청 |
+| 409 | `GROUP_LIMIT_EXCEEDED` | 그룹 인원 20명 또는 한 사람의 그룹 10개 초과 (10장) |
 | 422 | `EMPTY_SESSION` | 세트가 하나도 없는 세션 종료 시도 (6.3) |
 | 429 | `RATE_LIMITED` | 요청 한도 초과 (도입 시) |
 | 500 | `INTERNAL_ERROR` | 서버 내부 오류 |
@@ -317,6 +320,25 @@ Authorization: Bearer {accessToken}
 |---|---|---|---|
 | GET | `/analysis/muscle-volume` | 부위별 볼륨·부족 판정 (2계층) + 신뢰도 | ✔ |
 | GET | `/analysis/balance` | 밀기/당기기·상하체 균형 판정 | ✔ |
+
+### 3.6 친구 그룹 (10장, LOG-38)
+
+| 메서드 | 경로 | 설명 | 인증 |
+|---|---|---|---|
+| POST | `/groups` | 그룹 만들기 (만든 사람이 방장) | ✔ |
+| GET | `/groups` | 내 그룹 목록 | ✔ |
+| GET | `/groups/{groupId}` | 그룹 상세 — 멤버별 오늘·이번 주 | ✔ 멤버 |
+| PATCH | `/groups/{groupId}` | 이름 바꾸기 | ✔ 방장 |
+| DELETE | `/groups/{groupId}` | 그룹 삭제 | ✔ 방장 |
+| POST | `/groups/{groupId}/invite-code` | 초대코드 다시 만들기 | ✔ 방장 |
+| GET | `/groups/invite/{code}` | 초대 미리보기 (참여 전) | ✔ |
+| POST | `/groups/join` | 코드로 참여 | ✔ |
+| DELETE | `/groups/{groupId}/members/me` | 그룹 나가기 | ✔ 멤버 |
+| DELETE | `/groups/{groupId}/members/{memberId}` | 멤버 내보내기 | ✔ 방장 |
+| GET | `/groups/{groupId}/members/{memberId}/calendar` | 멤버의 월별 기록 요약 | ✔ 멤버 |
+| GET | `/groups/{groupId}/members/{memberId}/days/{date}` | 멤버의 하루 기록 (메모 제외) | ✔ 멤버 |
+| PUT | `/groups/{groupId}/sessions/{sessionId}/cheer` | 응원하기 | ✔ 멤버 |
+| DELETE | `/groups/{groupId}/sessions/{sessionId}/cheer` | 응원 취소 | ✔ 멤버 |
 
 ---
 
@@ -1555,7 +1577,8 @@ workout_session (한 번의 운동)
 | `V5__exercises_name_ko_collate_c.sql` | `exercises.nameKo` 정렬을 `C` 콜레이션으로. 한글 이름 정렬이 DB 로케일에 따라 달라지는 것을 고정 | 완료 (9월 3주) |
 | `V6__add_exercise_group.sql` | `exercises.group_name`(VARCHAR 40) + 인덱스. 종목 선택 3단 탐색의 계열 축(5.7, LOG-24). 분류 13종은 컬럼 없이 `primary_muscle`·`delt_region`에서 파생하므로 이 한 컬럼이 전부다 | 완료 (9월 4주) |
 | 계열 값 채우기 | 109종 전부에 `group_name` 입력(40개 계열). 시드 CSV와 `R__seed_exercises.sql`에서 관리 | 완료 (9월 4주) |
-| `password_reset_tokens` 테이블 | 비밀번호 재설정(4.8 주석). 문서 곳곳에 `V5`로 적혀 있으나 `V5`·`V6`이 이미 쓰여 실제로는 **`V7`**이다. d1에서 떼어 검증 이후로 미뤘다(LOG-25) | 검증 이후 |
+| `V8__friend_groups.sql` | 친구 그룹 — `friend_groups`·`friend_group_members`·`cheers` (10.11, LOG-38) | 완료 (10월 2주) |
+| `password_reset_tokens` 테이블 | 비밀번호 재설정(4.8 주석). 문서 곳곳에 `V5`로 적혀 있으나 `V5`~`V8`이 이미 쓰여(`V7` 구글 로그인, `V8` 그룹) 실제로는 **다음 빈 번호**다. d1에서 떼어 검증 이후로 미뤘다(LOG-25) | 검증 이후 |
 | 세션 생성 멱등 키 | `BACKFILL` 세션의 재전송 중복 방지(`clientSessionId`). 6.2 주석의 미결 항목이며, 오프라인 쓰기 큐 범위와 함께 판단 | 미정 |
 | `routines` FK | `workout_sessions.routine_id`는 컬럼만 존재. `routines` 생성 시 FK 마이그레이션 | 10월 |
 | 요약 배지 문안 | `summaryBadge` label 및 `MIXED` 표기 확정 (8.2). enum `key`는 고정 | 화면 구현 시 |
@@ -1618,6 +1641,177 @@ workout_session (한 번의 운동)
 >
 > **정정(2026-08-31)**: 이 자리에 "'어깨(앞)/어깨(뒤)' 2계층 표시는 목업 그대로 유지된다"고 적혀 있었으나 **사실이 아니다.** 목업에 2계층 표시는 존재하지 않는다 — `어깨(앞)`·`어깨(뒤)`·`삼두`·`이두`·`앞허벅지`·`뒤허벅지` 문자열이 목업 전체에 0회다. 목업 분석 탭은 상위 6종을 평면 리스트로 나열하고 **각 상위 항목에 판정 라벨을 직접 붙인다.** 이는 2.4가 금지한 표시 방식이므로, 2계층 리스트·펼치기·`summaryBadge`는 **신규로 설계해야 한다**(아래 표에 추가). 근거: 「목업_문서_대조_평가」 C-1.
 > 프로필 항목은 **훈련 목표 1종**으로 확정. UC-01-03의 "경력"(LOG-11)에 이어 "키·체중"도 제외했다(2.4-(2), LOG-14). 목업 개인 정보 화면의 키·체중 표시(대조 평가 C-21)는 **제거** 대상이 된다 — C-21이 지적한 "편집 불가" 문제도 함께 해소된다.
+
+---
+
+## 10. 친구 그룹 API
+
+> 2026-10-11 신설 (LOG-38). 기능명세서 2.6, UC-05-01~07. 엔드포인트 14개 — 전체 32→46개.
+
+### 10.1 원칙
+
+| 항목 | 규칙 |
+|---|---|
+| 성격 | 경쟁이 아니라 서로 보이는 것. 순위·점수 없음, 멤버는 들어온 순서 (`joinedAt` 오름차순) |
+| 조회 권한 | **멤버만.** 멤버가 아니면 그룹이 있는지조차 드러내지 않도록 `403`이 아니라 `404`다(6.5와 같은 원칙) |
+| 방장 권한 | 이름 변경·코드 재발급·내보내기·삭제. 멤버가 시도하면 `403 ACCESS_DENIED` — 이때는 그룹이 있다는 걸 이미 안다 |
+| 방장 승계 | 방장이 나가거나 탈퇴하면 남은 멤버 중 가장 먼저 들어온 사람(`joinedAt`, 같으면 `id`)에게 넘어간다. 마지막 한 명이 나가면 그룹을 지운다 |
+| 한도 | 한 그룹 20명, 한 사람 10개 그룹. 넘으면 `409 GROUP_LIMIT_EXCEEDED` |
+| 초대코드 | 대문자·숫자 6자리, 헷갈리는 글자(0·O, 1·I·L) 제외 — 31자 6자리 ≈ 8.9억 가지. 무작위 생성. 입력은 소문자·공백·하이픈을 받아 준다 |
+| 공개 범위 | 멤버에게 닉네임, **끝난** 운동 기록(날짜·종목·세트·운동 시간), 오늘 운동 여부. **메모와 진행 중인 운동은 보내지 않는다** — 진행 중인 기록은 보는 시점마다 세트 수가 달라 보이고, 운동하는 사람에게도 하는 중에 다 보이는 건 부담이다 |
+| 동시성 | 멤버가 바뀌는 일(참여·나가기·내보내기·삭제)은 그룹 행을 잠그고(`SELECT … FOR UPDATE`) 한다. 응원은 `INSERT … ON CONFLICT DO NOTHING` |
+
+### 10.2 POST /groups
+
+**요청** `{ "name": "새벽 헬스" }` — 앞뒤 공백(전각 공백 포함)을 걷어 1~20자
+
+**응답 `201 Created`** — 10.4와 같은 그룹 상세. 만든 사람이 방장이자 첫 멤버이고 `inviteCode`가 담긴다.
+
+| 상황 | 응답 |
+|---|---|
+| 이름이 비었거나 20자 초과 | `400 VALIDATION_ERROR` |
+| 들어간 그룹이 이미 10개 | `409 GROUP_LIMIT_EXCEEDED` |
+
+### 10.3 GET /groups
+
+**응답 `200 OK`** — 내가 들어간 순서. 그룹은 보통 한두 개라, 들어가기 전에도 누가 오늘 운동했는지 보이게 멤버별 오늘 상태를 담는다.
+
+```json
+[{
+  "id": 7, "name": "새벽 헬스", "memberCount": 3, "isOwner": true,
+  "todayWorkedOutCount": 1,
+  "members": [
+    { "userId": 41, "nickname": "민석", "isMe": true,  "todayStatus": "NONE" },
+    { "userId": 42, "nickname": "영희", "isMe": false, "todayStatus": "DONE" },
+    { "userId": 43, "nickname": "철수", "isMe": false, "todayStatus": "NONE" }
+  ]
+}]
+```
+
+| 필드 | 규칙 |
+|---|---|
+| `todayWorkedOutCount` | 오늘 날짜로 **완료한** 운동이 있는 멤버 수 |
+| `members` | 들어온 순서. `todayStatus`는 10.4의 `today.status`와 같은 기준이다. 응원 수는 담지 않는다 |
+
+### 10.4 GET /groups/{groupId}
+
+**응답 `200 OK`**
+
+```json
+{
+  "id": 7,
+  "name": "새벽 헬스",
+  "inviteCode": "K7P2QX",
+  "isOwner": false,
+  "today": "2026-10-11",
+  "weekStart": "2026-10-05",
+  "members": [
+    {
+      "userId": 42, "nickname": "영희", "isOwner": true, "isMe": false,
+      "joinedAt": "2026-10-11T09:00:00+09:00",
+      "today": { "status": "DONE", "sessionId": 1166, "cheerCount": 2, "cheeredByMe": true },
+      "week": { "sessionCount": 3, "totalDurationSec": 9900, "workoutDates": ["2026-10-06", "2026-10-08", "2026-10-11"] }
+    }
+  ]
+}
+```
+
+| 필드 | 규칙 |
+|---|---|
+| `inviteCode` | 멤버 누구에게나 준다. 다시 만드는 것만 방장이 한다 |
+| `weekStart` | 이번 주 월요일(1.2, 홈의 "이번 주"와 같은 기준). 주는 월~일 |
+| `today.status` | `DONE` 오늘 날짜로 완료한 운동이 있음(사후 입력 포함) / `NONE`. **진행 중인 운동은 `NONE`이다** — 그룹에는 끝난 운동만 보인다(10.1) |
+| `today.sessionId` | 응원할 대상. 완료한 것이 여럿이면 가장 최근에 끝낸 것(`endedAt`). `NONE`이면 `null` |
+| `week.sessionCount` | 이번 주 완료 세션 수 (사후 입력 포함) |
+| `week.totalDurationSec` | 완료 세션의 `effectiveDurationSec` 합. 시간이 없는 사후 입력은 빠진다(보정값이 있으면 들어간다) |
+| `week.workoutDates` | 완료 세션이 있는 날짜, 오름차순 |
+
+멤버 전원의 이번 주 세션을 **한 번에** 읽어 메모리에서 나눈다. 별도 집계 테이블은 없다.
+
+### 10.5 방장 — PATCH /groups/{groupId}, DELETE /groups/{groupId}, POST /groups/{groupId}/invite-code
+
+| 요청 | 응답 | 비고 |
+|---|---|---|
+| `PATCH` `{ "name": "새 이름" }` | `200` 그룹 상세 | 10.2와 같은 이름 규칙 |
+| `DELETE` | `204` | 멤버십은 FK 연쇄 삭제. 멤버들의 운동 기록은 그대로 |
+| `POST …/invite-code` | `200 { "inviteCode": "M4R8TW" }` | 옛 코드·링크로는 더 들어올 수 없다 |
+
+멤버가 시도하면 `403 ACCESS_DENIED`, 멤버가 아니면 `404`.
+
+### 10.6 GET /groups/invite/{code}
+
+초대 링크로 들어왔을 때 **참여 전에** 보여줄 정보. 참여하면 무엇이 공개되는지 화면이 함께 안내한다.
+
+```json
+{ "groupId": 7, "name": "새벽 헬스", "memberCount": 4, "ownerNickname": "민석", "alreadyMember": false, "full": false }
+```
+
+없는 코드는 `404`. 로그인이 필요하다 — 참여하려면 어차피 계정이 있어야 하고, 화면은 로그인 뒤 이 미리보기로 돌아온다.
+
+### 10.7 POST /groups/join
+
+**요청** `{ "code": "k7p-2qx" }` — 소문자·공백·하이픈은 서버가 다듬는다
+
+| 상황 | 응답 |
+|---|---|
+| 참여함 | `201 { "groupId": 7, "name": "새벽 헬스", "alreadyMember": false }` |
+| 이미 멤버 | `200 { …, "alreadyMember": true }` — 오류가 아니다. 링크를 두 번 누르는 일은 흔하다 |
+| 없는 코드 | `404` |
+| 그룹 20명 / 내 그룹 10개 | `409 GROUP_LIMIT_EXCEEDED` |
+
+### 10.8 DELETE /groups/{groupId}/members/me · DELETE /groups/{groupId}/members/{memberId}
+
+- **나가기**(`me`): `204`. 방장이면 10.1의 승계 규칙, 마지막 한 명이면 그룹 삭제
+- **내보내기**(방장): `204`. 방장 자신은 `400`(나가기를 쓴다), 멤버가 아니면 `404`
+- 나가거나 내보내져도 그 사람의 운동 기록과 보낸 응원은 남는다
+- 회원 탈퇴(4.7) 때도 방장인 그룹은 같은 규칙으로 넘어간다. `friend_groups.owner_id`에는 연쇄 삭제를 걸지 않았다 — 걸면 방장 한 명의 탈퇴로 남은 멤버들의 그룹이 사라진다
+
+### 10.9 멤버 기록 — GET …/members/{memberId}/calendar · GET …/members/{memberId}/days/{date}
+
+보는 사람과 대상이 **같은 그룹 멤버**여야 한다. 아니면 `404`.
+
+- **calendar** `?year=2026&month=10` — 6.8과 같은 모양이되 **끝난 운동만** 센다(`hasDraft`는 늘 `false`). `year`는 2000~2100
+- **days/{date}** — 그날의 **끝난** 세션들(시작한 순서). 6.5 세션 상세에서 **메모·세트 id·클라이언트 키를 뺀** 모양이다
+
+```json
+{
+  "userId": 42, "nickname": "영희", "date": "2026-10-11",
+  "sessions": [{
+    "id": 1166, "status": "DONE", "source": "LIVE",
+    "startedAt": "2026-10-11T19:12:03+09:00", "endedAt": "2026-10-11T20:22:41+09:00",
+    "durationSec": 4200,
+    "exercises": [{ "exerciseId": 1, "exerciseName": "바벨 벤치프레스", "exerciseNameEn": "Barbell Bench Press", "measureType": "WEIGHT_REPS",
+                    "sets": [{ "setNo": 1, "weightKg": 40.00, "reps": 10, "durationSec": null, "isWarmup": false }] }],
+    "cheerCount": 2, "cheeredByMe": true
+  }]
+}
+```
+
+메모는 빈 값으로 내리지 않고 **필드 자체를 두지 않는다** — `null`이면 "메모가 없다"로 읽힌다. `exerciseNameEn`은 화면이 종목 카드에 동작 그림을 붙이는 데 쓴다(그림 파일 이름이 영문명에서 나온다).
+
+### 10.10 PUT·DELETE /groups/{groupId}/sessions/{sessionId}/cheer
+
+| 요청 | 응답 |
+|---|---|
+| `PUT` | `200 { "cheerCount": 3, "cheeredByMe": true }` — 두 번 눌러도 한 번이다 |
+| `DELETE` | `200 { "cheerCount": 2, "cheeredByMe": false }` — 누르지 않았어도 오류가 아니다 |
+
+| 상황 | 응답 |
+|---|---|
+| 내 운동 | `400 VALIDATION_ERROR` |
+| 세션 주인이 이 그룹 멤버가 아님 / 내가 멤버가 아님 / 진행 중인 세션 | `404` |
+
+응원은 그룹이 아니라 **세션**에 붙는다. 같은 사람과 그룹 두 개를 함께해도 그 사람의 운동은 하나라, 어느 그룹에서 눌렀든 같은 응원이다.
+
+### 10.11 스키마 (V8)
+
+| 테이블 | 컬럼 | 제약·인덱스 |
+|---|---|---|
+| `friend_groups` | `id`, `name VARCHAR(20)`, `invite_code VARCHAR(6)`, `owner_id`, `created_at`, `updated_at` | `invite_code` UNIQUE, `owner_id` FK(연쇄 삭제 없음) + 인덱스 |
+| `friend_group_members` | `id`, `group_id`, `user_id`, `joined_at` | `(group_id, user_id)` UNIQUE, 두 FK 연쇄 삭제, `user_id` 인덱스 |
+| `cheers` | `id`, `session_id`, `user_id`, `created_at` | `(session_id, user_id)` UNIQUE, 두 FK 연쇄 삭제, `user_id` 인덱스 |
+
+테이블 이름을 `groups`가 아니라 `friend_groups`로 둔 것은 `GROUP`이 SQL·JPQL 예약어이고, 종목의 "계열"(`exercises.group_name`, `V6`)과도 헷갈리기 때문이다.
 
 ---
 
