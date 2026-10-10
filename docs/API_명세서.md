@@ -144,9 +144,10 @@ Authorization: Bearer {accessToken}
 | 401 | `INVALID_CREDENTIALS` | 로그인 시 이메일·비밀번호 불일치 |
 | 401 | `TOKEN_EXPIRED` | 액세스 토큰 만료 → 클라이언트는 `/auth/refresh` 시도 |
 | 401 | `TOKEN_INVALID` | 서명 불일치·형식 오류·폐기된 토큰 |
+| 401 | `GOOGLE_LOGIN_FAILED` | 구글 ID 토큰 검증 실패, 또는 구글이 확인하지 않은 이메일 (4.9, LOG-37) |
 | 403 | `ACCESS_DENIED` | 타 사용자 리소스 접근 |
 | 404 | `RESOURCE_NOT_FOUND` | 대상 리소스 없음 |
-| 409 | `EMAIL_ALREADY_EXISTS` | 회원가입 이메일 중복 |
+| 409 | `EMAIL_ALREADY_EXISTS` | 회원가입 이메일 중복. 구글 로그인에서 그 이메일이 이미 다른 구글 계정에 묶여 있을 때도 (4.9) |
 | 409 | `DRAFT_SESSION_EXISTS` | 이미 진행 중인 `DRAFT` 세션이 있는 상태에서 새 `LIVE` 세션 생성 시도 (6.2) |
 | 409 | `SESSION_ALREADY_COMPLETED` | 이미 `DONE`인 세션에 종료 재요청 |
 | 422 | `EMPTY_SESSION` | 세트가 하나도 없는 세션 종료 시도 (6.3) |
@@ -269,6 +270,7 @@ Authorization: Bearer {accessToken}
 |---|---|---|---|
 | POST | `/auth/signup` | 회원가입 (가입 후 토큰 발급) | — |
 | POST | `/auth/login` | 로그인 | — |
+| POST | `/auth/google` | **구글 로그인** (처음이면 가입까지, LOG-37) | — |
 | POST | `/auth/refresh` | 액세스 토큰 재발급 (리프레시 쿠키 사용) | 쿠키 |
 | POST | `/auth/logout` | 로그아웃 (리프레시 토큰 폐기) | ✔ |
 | GET | `/users/me` | 내 프로필 조회 | ✔ |
@@ -438,11 +440,16 @@ Authorization: Bearer {accessToken}
   "profile": {
     "goal": "HYPERTROPHY"
   },
+  "loginMethods": {
+    "password": true,
+    "google": false
+  },
   "createdAt": "2026-09-01T09:12:00+09:00"
 }
 ```
 
 - 프로필 미입력 시 `profile.goal`은 `null`.
+- `loginMethods`는 이 계정으로 로그인하는 방법이다(LOG-37). 구글로만 가입하면 `password: false`이고, 화면은 비밀번호 변경을 숨기고 탈퇴 확인을 구글로 받는다(4.7). 이메일로 가입한 뒤 같은 이메일의 구글로 들어오면 둘 다 `true`다.
 - `profile`을 객체로 감싸 둔 것은 향후 항목이 늘어날 때 최상위 필드가 흩어지지 않게 하기 위함이다. 현재 항목은 `goal` 하나다.
 
 ### 4.6 PATCH /users/me
@@ -481,11 +488,20 @@ Authorization: Bearer {accessToken}
 { "password": "hunter2hunter2" }
 ```
 
+또는 구글로만 가입한 계정:
+
+```json
+{ "googleCredential": "<구글 ID 토큰>" }
+```
+
 | 필드 | 규칙 |
 |---|---|
-| `password` | 필수. 현재 비밀번호를 재확인한다 |
+| `password` | 현재 비밀번호를 재확인한다 |
+| `googleCredential` | 구글 로그인을 한 번 더 해서 받은 ID 토큰. 그 토큰의 구글 회원번호가 이 계정에 묶인 것과 같아야 한다 (LOG-37) |
 
-> 비밀번호를 다시 받는 것은 액세스 토큰만으로 실행되는 되돌릴 수 없는 동작이기 때문이다. 화면에서도 확인 다이얼로그를 한 번 더 둔다.
+둘 중 하나는 있어야 한다. 비밀번호와 구글을 다 가진 계정은 어느 쪽으로든 확인할 수 있다 — 구글을 묶은 뒤 비밀번호를 잊은 사람도 탈퇴할 수 있어야 한다.
+
+> 본인 확인을 다시 받는 것은 액세스 토큰만으로 실행되는 되돌릴 수 없는 동작이기 때문이다. 화면에서도 확인 다이얼로그를 한 번 더 둔다.
 
 **응답 `204 No Content`**
 
@@ -506,8 +522,9 @@ Authorization: Bearer {accessToken}
 
 | 상황 | 응답 |
 |---|---|
-| 비밀번호 불일치 | `401 INVALID_CREDENTIALS` |
-| `password` 누락 | `400 VALIDATION_ERROR` |
+| 비밀번호 불일치, 또는 다른 구글 계정으로 확인 | `401 INVALID_CREDENTIALS` |
+| 구글 ID 토큰 검증 실패 | `401 GOOGLE_LOGIN_FAILED` |
+| `password`·`googleCredential` 둘 다 없음 | `400 VALIDATION_ERROR` |
 
 > 목업 계정 화면에 삭제 버튼이 이미 있으나 동작이 연결돼 있지 않다(대조 평가 C-23). 이 엔드포인트를 붙이면 해소된다.
 
@@ -541,6 +558,51 @@ Authorization: Bearer {accessToken}
 |---|---|
 | 현재 비밀번호 불일치 | `401 INVALID_CREDENTIALS` |
 | 새 비밀번호 형식 오류 / 현재와 동일 | `400 VALIDATION_ERROR` |
+| 구글로만 가입해 비밀번호가 없는 계정 | `400 VALIDATION_ERROR` — 화면은 이 메뉴를 숨긴다 (LOG-37) |
+
+### 4.9 POST /auth/google
+
+구글 로그인(LOG-37). **처음이면 그 자리에서 가입하고, 이후로는 로그인한다** — 버튼 하나다.
+
+화면은 Google Identity Services 버튼으로 구글 창을 띄우고, 사용자가 계정을 고르면 구글이 서명한 **ID 토큰**(JWT)을 받아 그대로 넘긴다.
+
+**요청**
+
+```json
+{ "credential": "<구글 ID 토큰>" }
+```
+
+**응답 `200 OK`** — 4.2 로그인과 같다(액세스 토큰 + 리프레시 쿠키 + `user`). 가입이었는지 로그인이었는지는 구분하지 않는다.
+
+**서버의 검증** — 구글 토큰은 확인만 하고 저장하지 않는다. 로그인 뒤에는 2.3의 우리 토큰을 쓴다.
+
+| 확인 | 기준 |
+|---|---|
+| 서명 | 구글 공개 키(`https://www.googleapis.com/oauth2/v3/certs`)로 검증 |
+| 발급자 `iss` | `https://accounts.google.com` 또는 `accounts.google.com` |
+| 받는 쪽 `aud` | 우리 클라이언트 ID(`app.google.client-id`). 확인하지 않으면 다른 사이트가 받은 토큰으로 우리 앱에 로그인할 수 있다 |
+| 만료 `exp` | 지나지 않았을 것 |
+
+**계정 찾는 순서**
+
+1. 구글 회원번호(`sub`)가 `users.google_id`인 계정 → 로그인
+2. 없으면 같은 이메일로 가입한 계정에 `google_id`를 묶고 로그인. **구글이 이메일 소유를 확인한 경우(`email_verified`)만** — 확인되지 않은 이메일로 묶으면 남의 이메일을 적은 구글 계정이 그 사람의 기록을 가져갈 수 있다
+3. 그것도 없으면 가입. 비밀번호 없이, 닉네임은 구글 이름(없으면 이메일 앞부분, 50자로 자름)
+
+계정은 이메일이 아니라 **구글 회원번호로** 찾는다. 구글 계정의 이메일은 바뀔 수 있지만 번호는 바뀌지 않는다.
+
+**스키마 (V7)**: `users.google_id VARCHAR(255) UNIQUE` 추가, `password_hash`의 `NOT NULL` 해제, CHECK `password_hash IS NOT NULL OR google_id IS NOT NULL` — 로그인할 방법이 없는 계정은 만들 수 없다.
+
+**오류**
+
+| 상황 | 응답 |
+|---|---|
+| 토큰 검증 실패(서명·발급자·대상·만료) | `401 GOOGLE_LOGIN_FAILED` |
+| 새 계정이 필요한데 구글이 이메일을 확인하지 않음 | `401 GOOGLE_LOGIN_FAILED` |
+| 같은 이메일 계정에 이미 다른 구글 계정이 묶여 있음 | `409 EMAIL_ALREADY_EXISTS` |
+| `credential` 누락 | `400 VALIDATION_ERROR` |
+
+> 구글로만 가입한 계정으로 `POST /auth/login`을 하면 일반 실패와 같은 `401 INVALID_CREDENTIALS`다(4.2). 다르게 알려주면 가입 방법이 드러난다.
 
 ---
 
@@ -1587,6 +1649,7 @@ workout_session (한 번의 운동)
 |---|
 | `POST /auth/signup` |
 | `POST /auth/login` |
+| `POST /auth/google` |
 | `POST /auth/refresh` (리프레시 쿠키로 인증) |
 | `GET /exercises`, `GET /exercises/{id}` |
 | `GET /actuator/health` |
