@@ -87,7 +87,7 @@ npm run dev
 
 EC2(Ubuntu 24.04) 한 대에 DB·백엔드·웹서버(Caddy)를 컨테이너로 띄운다(LOG-35). 화면과 API가 한 도메인에서 나가는 동일 오리진 구성이라 CORS가 없다. 파일은 `deploy/`에 있다.
 
-완료 조건은 **HTTPS 도메인에서 로그인 후 30분을 넘겨 재발급까지 유지되는 것**이다. 리프레시 토큰 쿠키가 `Secure`라 http에서는 저장되지 않아, 이게 되면 HTTPS·웹서버·운영 프로필이 다 맞물렸다는 뜻이다(LOG-17). CD(자동 배포)는 서버가 뜬 뒤 따로 붙인다.
+완료 조건은 **HTTPS 도메인에서 로그인 후 30분을 넘겨 재발급까지 유지되는 것**이다. 리프레시 토큰 쿠키가 `Secure`라 http에서는 저장되지 않아, 이게 되면 HTTPS·웹서버·운영 프로필이 다 맞물렸다는 뜻이다(LOG-17). main에 머지하면 GitHub Actions가 자동으로 배포한다(LOG-36).
 
 | 파일 | 역할 |
 |---|---|
@@ -96,6 +96,8 @@ EC2(Ubuntu 24.04) 한 대에 DB·백엔드·웹서버(Caddy)를 컨테이너로 
 | `deploy/.env.example` | 운영 환경변수 템플릿 (도메인, DB 비밀번호, JWT 키) |
 | `deploy/setup-server.sh` | 서버 첫 준비 (스왑 2GB, Docker) |
 | `deploy/backup.sh` | DB 덤프, 7일치 보관 |
+| `deploy/update.sh` | 받아 온 코드로 이미지를 빌드하고 바뀐 컨테이너만 교체 |
+| `.github/workflows/deploy.yml` | 자동 배포. AWS SSM으로 서버에 `update.sh` 실행을 보낸다 |
 
 ### 처음 한 번
 
@@ -121,9 +123,15 @@ docker compose up -d --build
 
 ### 새 버전 올리기
 
+main에 머지하면 CI가 테스트를 통과한 뒤 자동으로 올린다. `backend/`·`frontend/`·`deploy/`가 바뀐 커밋만 배포하고, 끝나면 `/actuator/health`가 `UP`인지 확인한다. 진행 상황은 Actions 탭의 CI 실행에서 `deploy` job을 본다. 같은 커밋을 다시 올리려면 Actions → Deploy → Run workflow.
+
+자동 배포가 안 될 때는 서버에 접속해서 손으로 올린다:
+
 ```bash
 cd graduation-project && git pull
-cd deploy && docker compose up -d --build
+bash deploy/update.sh
 ```
+
+자동 배포를 처음 붙일 때 AWS·GitHub에 한 설정(서버 SSM 역할, GitHub OIDC 공급자, 배포 역할, 저장소 secret 2개)은 LOG-36에 있다.
 
 DB와 인증서는 볼륨에 남으므로 다시 빌드해도 사라지지 않는다. `docker compose down -v`는 **볼륨까지 지우므로** 운영 서버에서 쓰지 않는다.
