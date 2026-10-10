@@ -79,7 +79,7 @@ public class UserController {
     @DeleteMapping
     public ResponseEntity<Void> delete(@AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
                                        @Valid @RequestBody UserDtos.DeleteMeRequest request) {
-        userService.delete(principal.userId(), request.password());
+        userService.delete(principal.userId(), request.password(), request.googleCredential());
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE, refreshCookies.clear().toString())
                 .build();

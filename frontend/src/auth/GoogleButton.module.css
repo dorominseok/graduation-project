@@ -1,0 +1,16 @@
+.wrap {
+  width: 100%;
+}
+
+.slot {
+  min-height: 44px;
+  display: flex;
+  justify-content: center;
+}
+
+.failed {
+  font-size: var(--font-2xs);
+  color: var(--text-secondary);
+  text-align: center;
+  margin-top: var(--space-6);
+}

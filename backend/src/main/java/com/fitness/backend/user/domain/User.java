@@ -14,10 +14,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 사용자. {@code V1__init.sql} + {@code V3}의 {@code goal}.
+ * 사용자. {@code V1__init.sql} + {@code V3}의 {@code goal} + {@code V7}의 {@code google_id}.
  *
  * <p>비밀번호는 <b>해시만</b> 갖는다. 평문을 필드로 두면 로그·직렬화·디버거를 통해
  * 새어 나갈 경로가 생기므로 아예 저장하지 않는다.
+ *
+ * <p>로그인 방법은 비밀번호와 구글 둘이다(LOG-37). 구글로만 가입한 사람은 비밀번호가 없고,
+ * 이메일로 가입한 뒤 같은 이메일의 구글로 들어오면 두 방법을 다 갖는다. 둘 다 없는 계정은
+ * DB 제약({@code ck_users_login_method})이 막는다.
  */
 @Entity
 @Getter
@@ -32,8 +36,13 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+    /** 구글로만 가입했으면 {@code null}. */
+    @Column(name = "password_hash", length = 255)
     private String passwordHash;
+
+    /** 구글 회원번호({@code sub}). 이메일은 바뀔 수 있어 구글 계정은 이걸로 찾는다. */
+    @Column(name = "google_id", unique = true, length = 255)
+    private String googleId;
 
     @Column(nullable = false, length = 50)
     private String nickname;
@@ -58,6 +67,22 @@ public class User extends BaseTimeEntity {
     /** 가입. 비밀번호는 호출부가 해시해서 넘긴다 — 엔티티가 인코더를 알 필요는 없다. */
     public static User signUp(String email, String passwordHash, String nickname) {
         return new User(email, passwordHash, nickname);
+    }
+
+    /** 구글로 가입. 비밀번호 없이 구글 회원번호만 갖는다. */
+    public static User signUpWithGoogle(String email, String googleId, String nickname) {
+        User user = new User(email, null, nickname);
+        user.googleId = googleId;
+        return user;
+    }
+
+    /** 이메일로 가입한 계정에 같은 이메일의 구글 계정을 묶는다. */
+    public void linkGoogle(String googleId) {
+        this.googleId = googleId;
+    }
+
+    public boolean hasPassword() {
+        return passwordHash != null;
     }
 
     /** 프로필 부분 수정(명세 4.6). {@code null}은 "바꾸지 않음"이다. */

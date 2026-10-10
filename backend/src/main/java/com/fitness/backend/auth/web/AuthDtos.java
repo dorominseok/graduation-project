@@ -32,6 +32,10 @@ public final class AuthDtos {
             @NotBlank(message = "필수 항목입니다.") String password) {
     }
 
+    /** 구글 로그인(LOG-37). 화면이 구글에서 받은 ID 토큰을 그대로 넘긴다. */
+    public record GoogleLoginRequest(@NotBlank(message = "필수 항목입니다.") String credential) {
+    }
+
     /**
      * 가입·로그인 응답.
      *

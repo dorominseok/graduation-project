@@ -36,6 +36,9 @@ dependencies {
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+	// 구글 ID 토큰 검증(LOG-37). 구글 공개 키(JWKS)로 서명을 확인한다. 리소스 서버 스타터가 아니라
+	// 디코더만 쓴다 — 우리 API의 인증은 계속 자체 JWT(jjwt)이고, 구글 토큰은 로그인 때 한 번 본다.
+	implementation 'org.springframework.security:spring-security-oauth2-jose'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'

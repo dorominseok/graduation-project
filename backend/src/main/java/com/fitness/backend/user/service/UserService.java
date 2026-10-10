@@ -1,5 +1,6 @@
 package com.fitness.backend.user.service;
 
+import com.fitness.backend.auth.google.GoogleTokenVerifier;
 import com.fitness.backend.auth.repository.RefreshTokenRepository;
 import com.fitness.backend.common.error.ApiException;
 import com.fitness.backend.common.error.ErrorCode;
@@ -20,15 +21,18 @@ public class UserService {
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
+    private final GoogleTokenVerifier googleTokenVerifier;
     private final Clock clock;
 
     public UserService(UserRepository userRepository,
                        RefreshTokenRepository refreshTokenRepository,
                        PasswordEncoder passwordEncoder,
+                       GoogleTokenVerifier googleTokenVerifier,
                        Clock clock) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
+        this.googleTokenVerifier = googleTokenVerifier;
         this.clock = clock;
     }
 
@@ -54,13 +58,28 @@ public class UserService {
      * 리프레시 토큰·즐겨찾기·세션·세트가 함께 지워진다(명세 4.7).
      *
      * <p>소프트 삭제를 쓰지 않는다 — 탈퇴의 목적이 개인정보를 남기지 않는 것이다.
+     *
+     * <p>본인 확인은 비밀번호나 구글 재로그인 중 하나로 받는다(LOG-37). 둘 다 가진 계정은
+     * 어느 쪽이든 된다 — 구글을 묶은 뒤 비밀번호를 잊은 사람도 탈퇴할 수 있어야 한다.
      */
-    public void delete(Long userId, String rawPassword) {
+    public void delete(Long userId, String rawPassword, String googleCredential) {
         User user = get(userId);
-        if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
+        if (!confirmsIdentity(user, rawPassword, googleCredential)) {
             throw new ApiException(ErrorCode.INVALID_CREDENTIALS);
         }
         userRepository.delete(user);
+    }
+
+    private boolean confirmsIdentity(User user, String rawPassword, String googleCredential) {
+        if (rawPassword != null && !rawPassword.isBlank()) {
+            return user.hasPassword() && passwordEncoder.matches(rawPassword, user.getPasswordHash());
+        }
+        if (googleCredential != null && !googleCredential.isBlank()) {
+            // 아무 구글 계정이 아니라 이 계정에 묶인 그 구글 계정이어야 한다
+            return user.getGoogleId() != null
+                    && user.getGoogleId().equals(googleTokenVerifier.verify(googleCredential).subject());
+        }
+        throw new ApiException(ErrorCode.VALIDATION_ERROR, "비밀번호 또는 구글 확인이 필요합니다.");
     }
 
     /**
@@ -76,6 +95,10 @@ public class UserService {
     public void changePassword(Long userId, String currentPassword, String newPassword) {
         User user = get(userId);
 
+        // 구글로만 가입한 계정은 바꿀 비밀번호가 없다. 화면도 이 메뉴를 숨긴다
+        if (!user.hasPassword()) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, "구글로 가입한 계정은 비밀번호가 없습니다.");
+        }
         if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
             throw new ApiException(ErrorCode.INVALID_CREDENTIALS);
         }

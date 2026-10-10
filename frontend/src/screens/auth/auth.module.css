@@ -96,6 +96,36 @@
   cursor: default;
 }
 
+/* 이메일 폼과 구글 버튼 사이. 양옆에 가는 선 */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  margin: var(--space-20) 0 var(--space-14);
+  font-size: var(--font-2xs);
+  color: var(--text-secondary);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--card-border);
+}
+
+.notice {
+  font-size: var(--font-2xs);
+  color: var(--text-tertiary);
+  text-align: center;
+  margin-top: var(--space-14);
+}
+
+.notice a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 .switch {
   background: none;
   border: none;

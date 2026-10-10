@@ -26,6 +26,7 @@ public class SecurityConfig {
     private static final String[] PUBLIC_POST = {
             "/api/v1/auth/signup",
             "/api/v1/auth/login",
+            "/api/v1/auth/google",
             "/api/v1/auth/refresh",   // 리프레시 쿠키로 인증한다
     };
 

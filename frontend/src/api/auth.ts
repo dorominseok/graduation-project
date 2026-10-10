@@ -36,6 +36,16 @@ export function login(body: LoginBody): Promise<TokenResponse> {
 }
 
 /**
+ * 구글 로그인 (LOG-37). 구글 창에서 받은 ID 토큰을 넘긴다.
+ *
+ * 처음이면 서버가 그 자리에서 가입시키고, 같은 이메일로 가입한 계정이 있으면 거기에 묶는다.
+ * 응답은 로그인과 같다.
+ */
+export function googleLogin(credential: string): Promise<TokenResponse> {
+  return request<TokenResponse>('/auth/google', { method: 'POST', body: { credential }, anonymous: true })
+}
+
+/**
  * 로그아웃 (명세 4.4). 서버가 리프레시를 폐기하고 쿠키를 만료시킨다.
  *
  * 서버 호출이 실패해도 로컬 토큰은 지운다. 사용자가 로그아웃을 눌렀는데 화면이
@@ -70,8 +80,13 @@ export function changePassword(body: ChangePasswordRequest): Promise<void> {
   return request<void>('/users/me/password', { method: 'PATCH', body })
 }
 
-/** 회원 탈퇴 (명세 4.7). 되돌릴 수 없어 비밀번호를 다시 받는다. */
-export async function deleteMe(password: string): Promise<void> {
-  await request<void>('/users/me', { method: 'DELETE', body: { password } })
+/**
+ * 회원 탈퇴 (명세 4.7). 되돌릴 수 없어 본인 확인을 다시 받는다 — 비밀번호, 또는 구글로만
+ * 가입한 계정이면 구글 로그인을 한 번 더 해서 받은 ID 토큰(LOG-37).
+ */
+export async function deleteMe(
+  confirm: { password: string } | { googleCredential: string },
+): Promise<void> {
+  await request<void>('/users/me', { method: 'DELETE', body: confirm })
   clearAccessToken()
 }

@@ -44,6 +44,11 @@ app:
     # 그렇지 않다. 이 안의 재사용은 그 요청만 거부하고 전체 폐기는 하지 않는다.
     reuse-grace: 30s
 
+  # 구글 로그인(LOG-37). 클라이언트 ID는 공개값이라 파일에 둔다(화면 빌드에도 같은 값).
+  # GOOGLE_CLIENT_ID를 빈 값으로 주면 구글 로그인이 꺼진다
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:437151768426-5b4s7s791r6upip3muj7nta8dvnkjtr3.apps.googleusercontent.com}
+
 # 분석·통계 계산 설정 — API 명세서 8.5
 # "모든 값은 app.analysis.* 프로퍼티로 노출해 코드 수정 없이 조정 가능하게 한다."
 # 판정 로직은 순수 함수로 두고 여기서 값 객체를 만들어 넘긴다(AnalysisProperties).

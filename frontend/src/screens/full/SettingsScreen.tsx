@@ -75,6 +75,10 @@ export function SettingsScreen() {
               <span className={styles.rowLabel}>계정 설정</span>
               <Chevron />
             </Link>
+            <Link to={paths.privacy} className={styles.row}>
+              <span className={styles.rowLabel}>개인정보처리방침</span>
+              <Chevron />
+            </Link>
           </div>
         </div>
 
