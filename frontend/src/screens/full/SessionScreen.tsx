@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { BottomSheet, NumberPad, useToast } from '../../components'
 import { ErrorCodes, exerciseApi, isApiError, statsApi, workoutApi } from '../../api'
 import type { Exercise, MeasureType, MuscleGroupKey, SessionIntensity, WorkoutSession } from '../../api'
@@ -137,6 +137,7 @@ function describeSet(
  */
 export function SessionScreen() {
   const navigate = useNavigate()
+  const location = useLocation()
   // 경로에 id가 있으면 지난 기록을 여는 것이고, 없으면 오늘 운동이다.
   const { sessionId: sessionIdParam } = useParams()
   const { showToast } = useToast()
@@ -613,13 +614,27 @@ export function SessionScreen() {
   const openedIndex = cards.findIndex((card) => String(card.exerciseId) === openedId)
   const opened = openedIndex >= 0 ? cards[openedIndex] : null
 
-  const backToList = () => setParams(backfillDate ? { date: backfillDate } : {})
-  const openCard = (exerciseId: number) =>
-    setParams(
-      backfillDate
-        ? { date: backfillDate, exercise: String(exerciseId) }
-        : { exercise: String(exerciseId) },
-    )
+  /**
+   * 종목 열기·닫기와 방문 기록.
+   *
+   * <p>목록에서 종목을 열 때만 기록을 하나 쌓는다 — 휴대폰·브라우저의 뒤로가기가 목록으로
+   * 돌아오게. 화면의 ←는 그 기록을 되돌리고, 종목 사이를 ‹ ›로 넘길 때는 바꿔 끼운다.
+   * ←가 목록을 새로 쌓으면 목록의 ←(한 칸 뒤로)가 다시 종목으로 가서, 둘이 끝없이 돈다.
+   */
+  const listParams: Record<string, string> = backfillDate ? { date: backfillDate } : {}
+  const cardParams = (exerciseId: number): Record<string, string> =>
+    backfillDate
+      ? { date: backfillDate, exercise: String(exerciseId) }
+      : { exercise: String(exerciseId) }
+  const openedFromList = (location.state as { fromList?: boolean } | null)?.fromList === true
+  const backToList = () => {
+    if (openedFromList) navigate(-1)
+    // 새로고침·주소로 바로 들어와 쌓아 둔 목록이 없으면 지금 자리를 목록으로 바꾼다
+    else setParams(listParams, { replace: true })
+  }
+  const openCard = (exerciseId: number) => setParams(cardParams(exerciseId), { state: { fromList: true } })
+  const switchCard = (exerciseId: number) =>
+    setParams(cardParams(exerciseId), { replace: true, state: location.state })
 
   /** 지난 기록을 보는 중인지. 그때는 진행 시간 대신 날짜 이동을 띄운다 */
   const viewingPast = sessionIdParam !== undefined || session?.status === 'DONE'
@@ -769,7 +784,7 @@ export function SessionScreen() {
                 type="button"
                 className={styles.navArrow}
                 disabled={!prevCard}
-                onClick={() => prevCard && openCard(prevCard.exerciseId)}
+                onClick={() => prevCard && switchCard(prevCard.exerciseId)}
                 aria-label="이전 종목"
               >
                 ‹
@@ -779,7 +794,7 @@ export function SessionScreen() {
                 type="button"
                 className={styles.navArrow}
                 disabled={!nextCard}
-                onClick={() => nextCard && openCard(nextCard.exerciseId)}
+                onClick={() => nextCard && switchCard(nextCard.exerciseId)}
                 aria-label="다음 종목"
               >
                 ›
