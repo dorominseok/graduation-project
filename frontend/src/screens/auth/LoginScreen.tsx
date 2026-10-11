@@ -5,12 +5,8 @@ import { ErrorCodes, isApiError } from '../../api'
 import { GoogleButton, googleEnabled, useAuth } from '../../auth'
 import { useToast } from '../../components'
 import { validateEmail, validatePassword } from './validation'
+import { cameFromInvite, redirectTarget } from './redirect'
 import styles from './auth.module.css'
-
-/** RequireAuth가 남겨둔 "원래 가려던 곳". 없으면 홈으로 보낸다. */
-interface FromState {
-  from?: { pathname?: string }
-}
 
 export function LoginScreen() {
   const navigate = useNavigate()
@@ -23,7 +19,8 @@ export function LoginScreen() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   const [submitting, setSubmitting] = useState(false)
 
-  const redirectTo = (location.state as FromState | null)?.from?.pathname ?? paths.home
+  // RequireAuth가 남겨둔 "원래 가려던 곳". 없으면 홈으로 보낸다
+  const redirectTo = redirectTarget(location.state)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -81,6 +78,10 @@ export function LoginScreen() {
         <div className={styles.tagline}>운동 기록을 분석해 부족한 부위를 찾아드려요</div>
       </div>
 
+      {cameFromInvite(location.state) && (
+        <div className={`${styles.inviteNotice} ${styles.inviteNoticeLogin}`}>그룹 초대를 받으셨네요. 로그인하거나 가입하면 바로 참여 화면으로 이어져요.</div>
+      )}
+
       <div className={styles.fields}>
         <div>
           <div className={styles.label}>이메일</div>
@@ -120,7 +121,8 @@ export function LoginScreen() {
         </>
       )}
 
-      <Link to={paths.signup} className={styles.switch}>
+      {/* 초대 링크로 왔으면 가입 뒤에도 참여 화면으로 가야 하므로, 가려던 곳을 그대로 넘긴다 */}
+      <Link to={paths.signup} state={location.state} className={styles.switch}>
         계정이 없으신가요? <span className={styles.switchAccent}>회원가입</span>
       </Link>
     </form>

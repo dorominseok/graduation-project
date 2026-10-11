@@ -1,18 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ScreenHeader, useToast } from '../../components'
+import { MonthCalendar, ScreenHeader, useToast } from '../../components'
 import { isApiError, workoutApi } from '../../api'
 import type { CalendarResponse } from '../../api'
 import { paths } from '../../app/paths'
 import styles from './history.module.css'
-
-// 주는 월요일에 시작한다(명세 1.2). 홈의 "이번 주"와 같은 기준이어야 두 화면이 안 어긋난다
-const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
-
-/** 로컬 날짜를 YYYY-MM-DD로. toISOString은 UTC로 바꿔 하루가 밀린다 */
-function toDateString(date: Date): string {
-  return date.toLocaleDateString('sv-SE')
-}
 
 /**
  * 기록 탭 — 월간 달력 (명세 6.8).
@@ -42,15 +34,21 @@ export function HistoryScreen() {
   )
 
   // 달이 바뀌면 그 달의 기록 있는 날짜를 다시 읽는다.
+  // 달을 빠르게 넘기면 응답이 순서대로 오지 않는다. 지나간 달의 응답은 버린다.
   useEffect(() => {
+    let stale = false
     const run = async () => {
       try {
-        setCalendar(await workoutApi.getCalendar(year, month))
+        const next = await workoutApi.getCalendar(year, month)
+        if (!stale) setCalendar(next)
       } catch (err) {
-        fail(err)
+        if (!stale) fail(err)
       }
     }
     void run()
+    return () => {
+      stale = true
+    }
   }, [year, month, fail])
 
   const moveMonth = (delta: number) => {
@@ -83,72 +81,18 @@ export function HistoryScreen() {
     }
   }
 
-  const todayKey = toDateString(today)
-  // getDay()는 일요일이 0이라 월요일이 0이 되게 돌린다
-  const firstWeekday = (new Date(year, month - 1, 1).getDay() + 6) % 7
-  const daysInMonth = new Date(year, month, 0).getDate()
-  const dayInfo = (key: string) => calendar?.days.find((d) => d.date === key)
-
   return (
     <>
       <ScreenHeader title="기록" hideBack />
 
       <div className={styles.page}>
-        <div className={styles.monthBar}>
-          <button type="button" className={styles.monthNav} onClick={() => moveMonth(-1)} aria-label="지난 달">
-            ‹
-          </button>
-          <span className={styles.monthLabel}>
-            {year}년 {month}월
-          </span>
-          <button type="button" className={styles.monthNav} onClick={() => moveMonth(1)} aria-label="다음 달">
-            ›
-          </button>
-        </div>
-
-        <div className={styles.weekdays}>
-          {WEEKDAYS.map((day) => (
-            <span key={day} className={styles.weekday}>
-              {day}
-            </span>
-          ))}
-        </div>
-
-        <div className={styles.grid}>
-          {/* 1일이 시작하는 요일까지는 빈 자리로 둔다 */}
-          {Array.from({ length: firstWeekday }, (_, i) => (
-            <span key={`blank-${i}`} className={styles.blank} />
-          ))}
-
-          {Array.from({ length: daysInMonth }, (_, i) => {
-            const day = i + 1
-            const key = toDateString(new Date(year, month - 1, day))
-            const info = dayInfo(key)
-            return (
-              <button
-                key={key}
-                type="button"
-                className={[
-                  styles.cell,
-                  key === todayKey ? styles.cellToday : '',
-                  info?.hasDraft ? styles.cellDraft : '',
-                ].join(' ')}
-                onClick={() => void openDay(key)}
-              >
-                <span className={styles.dayNumber}>{day}</span>
-                {info && (
-                  <span
-                    className={[
-                      styles.dot,
-                      info.sessionCount > 1 ? styles.dotMany : '',
-                      info.hasDraft ? styles.dotDraft : '',
-                    ].join(' ')}
-                  />
-                )}
-              </button>
-            )
-          })}
-        </div>
+        <MonthCalendar
+          year={year}
+          month={month}
+          days={calendar?.days}
+          onMoveMonth={moveMonth}
+          onSelectDay={(key) => void openDay(key)}
+        />
       </div>
     </>
   )

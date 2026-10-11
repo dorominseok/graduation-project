@@ -11,6 +11,7 @@ export * as workoutApi from './workout'
 export type { HistoryQuery } from './workout'
 export * as statsApi from './stats'
 export * as analysisApi from './analysis'
+export * as groupApi from './groups'
 export type {
   Balance,
   BalanceSide,
@@ -20,6 +21,7 @@ export type {
   BrowseCategory,
   CalendarResponse,
   CategoryCount,
+  CheerState,
   ChangePasswordRequest,
   CreateSessionRequest,
   CreateSetRequest,
@@ -27,7 +29,14 @@ export type {
   Exercise,
   ExerciseGroup,
   GroupCount,
+  GroupDetail,
+  GroupSummary,
+  InvitePreview,
+  JoinResult,
   LastPerformance,
+  MemberActivity,
+  MemberDay,
+  MemberSession,
   MeasureType,
   MeResponse,
   MuscleGroupKey,
@@ -44,6 +53,7 @@ export type {
   SummaryBadge,
   SetInGroup,
   TierKey,
+  TodayStatus,
   TokenResponse,
   TrainingGoal,
   UpdateMeRequest,

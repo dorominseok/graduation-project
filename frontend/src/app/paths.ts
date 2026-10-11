@@ -29,4 +29,16 @@ export const paths = {
   accountSettings: '/settings/account',
   personalInfo: '/settings/personal',
   feedback: '/feedback',
+
+  // 친구 그룹 (LOG-38). 그룹 탭 아래에 둬서 하단바의 "그룹"에 불이 켜진다
+  groupDetail: (groupId: number | string = ':groupId') => `/group/${groupId}`,
+  groupMember: (groupId: number | string = ':groupId', memberId: number | string = ':memberId') =>
+    `/group/${groupId}/members/${memberId}`,
+  groupMemberDay: (
+    groupId: number | string = ':groupId',
+    memberId: number | string = ':memberId',
+    date: string = ':date',
+  ) => `/group/${groupId}/members/${memberId}/days/${date}`,
+  /** 초대 링크. 카톡 등으로 보내는 주소라 짧게 둔다 */
+  join: (code: string = ':code') => `/join/${code}`,
 } as const

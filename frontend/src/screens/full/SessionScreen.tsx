@@ -9,6 +9,7 @@ import type { PickerStep } from './ExercisePicker'
 import { BODY_PART_LABEL, EQUIPMENT_LABEL, MEASURE_CHIP_LABEL } from './exerciseLabels'
 import { NumberField } from './NumberField'
 import { RestField } from './RestField'
+import { describeSet, trimNumber } from './setFormat'
 import styles from './session.module.css'
 
 /** 화면에만 있는 세트 행. 완료 체크를 해야 서버로 간다(LOG-05). */
@@ -104,22 +105,6 @@ function formatRest(seconds: number): string {
   const mm = Math.floor(seconds / 60)
   const ss = String(seconds % 60).padStart(2, '0')
   return `${mm}:${ss}`
-}
-
-/** 중량은 2.5처럼 소수가 나오지만 60.0으로 적지는 않는다 */
-function trimNumber(value: number): string {
-  return String(Math.round(value * 10) / 10)
-}
-
-/** 세트 한 줄을 "60kg×10" 꼴로. 카드 요약과 직전 기록 줄이 같은 말투를 쓴다 */
-function describeSet(
-  measureType: MeasureType,
-  set: { weightKg: number | null; reps: number | null; durationSec: number | null },
-): string {
-  if (measureType === 'TIME') return `${set.durationSec ?? 0}초`
-  if (measureType === 'BODYWEIGHT_REPS') return `${set.reps ?? 0}회`
-  const sign = measureType === 'WEIGHTED_BODYWEIGHT' ? '+' : ''
-  return `${sign}${trimNumber(set.weightKg ?? 0)}kg×${set.reps ?? 0}`
 }
 
 /**

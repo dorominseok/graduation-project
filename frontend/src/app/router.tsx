@@ -24,6 +24,10 @@ import { PersonalInfoScreen } from '../screens/full/PersonalInfoScreen'
 import { FeedbackScreen } from '../screens/full/FeedbackScreen'
 import { DevComponentsScreen } from '../screens/DevComponentsScreen'
 import { PrivacyScreen } from '../screens/full/PrivacyScreen'
+import { GroupDetailScreen } from '../screens/group/GroupDetailScreen'
+import { MemberCalendarScreen } from '../screens/group/MemberCalendarScreen'
+import { MemberDayScreen } from '../screens/group/MemberDayScreen'
+import { JoinScreen } from '../screens/group/JoinScreen'
 
 export const router = createBrowserRouter([
   // 탭 밖 — 인증. 로그인 전에 닿아야 하므로 가드 밖에 둔다.
@@ -58,6 +62,11 @@ export const router = createBrowserRouter([
           { path: paths.settings, element: <SettingsScreen /> },
           { path: paths.accountSettings, element: <AccountSettingsScreen /> },
           { path: paths.personalInfo, element: <PersonalInfoScreen /> },
+          { path: paths.groupDetail(), element: <GroupDetailScreen /> },
+          { path: paths.groupMember(), element: <MemberCalendarScreen /> },
+          { path: paths.groupMemberDay(), element: <MemberDayScreen /> },
+          // 초대 링크는 로그인 가드 안에 둔다. 로그인 전이면 로그인(또는 가입) 뒤 여기로 돌아온다
+          { path: paths.join(), element: <JoinScreen /> },
         ],
       },
 
