@@ -4,6 +4,7 @@ import com.fitness.backend.auth.google.GoogleTokenVerifier;
 import com.fitness.backend.auth.repository.RefreshTokenRepository;
 import com.fitness.backend.common.error.ApiException;
 import com.fitness.backend.common.error.ErrorCode;
+import com.fitness.backend.group.service.GroupService;
 import com.fitness.backend.user.domain.User;
 import com.fitness.backend.user.repository.UserRepository;
 import com.fitness.backend.user.web.UserDtos;
@@ -22,17 +23,20 @@ public class UserService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final GoogleTokenVerifier googleTokenVerifier;
+    private final GroupService groupService;
     private final Clock clock;
 
     public UserService(UserRepository userRepository,
                        RefreshTokenRepository refreshTokenRepository,
                        PasswordEncoder passwordEncoder,
                        GoogleTokenVerifier googleTokenVerifier,
+                       GroupService groupService,
                        Clock clock) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.googleTokenVerifier = googleTokenVerifier;
+        this.groupService = groupService;
         this.clock = clock;
     }
 
@@ -61,12 +65,16 @@ public class UserService {
      *
      * <p>본인 확인은 비밀번호나 구글 재로그인 중 하나로 받는다(LOG-37). 둘 다 가진 계정은
      * 어느 쪽이든 된다 — 구글을 묶은 뒤 비밀번호를 잊은 사람도 탈퇴할 수 있어야 한다.
+     *
+     * <p>방장인 그룹은 지우기 전에 다음 멤버에게 넘긴다(LOG-38). 그룹 멤버십과 응원은
+     * 연쇄 삭제로 함께 지워진다.
      */
     public void delete(Long userId, String rawPassword, String googleCredential) {
         User user = get(userId);
         if (!confirmsIdentity(user, rawPassword, googleCredential)) {
             throw new ApiException(ErrorCode.INVALID_CREDENTIALS);
         }
+        groupService.releaseOwnership(userId);
         userRepository.delete(user);
     }
 
