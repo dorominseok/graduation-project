@@ -1,22 +1,26 @@
 package com.fitness.backend.workout.domain;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 
 /**
- * 세트 저장 시각으로부터 운동 시간을 산출한다. 「운동기록_방식_설계서」 4.2 / LOG-03.
+ * 세트 저장 시각으로부터 하루의 운동 시간을 산출한다. 「운동기록_방식_설계서」 4.2 / LOG-03 / LOG-39.
  *
  * <pre>
- *   duration = Σ(연속한 두 세트의 간격, 15분 초과 시 15분으로 캡) + 90초
- *   상한: 4시간
+ *   저장 시각을 정렬해, 간격이 boutGap(30분)을 넘는 곳에서 구간을 나눈다
+ *   구간 시간      = (구간의 마지막 세트 − 첫 세트) + 90초
+ *   하루 운동 시간 = 첫 세트가 그 날짜에 저장된 구간들의 합. 상한 4시간
  * </pre>
  *
- * <p>시작·종료 버튼을 두지 않은 이유는 운동 중에 버튼 조작을 잊기 쉽고, 종료를
- * 누르지 않으면 데이터가 통째로 유실되거나 비정상적으로 길어지기 때문이다.
- * 이 값은 그룹 활동 공유의 참고 지표이므로 분 단위 정밀도면 충분하고,
- * 보정 규칙은 이상치만 막는 수준으로 둔다.
+ * <p>시작·종료 버튼이 없다. 세트를 체크하는 행위에서 시간이 저절로 나오고, 마지막 세트가 곧 끝이다.
+ *
+ * <p>"첫 세트가 그 날짜에 저장된 구간"만 세는 것이 사후 입력을 거른다. 어제 빠뜨린 세트를 오늘
+ * 채우면 그 구간은 오늘 시작했으므로 어제 기록의 시간에 들어가지 않는다. 자정을 넘긴 구간은
+ * 첫 세트가 그 날짜라 통째로 들어간다.
  */
 public final class SessionDuration {
 
@@ -24,28 +28,16 @@ public final class SessionDuration {
     }
 
     /**
-     * {@code LIVE} 세션의 운동 시간을 산출한다.
-     *
-     * <p>{@code BACKFILL} 세션에는 쓰지 않는다 — 저장 시각이 실제 운동 시각과
-     * 무관하므로 {@code durationSec}을 {@code null}로 두고, 사용자가 직접 입력한
-     * {@code durationOverrideSec}만 사용한다(기록 방식 4.3).
-     *
-     * @param recordedAts 세션에 속한 전 세트의 저장 시각. 순서는 무관하며 내부에서 정렬한다
-     * @return 산출된 운동 시간. 세트가 없으면 {@link Duration#ZERO}
+     * @param recordedAts 그날 기록의 전 세트 저장 시각. 순서는 무관하며 내부에서 정렬한다
+     * @param performedOn 기록의 날짜
+     * @param zone        저장 시각을 날짜로 바꿀 시간대
+     * @return 운동 시간. 세트가 없거나 그 날짜에 시작한 구간이 없으면(사후 입력만 있으면) {@code null}
      */
-    public static Duration of(List<OffsetDateTime> recordedAts, DurationPolicy policy) {
-        if (recordedAts == null) {
-            throw new IllegalArgumentException("세트 저장 시각 목록은 null일 수 없다");
+    public static Duration of(List<OffsetDateTime> recordedAts, LocalDate performedOn, ZoneId zone,
+                              DurationPolicy policy) {
+        if (recordedAts == null || performedOn == null || zone == null || policy == null) {
+            throw new IllegalArgumentException("세트 저장 시각·날짜·시간대·보정 규칙은 null일 수 없다");
         }
-        if (policy == null) {
-            throw new IllegalArgumentException("보정 규칙은 null일 수 없다");
-        }
-        if (recordedAts.isEmpty()) {
-            // 세트 0개 세션은 종료 자체가 422 EMPTY_SESSION으로 막히지만(명세 6.3),
-            // 계산 함수 단독으로도 예외 없이 정의되게 둔다.
-            return Duration.ZERO;
-        }
-
         List<OffsetDateTime> sorted = recordedAts.stream()
                 .peek(t -> {
                     if (t == null) {
@@ -54,17 +46,29 @@ public final class SessionDuration {
                 })
                 .sorted(Comparator.naturalOrder())
                 .toList();
+        if (sorted.isEmpty()) {
+            return null;
+        }
 
         Duration total = Duration.ZERO;
-        for (int i = 1; i < sorted.size(); i++) {
-            Duration gap = Duration.between(sorted.get(i - 1), sorted.get(i));
-            if (gap.isNegative()) {
-                gap = Duration.ZERO;
+        boolean counted = false;
+        int boutStart = 0;
+        for (int i = 1; i <= sorted.size(); i++) {
+            boolean boutEnds = i == sorted.size()
+                    || Duration.between(sorted.get(i - 1), sorted.get(i)).compareTo(policy.boutGap()) > 0;
+            if (!boutEnds) {
+                continue;
             }
-            total = total.plus(gap.compareTo(policy.interSetCap()) > 0 ? policy.interSetCap() : gap);
+            OffsetDateTime first = sorted.get(boutStart);
+            if (first.atZoneSameInstant(zone).toLocalDate().isEqual(performedOn)) {
+                total = total.plus(Duration.between(first, sorted.get(i - 1))).plus(policy.lastSetBonus());
+                counted = true;
+            }
+            boutStart = i;
         }
-        total = total.plus(policy.lastSetBonus());
-
-        return total.compareTo(policy.sessionCap()) > 0 ? policy.sessionCap() : total;
+        if (!counted) {
+            return null;
+        }
+        return total.compareTo(policy.dayCap()) > 0 ? policy.dayCap() : total;
     }
 }

@@ -167,12 +167,7 @@ export interface Page<T> {
 
 // ── 운동 기록 (명세 6장)
 
-export type SessionStatus = 'DRAFT' | 'DONE'
-
-/** 입력 경로. 화면에서 고르게 하지 않고 진입 경로로 정한다 (명세 6.2). */
-export type SessionSource = 'LIVE' | 'BACKFILL'
-
-/** 세션 상세 안의 세트 (명세 6.5). */
+/** 기록 상세 안의 세트 (명세 6.5). */
 export interface SetInGroup {
   id: number
   clientSetId: string
@@ -192,15 +187,19 @@ export interface ExerciseGroup {
   sets: SetInGroup[]
 }
 
-/** 세션 상세 (명세 6.5). */
+/**
+ * 하루 기록 (명세 6.5, LOG-39). 사용자의 하루에 하나이고 시작·종료가 없다.
+ * 시각과 시간은 서버가 세트 저장 시각으로 계산한다.
+ */
 export interface WorkoutSession {
   id: number
   performedOn: string
-  status: SessionStatus
-  source: SessionSource
   routineId: number | null
+  /** 첫 세트 저장 시각. 세트가 없으면 null */
   startedAt: string | null
+  /** 마지막 세트 저장 시각 */
   endedAt: string | null
+  /** 30분 넘는 공백에서 나눈 구간들의 합. 사후 입력만 있으면 null */
   durationSec: number | null
   durationOverrideSec: number | null
   effectiveDurationSec: number | null
@@ -225,10 +224,9 @@ export interface WorkoutSet {
   recordedAt: string
 }
 
-export interface CreateSessionRequest {
-  performedOn: string
-  source?: SessionSource
-  routineId?: number | null
+/** 그날 기록 열기 (명세 6.2). 날짜를 생략하면 오늘이다 — 자정을 넘긴 운동이면 서버가 어제로 잇는다 */
+export interface OpenDayRequest {
+  performedOn?: string
 }
 
 /**
@@ -256,7 +254,7 @@ export interface UpdateSetRequest {
 }
 
 /**
- * 세션 수정 요청 (명세 6.9).
+ * 하루 기록 수정 요청 (명세 6.9). 기록이 이미 있는 날짜로는 옮길 수 없다(409).
  *
  * 값을 비울 때는 `null`이 아니라 빈 문자열과 `0`을 보낸다(LOG-23) — JSON에서
  * "안 보냄"과 "null"이 서버에서 구분되지 않기 때문이다.
@@ -267,23 +265,21 @@ export interface UpdateSessionRequest {
   durationOverrideSec?: number
 }
 
-/** 히스토리 한 건 (명세 6.6). 세트는 담기지 않는다. */
+/** 히스토리 한 건 (명세 6.6). 운동한 날 하나다. 세트는 담기지 않는다. */
 export interface SessionSummary {
   id: number
   performedOn: string
-  status: SessionStatus
-  source: SessionSource
   effectiveDurationSec: number | null
   setCount: number
   exerciseCount: number
   exercises: { id: number; nameKo: string }[]
 }
 
-/** 캘린더 월별 요약 (명세 6.8). */
+/** 캘린더 월별 요약 (명세 6.8). 운동한 날만 온다. */
 export interface CalendarResponse {
   year: number
   month: number
-  days: { date: string; sessionCount: number; hasDraft: boolean }[]
+  days: { date: string }[]
 }
 
 /** 직전 수행 기록 (명세 5.5). 종목을 고르는 순간 세트 행을 채우는 데 쓴다. */
@@ -383,7 +379,8 @@ export interface MuscleVolume {
   shoulderSplitResolved: boolean
   confidence: {
     level: 'LOW' | 'NORMAL'
-    doneSessionCount: number
+    /** 최근 집계 기간에 운동한 날 수 */
+    workoutDayCount: number
     threshold: number
     /** LOW일 때만 온다 */
     message: string | null
@@ -456,15 +453,15 @@ export interface GroupSummary {
   name: string
   memberCount: number
   isOwner: boolean
-  /** 오늘 완료한 운동이 있는 멤버 수 */
+  /** 오늘 운동한 멤버 수 */
   todayWorkedOutCount: number
   /** 목록 카드의 멤버 얼굴. 들어온 순서 */
   members: { userId: number; nickname: string; isMe: boolean; todayStatus: TodayStatus }[]
 }
 
 /**
- * 오늘 운동했나. 손으로 체크하지 않고 기록에서 정한다(LOG-38).
- * 그룹에는 끝난 운동만 보이므로 "운동 중"은 없다.
+ * 오늘 운동했나. 손으로 체크하지 않고 기록에서 정한다(LOG-38) — 오늘 세트가 하나라도 있으면 DONE.
+ * 종료가 없으므로 "운동 중"이라는 상태도 없다(LOG-39).
  */
 export type TodayStatus = 'DONE' | 'NONE'
 
@@ -481,9 +478,10 @@ export interface MemberActivity {
     cheerCount: number
     cheeredByMe: boolean
   }
-  /** 이번 주(월~일). 완료한 운동만 센다 */
+  /** 이번 주(월~일) */
   week: {
-    sessionCount: number
+    /** 운동한 날 수 */
+    dayCount: number
     /** 시간 없는 사후 입력은 빠진다 */
     totalDurationSec: number
     workoutDates: string[]
@@ -524,11 +522,9 @@ export interface CheerState {
   cheeredByMe: boolean
 }
 
-/** 멤버의 운동 한 번. 세션 상세(명세 6.5)에서 메모·세트 id를 뺀 것이다. */
+/** 멤버의 하루 기록. 기록 상세(명세 6.5)에서 메모·세트 id를 뺀 것이다. */
 export interface MemberSession extends CheerState {
   id: number
-  status: SessionStatus
-  source: SessionSource
   startedAt: string | null
   endedAt: string | null
   /** 보정값 우선. 시간 없는 사후 입력은 null */
@@ -549,10 +545,10 @@ export interface MemberSession extends CheerState {
   }[]
 }
 
-/** 멤버의 하루 기록(읽기 전용). */
+/** 멤버의 하루 기록(읽기 전용). 그날 운동하지 않았으면 session이 null이다. */
 export interface MemberDay {
   userId: number
   nickname: string
   date: string
-  sessions: MemberSession[]
+  session: MemberSession | null
 }

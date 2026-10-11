@@ -11,7 +11,6 @@ import com.fitness.backend.group.repository.FriendGroupRepository;
 import com.fitness.backend.group.repository.GroupMemberRepository;
 import com.fitness.backend.group.web.GroupDtos.GroupDetailResponse;
 import com.fitness.backend.user.repository.UserRepository;
-import com.fitness.backend.workout.domain.SessionSource;
 import com.fitness.backend.workout.domain.WorkoutSession;
 import com.fitness.backend.workout.repository.WorkoutSessionRepository;
 import java.time.LocalDate;
@@ -121,10 +120,8 @@ class GroupConcurrencyTest {
         Long friend = user();
         String code = group(owner).inviteCode();
         groupService.join(friend, code);
-        // 응원은 끝난 운동에만 한다
-        WorkoutSession done = WorkoutSession.start(friend, LocalDate.now(), SessionSource.LIVE, null);
-        done.complete(OffsetDateTime.now(), null);
-        Long sessionId = sessionRepository.save(done).getId();
+        sessionRepository.insertIfAbsent(friend, LocalDate.now());
+        Long sessionId = sessionRepository.findByUserIdAndPerformedOn(friend, LocalDate.now()).orElseThrow().getId();
         Long groupId = groups.get(0);
 
         List<Object> results = race(() -> groupService.cheer(owner, groupId, sessionId),

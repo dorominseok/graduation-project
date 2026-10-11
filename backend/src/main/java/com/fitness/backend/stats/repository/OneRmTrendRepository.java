@@ -27,7 +27,6 @@ public interface OneRmTrendRepository extends Repository<WorkoutSet, Long> {
              where w.sessionId = s.id
                and w.exerciseId = :exerciseId
                and s.userId = :userId
-               and s.status = com.fitness.backend.workout.domain.SessionStatus.DONE
                and s.performedOn >= :from
                and s.performedOn <= :to
                and w.weightKg is not null

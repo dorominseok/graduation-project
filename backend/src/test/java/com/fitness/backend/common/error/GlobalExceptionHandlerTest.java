@@ -52,7 +52,7 @@ class GlobalExceptionHandlerTest {
 
         @PostMapping("/boom")
         String boom() {
-            throw new ApiException(ErrorCode.DRAFT_SESSION_EXISTS, "진행 중인 운동이 있어요.");
+            throw new ApiException(ErrorCode.DAY_ALREADY_RECORDED, "그 날짜에는 이미 기록이 있어요.");
         }
 
         @PostMapping("/blowup")
@@ -73,9 +73,9 @@ class GlobalExceptionHandlerTest {
     void apiException() throws Exception {
         mvc.perform(post("/api/v1/__test/boom"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("DRAFT_SESSION_EXISTS"))
+                .andExpect(jsonPath("$.code").value("DAY_ALREADY_RECORDED"))
                 .andExpect(jsonPath("$.status").value(409))
-                .andExpect(jsonPath("$.message").value("진행 중인 운동이 있어요."))
+                .andExpect(jsonPath("$.message").value("그 날짜에는 이미 기록이 있어요."))
                 .andExpect(jsonPath("$.path").value("/api/v1/__test/boom"))
                 .andExpect(jsonPath("$.timestamp").exists());
     }

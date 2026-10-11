@@ -73,11 +73,10 @@ class GroupActivityTest {
     // ── 오늘·이번 주
 
     @Test
-    @DisplayName("오늘 운동은 기록에서 정한다 — 완료하면 DONE, 기록 중이거나 없으면 NONE (끝난 운동만 보인다)")
+    @DisplayName("오늘 운동은 기록에서 정한다 — 오늘 세트가 있으면 DONE, 기록을 열기만 했거나 없으면 NONE")
     void todayStatusComesFromRecords() throws Exception {
         long done = liveSession(younghee, 2);
-        complete(younghee, done);
-        liveSession(chulsoo, 1);   // 종료하지 않음
+        liveSession(chulsoo, 0);   // 기록 화면만 열고 체크하지 않음
 
         detail(owner)
                 .andExpect(status().isOk())
@@ -102,23 +101,28 @@ class GroupActivityTest {
     }
 
     @Test
-    @DisplayName("이번 주는 월요일부터다 — 횟수엔 사후 입력이 들어가고, 시간 합에선 시간 없는 사후 입력이 빠진다")
-    void weekCountsDoneSessionsSinceMonday() throws Exception {
+    @DisplayName("이번 주는 월요일부터 운동한 날을 센다 — 사후 입력은 횟수엔 들고 시간 합에선 빠진다")
+    void weekCountsWorkoutDaysSinceMonday() throws Exception {
         LocalDate weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        backfillDone(younghee, weekStart.minusDays(1));   // 지난주 일요일 — 빠진다
-        backfillDone(younghee, today);                     // 사후 입력 — 횟수엔 들고 시간엔 빠진다
+        openWithSets(younghee, weekStart.minusDays(1), 1);   // 지난주 일요일 — 빠진다
+        // 이번 주의 지난 날에 사후 입력. 오늘이 월요일이면 이번 주에 지난 날이 없다
+        boolean earlierDayThisWeek = weekStart.isBefore(today);
+        if (earlierDayThisWeek) {
+            openWithSets(younghee, weekStart, 1);
+        }
         long live = liveSession(younghee, 2);
-        int liveDuration = complete(younghee, live).get("effectiveDurationSec").asInt();
+        int liveDuration = json(mvc.perform(get("/api/v1/workout-sessions/" + live)
+                .header(HttpHeaders.AUTHORIZATION, younghee.bearer()))).get("effectiveDurationSec").asInt();
+        int days = earlierDayThisWeek ? 2 : 1;
 
         detail(owner)
                 .andExpect(jsonPath("$.weekStart").value(weekStart.toString()))
-                .andExpect(jsonPath("$.members[1].week.sessionCount").value(2))
+                .andExpect(jsonPath("$.members[1].week.dayCount").value(days))
                 .andExpect(jsonPath("$.members[1].week.totalDurationSec").value(liveDuration))
-                .andExpect(jsonPath("$.members[1].week.workoutDates.length()").value(1))
-                .andExpect(jsonPath("$.members[1].week.workoutDates[0]").value(today.toString()))
-                // 오늘 둘 중 가장 최근에 끝낸 것이 응원 대상이다
+                .andExpect(jsonPath("$.members[1].week.workoutDates.length()").value(days))
+                .andExpect(jsonPath("$.members[1].week.workoutDates[" + (days - 1) + "]").value(today.toString()))
                 .andExpect(jsonPath("$.members[1].today.sessionId").value(live))
-                .andExpect(jsonPath("$.members[0].week.sessionCount").value(0))
+                .andExpect(jsonPath("$.members[0].week.dayCount").value(0))
                 .andExpect(jsonPath("$.members[0].week.totalDurationSec").value(0));
     }
 
@@ -128,7 +132,6 @@ class GroupActivityTest {
     @DisplayName("멤버의 하루 기록은 세트까지 보이고 메모는 보이지 않는다")
     void memberDayHidesMemo() throws Exception {
         long session = liveSession(younghee, 2);
-        complete(younghee, session);
         mvc.perform(patch("/api/v1/workout-sessions/" + session).header(HttpHeaders.AUTHORIZATION, younghee.bearer())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"memo\":\"오늘 컨디션 최악\"}"))
                 .andExpect(status().isOk());
@@ -136,47 +139,50 @@ class GroupActivityTest {
         memberDay(owner, younghee, today)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nickname").value("영희"))
-                .andExpect(jsonPath("$.sessions.length()").value(1))
-                .andExpect(jsonPath("$.sessions[0].id").value(session))
-                .andExpect(jsonPath("$.sessions[0].status").value("DONE"))
-                .andExpect(jsonPath("$.sessions[0].exercises[0].exerciseName").value("바벨 벤치프레스"))
+                .andExpect(jsonPath("$.session.id").value(session))
+                .andExpect(jsonPath("$.session.exercises[0].exerciseName").value("바벨 벤치프레스"))
                 // 종목 카드의 동작 그림 파일 이름을 만든다
-                .andExpect(jsonPath("$.sessions[0].exercises[0].exerciseNameEn").isNotEmpty())
-                .andExpect(jsonPath("$.sessions[0].exercises[0].sets.length()").value(2))
-                .andExpect(jsonPath("$.sessions[0].exercises[0].sets[0].weightKg").value(40.0))
-                .andExpect(jsonPath("$.sessions[0].exercises[0].sets[0].reps").value(10))
-                .andExpect(jsonPath("$.sessions[0].memo").doesNotExist())
-                .andExpect(jsonPath("$.sessions[0].exercises[0].sets[0].clientSetId").doesNotExist());
+                .andExpect(jsonPath("$.session.exercises[0].exerciseNameEn").isNotEmpty())
+                .andExpect(jsonPath("$.session.exercises[0].sets.length()").value(2))
+                .andExpect(jsonPath("$.session.exercises[0].sets[0].weightKg").value(40.0))
+                .andExpect(jsonPath("$.session.exercises[0].sets[0].reps").value(10))
+                .andExpect(jsonPath("$.session.memo").doesNotExist())
+                .andExpect(jsonPath("$.session.exercises[0].sets[0].clientSetId").doesNotExist());
 
         memberDay(owner, younghee, today.minusDays(3))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.sessions.length()").value(0));
+                .andExpect(jsonPath("$.session").doesNotExist());
     }
 
     @Test
-    @DisplayName("진행 중인 운동은 하루 기록·캘린더에 보이지 않고, 응원할 수도 없다")
-    void inProgressWorkoutIsHidden() throws Exception {
-        long draft = liveSession(chulsoo, 2);   // 종료하지 않음
+    @DisplayName("운동하는 중에도 그때까지 체크한 세트가 보이고 응원할 수 있다 — 종료가 없다")
+    void workoutInProgressIsVisible() throws Exception {
+        long session = liveSession(chulsoo, 0);   // 열기만 했다
 
-        memberDay(owner, chulsoo, today)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.sessions.length()").value(0));
+        // 세트가 없으면 운동한 날이 아니다
+        memberDay(owner, chulsoo, today).andExpect(jsonPath("$.session").doesNotExist());
         mvc.perform(get("/api/v1/groups/" + groupId + "/members/" + chulsoo.id() + "/calendar")
                         .param("year", String.valueOf(today.getYear()))
                         .param("month", String.valueOf(today.getMonthValue()))
                         .header(HttpHeaders.AUTHORIZATION, owner.bearer()))
                 .andExpect(jsonPath("$.days.length()").value(0));
-        cheer(owner, draft).andExpect(status().isNotFound());
 
-        complete(chulsoo, draft);
-        memberDay(owner, chulsoo, today).andExpect(jsonPath("$.sessions.length()").value(1));
-        cheer(owner, draft).andExpect(status().isOk());
+        addSets(chulsoo, session, 2);
+        memberDay(owner, chulsoo, today)
+                .andExpect(jsonPath("$.session.exercises[0].sets.length()").value(2));
+        cheer(owner, session).andExpect(status().isOk());
+
+        // 한 세트 더 하면 그대로 늘어난다
+        addSets(chulsoo, session, 1);
+        memberDay(owner, chulsoo, today)
+                .andExpect(jsonPath("$.session.exercises[0].sets.length()").value(3))
+                .andExpect(jsonPath("$.session.cheerCount").value(1));
     }
 
     @Test
     @DisplayName("멤버의 캘린더는 내 캘린더와 같은 모양이다")
     void memberCalendarMatchesOwnCalendar() throws Exception {
-        complete(younghee, liveSession(younghee, 1));
+        liveSession(younghee, 1);
 
         mvc.perform(get("/api/v1/groups/" + groupId + "/members/" + younghee.id() + "/calendar")
                         .param("year", String.valueOf(today.getYear()))
@@ -184,8 +190,7 @@ class GroupActivityTest {
                         .header(HttpHeaders.AUTHORIZATION, owner.bearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.days.length()").value(1))
-                .andExpect(jsonPath("$.days[0].date").value(today.toString()))
-                .andExpect(jsonPath("$.days[0].sessionCount").value(1));
+                .andExpect(jsonPath("$.days[0].date").value(today.toString()));
     }
 
     @Test
@@ -211,7 +216,6 @@ class GroupActivityTest {
     @DisplayName("응원은 한 사람이 한 번 — 다시 눌러도 그대로고, 취소하면 빠진다")
     void cheerIsOncePerPerson() throws Exception {
         long session = liveSession(younghee, 1);
-        complete(younghee, session);
 
         cheer(owner, session).andExpect(status().isOk())
                 .andExpect(jsonPath("$.cheerCount").value(1))
@@ -227,8 +231,8 @@ class GroupActivityTest {
                 .andExpect(jsonPath("$.members[1].today.cheerCount").value(2))
                 .andExpect(jsonPath("$.members[1].today.cheeredByMe").value(false));
         memberDay(chulsoo, younghee, today)
-                .andExpect(jsonPath("$.sessions[0].cheerCount").value(2))
-                .andExpect(jsonPath("$.sessions[0].cheeredByMe").value(true));
+                .andExpect(jsonPath("$.session.cheerCount").value(2))
+                .andExpect(jsonPath("$.session.cheeredByMe").value(true));
 
         cancelCheer(owner, session).andExpect(status().isOk())
                 .andExpect(jsonPath("$.cheerCount").value(1))
@@ -241,16 +245,13 @@ class GroupActivityTest {
     @DisplayName("내 운동에는 응원할 수 없고, 그룹 밖 운동에도 할 수 없다")
     void cheerIsOnlyForGroupMates() throws Exception {
         long mine = liveSession(owner, 1);
-        complete(owner, mine);
         cheer(owner, mine).andExpect(status().isBadRequest());
 
         Member stranger = signUp("낯선이");
         long strangers = liveSession(stranger, 1);
-        complete(stranger, strangers);
         cheer(owner, strangers).andExpect(status().isNotFound());
 
         long younghees = liveSession(younghee, 1);
-        complete(younghee, younghees);
         cheer(stranger, younghees).andExpect(status().isNotFound());
     }
 
@@ -284,23 +285,18 @@ class GroupActivityTest {
                 .header(HttpHeaders.AUTHORIZATION, viewer.bearer()));
     }
 
-    /** 오늘 날짜로 진행 중 기록을 시작하고 세트를 넣는다. 종료는 하지 않는다 */
+    /** 오늘 기록을 열고 세트를 넣는다 */
     private long liveSession(Member member, int sets) throws Exception {
+        return openWithSets(member, today, sets);
+    }
+
+    /** 그날 기록을 열고 세트를 넣는다. 지난 날짜면 사후 입력이다 */
+    private long openWithSets(Member member, LocalDate date, int sets) throws Exception {
         long id = json(mvc.perform(post("/api/v1/workout-sessions").header(HttpHeaders.AUTHORIZATION, member.bearer())
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"performedOn\":\"" + today + "\"}"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"performedOn\":\"" + date + "\"}"))
                 .andExpect(status().isCreated())).get("id").asLong();
         addSets(member, id, sets);
         return id;
-    }
-
-    /** 사후 입력 한 건(세트 하나)을 종료까지 */
-    private void backfillDone(Member member, LocalDate date) throws Exception {
-        long id = json(mvc.perform(post("/api/v1/workout-sessions").header(HttpHeaders.AUTHORIZATION, member.bearer())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"performedOn\":\"" + date + "\",\"source\":\"BACKFILL\"}"))
-                .andExpect(status().isCreated())).get("id").asLong();
-        addSets(member, id, 1);
-        complete(member, id);
     }
 
     private void addSets(Member member, long sessionId, int count) throws Exception {
@@ -312,12 +308,6 @@ class GroupActivityTest {
                                     + ",\"weightKg\":40.0,\"reps\":10}"))
                     .andExpect(status().isCreated());
         }
-    }
-
-    private JsonNode complete(Member member, long sessionId) throws Exception {
-        return json(mvc.perform(post("/api/v1/workout-sessions/" + sessionId + "/complete")
-                        .header(HttpHeaders.AUTHORIZATION, member.bearer()))
-                .andExpect(status().isOk()));
     }
 
     private long exerciseIdOf(String nameKo) throws Exception {

@@ -29,11 +29,9 @@ public enum ErrorCode {
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "대상을 찾을 수 없습니다."),
 
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
-    DRAFT_SESSION_EXISTS(HttpStatus.CONFLICT, "진행 중인 운동이 있습니다."),
-    SESSION_ALREADY_COMPLETED(HttpStatus.CONFLICT, "이미 종료된 운동입니다."),
+    DAY_ALREADY_RECORDED(HttpStatus.CONFLICT, "그 날짜에는 이미 기록이 있습니다."),
     GROUP_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "그룹 한도를 넘었습니다."),
 
-    EMPTY_SESSION(HttpStatus.UNPROCESSABLE_CONTENT, "기록된 세트가 없습니다."),
     RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "일시적인 오류가 발생했습니다.");
 

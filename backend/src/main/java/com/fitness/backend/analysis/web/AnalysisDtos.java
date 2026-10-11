@@ -45,7 +45,7 @@ public final class AnalysisDtos {
 
     public record ConfidenceResponse(
             ConfidenceLevel level,
-            int doneSessionCount,
+            int workoutDayCount,
             int threshold,
             @Schema(description = "LOW일 때만 채운다. 충분하면 화면에 띄울 말이 없다")
             String message) {

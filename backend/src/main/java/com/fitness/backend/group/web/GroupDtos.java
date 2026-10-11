@@ -3,8 +3,6 @@ package com.fitness.backend.group.web;
 import com.fitness.backend.exercise.domain.MeasureType;
 import com.fitness.backend.group.domain.FriendGroup;
 import com.fitness.backend.group.domain.TodayStatus;
-import com.fitness.backend.workout.domain.SessionSource;
-import com.fitness.backend.workout.domain.SessionStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
@@ -80,8 +78,8 @@ public final class GroupDtos {
     }
 
     /**
-     * 오늘의 운동. {@code sessionId}는 응원할 대상이고, 운동하지 않았으면 {@code null}이다.
-     * 하루에 여러 번 했으면 가장 최근에 끝낸 것이다.
+     * 오늘의 운동. {@code sessionId}는 응원할 대상인 오늘 기록이고, 운동하지 않았으면 {@code null}이다.
+     * 하루에 기록은 하나라 여러 번 운동해도 응원은 그 하루에 붙는다(LOG-39).
      */
     public record TodayActivity(TodayStatus status,
                                 Long sessionId,
@@ -90,13 +88,13 @@ public final class GroupDtos {
     }
 
     /**
-     * 이번 주(월~일) 활동. 완료한 운동만 센다(기능명세 2.6).
+     * 이번 주(월~일) 활동(기능명세 2.6).
      *
-     * @param sessionCount     완료한 운동 횟수. 사후 입력도 포함한다
+     * @param dayCount         운동한 날 수. 사후 입력도 포함한다
      * @param totalDurationSec 운동 시간 합. 시간이 없는 사후 입력은 빠진다
      * @param workoutDates     운동한 날짜. 화면이 월~일 칸을 채운다
      */
-    public record WeekActivity(int sessionCount,
+    public record WeekActivity(int dayCount,
                                int totalDurationSec,
                                List<LocalDate> workoutDates) {
     }
@@ -126,15 +124,17 @@ public final class GroupDtos {
     public record CheerResponse(int cheerCount, boolean cheeredByMe) {
     }
 
-    /** 멤버의 하루 기록(읽기 전용). 그날 운동이 여럿이면 시작한 순서다 */
+    /** 멤버의 하루 기록(읽기 전용). 그날 운동하지 않았으면 {@code session}이 {@code null}이다 */
     public record MemberDayResponse(Long userId,
                                     String nickname,
                                     LocalDate date,
-                                    List<MemberSession> sessions) {
+                                    MemberSession session) {
     }
 
     /**
-     * 멤버의 운동 한 번. 명세 6.5의 세션 상세에서 <b>메모를 뺀</b> 것이다(LOG-38).
+     * 멤버의 하루 기록. 명세 6.5의 기록 상세에서 <b>메모를 뺀</b> 것이다(LOG-38).
+     *
+     * <p>종료가 없으므로 친구가 운동하는 중이면 그때까지 체크한 세트가 보인다(LOG-39).
      *
      * <p>메모는 "오늘 컨디션 최악" 같은 혼잣말일 수 있어 그룹에 보이지 않는다. 빈 값으로
      * 내리지 않고 필드 자체를 두지 않는다 — {@code null}이면 "메모가 없다"로 읽힌다.
@@ -142,8 +142,6 @@ public final class GroupDtos {
      * @param durationSec 화면에 보이는 운동 시간(보정값 우선). 시간 없는 사후 입력은 {@code null}
      */
     public record MemberSession(Long id,
-                                SessionStatus status,
-                                SessionSource source,
                                 OffsetDateTime startedAt,
                                 OffsetDateTime endedAt,
                                 Integer durationSec,

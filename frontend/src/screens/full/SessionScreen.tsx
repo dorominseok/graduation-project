@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { BottomSheet, useToast } from '../../components'
-import { ErrorCodes, exerciseApi, isApiError, statsApi, workoutApi } from '../../api'
+import { exerciseApi, isApiError, statsApi, workoutApi } from '../../api'
 import type { Exercise, MeasureType, MuscleGroupKey, SessionIntensity, WorkoutSession } from '../../api'
+import { formatDuration } from '../../app/dates'
 import { paths } from '../../app/paths'
 import { ExercisePicker } from './ExercisePicker'
 import type { PickerStep } from './ExercisePicker'
@@ -93,14 +94,6 @@ function formatDayLabel(key: string): string {
   return `${month}월 ${day}일 (${weekday})`
 }
 
-function formatElapsed(startedAt: string | null, now: number): string {
-  if (!startedAt) return '00:00'
-  const seconds = Math.max(0, Math.floor((now - new Date(startedAt).getTime()) / 1000))
-  const mm = String(Math.floor(seconds / 60)).padStart(2, '0')
-  const ss = String(seconds % 60).padStart(2, '0')
-  return `${mm}:${ss}`
-}
-
 function formatRest(seconds: number): string {
   const mm = Math.floor(seconds / 60)
   const ss = String(seconds % 60).padStart(2, '0')
@@ -108,15 +101,16 @@ function formatRest(seconds: number): string {
 }
 
 /**
- * 운동 기록 (명세 6.2~6.4).
+ * 하루 기록 (명세 6.2~6.4, LOG-39).
  *
  * <p>두 단계다. 목록에서는 그날 무슨 종목을 했는지만 보고, 종목을 누르면 그
  * 종목의 세트만 남는다 — 종목 셋에 세트 다섯이면 한 화면에 열다섯 줄이 되어
  * 어느 줄을 누르는지 알 수 없다.
  *
- * <p>세션은 화면에 들어올 때가 아니라 <b>첫 세트를 완료 체크할 때</b> 만든다 —
- * 들어왔다 그냥 나가면 빈 세션이 남기 때문이다. 종목을 고르고 행을 채우는
- * 동안은 서버에 아무것도 가지 않는다.
+ * <p>화면이 곧 그날 기록이다. 시작·종료가 없다 — 들어오면 그날 기록을 열고(없으면 서버가
+ * 만든다), 체크한 세트가 그 자리에서 쌓인다. 하루에 두 번 운동하러 와도 같은 기록이 열려
+ * 아침에 한 운동이 그대로 보인다. 세트 없이 나가면 빈 기록이 남지만 목록·달력·횟수에는
+ * 나오지 않는다.
  */
 export function SessionScreen() {
   const navigate = useNavigate()
@@ -129,14 +123,13 @@ export function SessionScreen() {
   // 입력 중이던 미저장 행이 그대로 남는다.
   const [params, setParams] = useSearchParams()
   const openedId = params.get('exercise')
-  // 달력에서 기록 없는 날을 눌러 들어온 경우. 그 날짜로 사후 입력을 만든다(명세 6.2).
-  const backfillDate = params.get('date')
+  // 날짜를 들고 들어온 경우(달력, 날짜 이동). 없으면 오늘이다 — 자정을 넘긴 운동이면 서버가 어제로 잇는다
+  const dateParam = params.get('date')
 
   const [session, setSession] = useState<WorkoutSession | null>(null)
   const [cards, setCards] = useState<ExerciseCard[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [now, setNow] = useState(() => Date.now())
 
   // 펼친 세트와 방금 저장된 세트. 둘 다 clientSetId로 가리킨다.
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -192,20 +185,18 @@ export function SessionScreen() {
     setParams(next, { replace: true })
   }, [pickParam, params, setParams])
 
-  // 지난 기록이면 그 세션을, 아니면 진행 중인 세션을 연다(명세 6.5·6.7).
+  // 그날 기록을 연다(명세 6.2·6.5). id로 들어왔으면 그 기록, 아니면 날짜(없으면 오늘)의 기록이다
   useEffect(() => {
     let alive = true
     void (async () => {
       try {
         const current = sessionIdParam
           ? await workoutApi.getSession(Number(sessionIdParam))
-          : backfillDate
-            ? null // 지난 날짜에 새로 적는 중이라 이어쓸 세션이 없다
-            : await workoutApi.getCurrent()
+          : await workoutApi.openDay(dateParam ? { performedOn: dateParam } : {})
         if (!alive) return
         setSession(current)
         setCards(
-          (current?.exercises ?? []).map((group) => ({
+          current.exercises.map((group) => ({
             exerciseId: group.exerciseId,
             name: group.exerciseName,
             measureType: group.measureType,
@@ -231,7 +222,7 @@ export function SessionScreen() {
     return () => {
       alive = false
     }
-  }, [sessionIdParam, backfillDate, showToast])
+  }, [sessionIdParam, dateParam, showToast])
 
   // 종목을 펼쳤을 때만 읽는다. 목록 화면에서는 지표를 보여주지 않는다.
   const sessionId = session?.id ?? null
@@ -252,12 +243,23 @@ export function SessionScreen() {
     }
   }, [sessionId, openedId, statsVersion])
 
-  // 경과 시간은 서버가 주지 않는다. 시작 시각부터의 벽시계 차이를 화면이 센다.
+  // 운동 시간은 서버가 세트 저장 시각으로 계산한다(LOG-39). 세트가 바뀌면 그날 기록을 다시 읽는다.
+  // 세트 행은 화면이 들고 있으므로 건드리지 않는다 — 체크하지 않은 계획 행이 사라지면 안 된다
   useEffect(() => {
-    if (!session?.startedAt) return
-    const timer = window.setInterval(() => setNow(Date.now()), 1000)
-    return () => window.clearInterval(timer)
-  }, [session?.startedAt])
+    if (sessionId === null || statsVersion === 0) return
+    let alive = true
+    workoutApi
+      .getSession(sessionId)
+      .then((fresh) => {
+        if (alive) setSession(fresh)
+      })
+      .catch(() => {
+        // 시간은 보조 정보다. 못 읽어도 기록은 계속할 수 있다
+      })
+    return () => {
+      alive = false
+    }
+  }, [sessionId, statsVersion])
 
   // 휴식 카운트다운. 0이 되면 "휴식 끝" 띠로 바뀐다.
   useEffect(() => {
@@ -333,32 +335,12 @@ export function SessionScreen() {
     void addExercise(exercise)
   }
 
-  /**
-   * 세션이 없으면 만든다. 이미 진행 중인 게 있으면 그걸 이어 쓴다.
-   *
-   * <p>날짜를 들고 들어왔으면 그 날짜의 사후 입력이다 — 저장 시각이 실제 운동
-   * 시각과 다르므로 운동 시간을 산출하지 않는다(기록 방식 4.3).
-   */
+  /** 그날 기록. 들어올 때 열지 못했으면(신호가 약했으면) 지금 다시 연다 */
   const ensureSession = async (): Promise<WorkoutSession> => {
     if (session) return session
-    try {
-      const created = await workoutApi.createSession(
-        backfillDate
-          ? { performedOn: backfillDate, source: 'BACKFILL' }
-          : { performedOn: toDateString(new Date()), source: 'LIVE' },
-      )
-      setSession(created)
-      return created
-    } catch (err) {
-      if (isApiError(err) && err.code === ErrorCodes.DRAFT_SESSION_EXISTS) {
-        const current = await workoutApi.getCurrent()
-        if (current) {
-          setSession(current)
-          return current
-        }
-      }
-      throw err
-    }
+    const opened = await workoutApi.openDay(dateParam ? { performedOn: dateParam } : {})
+    setSession(opened)
+    return opened
   }
 
   const updateRow = (cardIndex: number, rowIndex: number, patch: Partial<SetRow>) => {
@@ -422,11 +404,6 @@ export function SessionScreen() {
       if (!row.isWarmup && row.restSec > 0) {
         setRestDone(false)
         setRest({ left: row.restSec, total: row.restSec })
-      }
-
-      // 첫 세트가 저장되면 서버가 startedAt을 채운다. 경과 시간을 띄우려면 다시 읽어야 한다.
-      if (!session?.startedAt) {
-        setSession(await workoutApi.getSession(target.id))
       }
     } catch (err) {
       fail(err)
@@ -531,6 +508,7 @@ export function SessionScreen() {
       // 세트를 하나씩 지우면 중간에 끊겼을 때 일부만 남는다(LOG-22).
       try {
         await workoutApi.deleteExercise(session.id, card.exerciseId)
+        bumpStats()
       } catch (err) {
         fail(err)
         return
@@ -538,20 +516,6 @@ export function SessionScreen() {
     }
     setCards((prev) => prev.filter((_, ci) => ci !== cardIndex))
     setRemoveTarget(null)
-  }
-
-  const finish = async () => {
-    if (!session || busy) return
-    setBusy(true)
-    try {
-      await workoutApi.complete(session.id)
-      showToast({ message: '운동을 기록했어요' })
-      navigate(paths.home, { replace: true })
-    } catch (err) {
-      fail(err)
-    } finally {
-      setBusy(false)
-    }
   }
 
   const openInfo = async (exerciseId: number) => {
@@ -563,29 +527,16 @@ export function SessionScreen() {
   }
 
   /**
-   * 다른 날짜의 기록으로 옮긴다.
-   *
-   * <p>세션 id는 날짜만으로 알 수 없어 그 날짜로 한 번 조회한다. 기록이 없으면
-   * 그 날짜의 사후 입력으로 들어간다 — 달력에서 날짜를 누르는 것과 같은 규칙이다.
+   * 다른 날짜의 기록으로 옮긴다. 날짜만 바꾸면 화면이 그날 기록을 연다 — 기록이 없던 날이면
+   * 그 날짜의 빈 기록이 열려 빠뜨린 운동을 채울 수 있다.
    */
-  const goToDay = async (delta: number) => {
-    const today = toDateString(new Date())
-    const base = session?.performedOn ?? backfillDate ?? today
-    const target = shiftDate(base, delta)
-    if (target > today) {
+  const goToDay = (delta: number) => {
+    const target = shiftDate(dayKey, delta)
+    if (target > toDateString(new Date())) {
       showToast({ message: '아직 오지 않은 날은 기록할 수 없어요', tone: 'danger' })
       return
     }
-    try {
-      const page = await workoutApi.getHistory({ from: target, to: target, size: 5 })
-      if (page.content.length > 0) {
-        navigate(paths.sessionDetail(page.content[0].id), { replace: true })
-      } else {
-        navigate(`${paths.session}?date=${target}`, { replace: true })
-      }
-    } catch (err) {
-      fail(err)
-    }
+    navigate(`${paths.session}?date=${target}`, { replace: true })
   }
 
   const savedCount = cards.reduce(
@@ -603,11 +554,9 @@ export function SessionScreen() {
    * 돌아오게. 화면의 ←는 그 기록을 되돌리고, 종목 사이를 ‹ ›로 넘길 때는 바꿔 끼운다.
    * ←가 목록을 새로 쌓으면 목록의 ←(한 칸 뒤로)가 다시 종목으로 가서, 둘이 끝없이 돈다.
    */
-  const listParams: Record<string, string> = backfillDate ? { date: backfillDate } : {}
+  const listParams: Record<string, string> = dateParam ? { date: dateParam } : {}
   const cardParams = (exerciseId: number): Record<string, string> =>
-    backfillDate
-      ? { date: backfillDate, exercise: String(exerciseId) }
-      : { exercise: String(exerciseId) }
+    dateParam ? { date: dateParam, exercise: String(exerciseId) } : { exercise: String(exerciseId) }
   const openedFromList = (location.state as { fromList?: boolean } | null)?.fromList === true
   const backToList = () => {
     if (openedFromList) navigate(-1)
@@ -618,10 +567,15 @@ export function SessionScreen() {
   const switchCard = (exerciseId: number) =>
     setParams(cardParams(exerciseId), { replace: true, state: location.state })
 
-  /** 지난 기록을 보는 중인지. 그때는 진행 시간 대신 날짜 이동을 띄운다 */
-  const viewingPast = sessionIdParam !== undefined || session?.status === 'DONE'
-  const showDayNav = viewingPast || backfillDate !== null
-  const dayKey = session?.performedOn ?? backfillDate ?? toDateString(new Date())
+  const dayKey = session?.performedOn ?? dateParam ?? toDateString(new Date())
+  // 머리말 아래 한 줄. 시간은 사후 입력만 있는 날이면 없다
+  const duration = session?.effectiveDurationSec ?? null
+  const daySummary =
+    savedCount === 0
+      ? '완료 체크한 세트만 저장돼요'
+      : duration !== null
+        ? `${savedCount}세트 · ${formatDuration(duration)}`
+        : `${savedCount}세트`
   /** 휴식 띠가 떠 있으면 스크롤 끝이 가려진다 */
   const restShowing = rest !== null || restDone
 
@@ -1236,61 +1190,20 @@ export function SessionScreen() {
             ←
           </button>
 
-          {showDayNav ? (
-            <>
-              <div className={styles.headerNav}>
-                <button
-                  type="button"
-                  className={styles.navArrow}
-                  onClick={() => void goToDay(-1)}
-                  aria-label="하루 전"
-                >
-                  ‹
-                </button>
-                <span className={styles.dayTitle}>{formatDayLabel(dayKey)}</span>
-                <button
-                  type="button"
-                  className={styles.navArrow}
-                  onClick={() => void goToDay(1)}
-                  aria-label="하루 뒤"
-                >
-                  ›
-                </button>
-              </div>
-              {/* 사후 입력은 아직 끝내지 않은 기록이라 마무리 버튼이 필요하다 */}
-              {backfillDate && !viewingPast ? (
-                <button
-                  type="button"
-                  className={styles.endButtonSmall}
-                  disabled={savedCount === 0 || busy}
-                  onClick={() => void finish()}
-                >
-                  완료
-                </button>
-              ) : (
-                <div className={styles.headerSpacer} />
-              )}
-            </>
-          ) : (
-            <>
-              <div className={styles.liveCenter}>
-                <div className={styles.liveDate}>{formatDayLabel(dayKey)}</div>
-                <div className={styles.liveElapsed}>
-                  {savedCount > 0
-                    ? `${formatElapsed(session?.startedAt ?? null, now)} · ${savedCount}세트`
-                    : '완료 체크한 세트만 저장돼요'}
-                </div>
-              </div>
-              <button
-                type="button"
-                className={styles.endButton}
-                disabled={savedCount === 0 || busy}
-                onClick={() => void finish()}
-              >
-                운동 종료
-              </button>
-            </>
-          )}
+          {/* 끝내는 버튼이 없다. 체크한 세트가 곧 기록이고, 마지막 세트가 곧 끝이다(LOG-39) */}
+          <div className={styles.headerNav}>
+            <button type="button" className={styles.navArrow} onClick={() => goToDay(-1)} aria-label="하루 전">
+              ‹
+            </button>
+            <div className={styles.dayCenter}>
+              <span className={styles.dayTitle}>{formatDayLabel(dayKey)}</span>
+              <span className={styles.daySub}>{daySummary}</span>
+            </div>
+            <button type="button" className={styles.navArrow} onClick={() => goToDay(1)} aria-label="하루 뒤">
+              ›
+            </button>
+          </div>
+          <div className={styles.headerSpacer} />
         </div>
 
         {cards.length === 0 ? (

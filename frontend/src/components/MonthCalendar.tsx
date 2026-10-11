@@ -8,7 +8,7 @@ const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
 interface MonthCalendarProps {
   year: number
   month: number
-  /** 기록이 있는 날짜만 온다(명세 6.8). 아직 읽는 중이면 비워 둔다 */
+  /** 운동한 날짜만 온다(명세 6.8). 아직 읽는 중이면 비워 둔다 */
   days?: CalendarResponse['days']
   onMoveMonth: (delta: number) => void
   onSelectDay: (dateKey: string) => void
@@ -37,7 +37,7 @@ export function MonthCalendar({
   // getDay()는 일요일이 0이라 월요일이 0이 되게 돌린다
   const firstWeekday = (new Date(year, month - 1, 1).getDay() + 6) % 7
   const daysInMonth = new Date(year, month, 0).getDate()
-  const dayInfo = (key: string) => days?.find((d) => d.date === key)
+  const recorded = new Set(days?.map((d) => d.date))
 
   return (
     <>
@@ -70,29 +70,17 @@ export function MonthCalendar({
         {Array.from({ length: daysInMonth }, (_, i) => {
           const day = i + 1
           const key = toDateKey(new Date(year, month - 1, day))
-          const info = dayInfo(key)
+          const worked = recorded.has(key)
           return (
             <button
               key={key}
               type="button"
-              className={[
-                styles.cell,
-                key === todayKey ? styles.cellToday : '',
-                info?.hasDraft ? styles.cellDraft : '',
-              ].join(' ')}
+              className={`${styles.cell} ${key === todayKey ? styles.cellToday : ''}`}
               onClick={() => onSelectDay(key)}
-              disabled={!info && !emptyDaysSelectable}
+              disabled={!worked && !emptyDaysSelectable}
             >
               <span className={styles.dayNumber}>{day}</span>
-              {info && (
-                <span
-                  className={[
-                    styles.dot,
-                    info.sessionCount > 1 ? styles.dotMany : '',
-                    info.hasDraft ? styles.dotDraft : '',
-                  ].join(' ')}
-                />
-              )}
+              {worked && <span className={styles.dot} />}
             </button>
           )
         })}

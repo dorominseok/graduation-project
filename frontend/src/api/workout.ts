@@ -1,10 +1,9 @@
 import { request } from './client'
 import type {
   CalendarResponse,
-  CreateSessionRequest,
   CreateSetRequest,
+  OpenDayRequest,
   Page,
-  SessionStatus,
   SessionSummary,
   UpdateSessionRequest,
   UpdateSetRequest,
@@ -12,12 +11,11 @@ import type {
   WorkoutSet,
 } from './types'
 
-/** 히스토리 조회 조건 (명세 6.6). 날짜를 생략하면 서버가 최근 30일을 본다. */
+/** 히스토리 조회 조건 (명세 6.6). 날짜를 생략하면 서버가 최근 30일을 본다. 운동한 날만 온다. */
 export interface HistoryQuery {
   from?: string
   to?: string
-  status?: SessionStatus
-  /** 그 종목의 세트가 하나라도 있는 세션만. 세션 단위 필터다 */
+  /** 그 종목의 세트가 하나라도 있는 날만. 날 단위 필터다 */
   exerciseId?: number
   page?: number
   size?: number
@@ -35,15 +33,12 @@ function toQueryString(query: object): string {
 }
 
 /**
- * 세션 생성 (명세 6.2).
+ * 그날 기록 열기 (명세 6.2, LOG-39). 없으면 만들고 있으면 그 기록을 준다 — 하루에 기록은 하나다.
  *
- * 첫 세트를 완료 체크하는 순간 부른다 — 화면에 들어오자마자 만들면 아무것도
- * 기록하지 않고 나간 빈 세션이 남는다.
- *
- * 진행 중인 세션이 있으면 409(`DRAFT_SESSION_EXISTS`)다. 호출부는 그때
- * `getCurrent()`로 이어쓰기를 안내한다.
+ * 날짜를 생략하면 오늘이다. 어젯밤 운동이 자정을 넘겨 이어지는 중이면 서버가 어제 기록을 준다.
+ * 두 번 불러도 같은 기록이 온다.
  */
-export function createSession(body: CreateSessionRequest): Promise<WorkoutSession> {
+export function openDay(body: OpenDayRequest = {}): Promise<WorkoutSession> {
   return request<WorkoutSession>('/workout-sessions', { method: 'POST', body })
 }
 
@@ -57,25 +52,9 @@ export function addSet(sessionId: number, body: CreateSetRequest): Promise<Worko
   return request<WorkoutSet>(`/workout-sessions/${sessionId}/sets`, { method: 'POST', body })
 }
 
-/** 세션 종료 (명세 6.3). 세트가 하나도 없으면 422다. */
-export function complete(sessionId: number): Promise<WorkoutSession> {
-  return request<WorkoutSession>(`/workout-sessions/${sessionId}/complete`, { method: 'POST', body: {} })
-}
-
-/** 세션 상세 (명세 6.5). 세트가 종목별로 묶여 수행 순서대로 온다. */
+/** 하루 기록 상세 (명세 6.5). 세트가 종목별로 묶여 수행 순서대로 온다. */
 export function getSession(sessionId: number): Promise<WorkoutSession> {
   return request<WorkoutSession>(`/workout-sessions/${sessionId}`)
-}
-
-/**
- * 진행 중인 세션 (명세 6.7).
- *
- * 없으면 서버가 204를 주고 여기서는 `null`이다 — 앱을 다시 열었을 때
- * 이어쓸 세션이 있는지 판단하는 데 쓴다.
- */
-export async function getCurrent(): Promise<WorkoutSession | null> {
-  const result = await request<WorkoutSession | null>('/workout-sessions/current')
-  return result ?? null
 }
 
 /** 히스토리 목록 (명세 6.6). */
@@ -89,7 +68,7 @@ export function getCalendar(year: number, month: number): Promise<CalendarRespon
 }
 
 /**
- * 세션 수정 (명세 6.9).
+ * 하루 기록 수정 (명세 6.9). 기록이 이미 있는 날짜로는 옮길 수 없다(409 DAY_ALREADY_RECORDED).
  *
  * 값을 비울 때는 메모에 빈 문자열, 시간 보정에 `0`을 보낸다(LOG-23).
  */
@@ -97,7 +76,7 @@ export function updateSession(sessionId: number, body: UpdateSessionRequest): Pr
   return request<WorkoutSession>(`/workout-sessions/${sessionId}`, { method: 'PATCH', body })
 }
 
-/** 세션 삭제 (명세 6.10). 세트도 함께 지워진다. */
+/** 하루 기록 삭제 (명세 6.10). 세트도 함께 지워진다. */
 export function deleteSession(sessionId: number): Promise<void> {
   return request<void>(`/workout-sessions/${sessionId}`, { method: 'DELETE' })
 }
@@ -111,7 +90,7 @@ export function updateSet(
   return request<WorkoutSet>(`/workout-sessions/${sessionId}/sets/${setId}`, { method: 'PATCH', body })
 }
 
-/** 세트 삭제 (명세 6.12). 마지막 세트를 지워도 세션은 남는다. */
+/** 세트 삭제 (명세 6.12). 마지막 세트를 지워도 기록은 남는다. */
 export function deleteSet(sessionId: number, setId: number): Promise<void> {
   return request<void>(`/workout-sessions/${sessionId}/sets/${setId}`, { method: 'DELETE' })
 }

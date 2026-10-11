@@ -59,7 +59,6 @@ class StatsApiTest {
         long session = backfillSession(day);
         postSet(session, weightSet(benchPress, "60.0", 12)).andExpect(status().isCreated());
         postSet(session, weightSet(benchPress, "80.0", 5)).andExpect(status().isCreated());
-        complete(session);
 
         trend(benchPress)
                 .andExpect(status().isOk())
@@ -98,15 +97,14 @@ class StatsApiTest {
     }
 
     @Test
-    @DisplayName("종료하지 않은 기록은 추이에 들어가지 않는다")
-    void excludesDraftSessions() throws Exception {
-        long session = backfillSession(LocalDate.now().minusDays(1));
+    @DisplayName("체크한 세트는 바로 추이에 들어간다 — 종료가 없다")
+    void checkedSetsCountRightAway() throws Exception {
+        long session = backfillSession(LocalDate.now());
         postSet(session, weightSet(benchPress, "100.0", 5)).andExpect(status().isCreated());
-        // 종료하지 않는다 — DRAFT 상태로 둔다
 
         trend(benchPress)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.points.length()").value(0));
+                .andExpect(jsonPath("$.points.length()").value(1));
     }
 
     @Test
@@ -138,7 +136,6 @@ class StatsApiTest {
         postSet(session, warmupSet(benchPress, "60.0", 12)).andExpect(status().isCreated());
         postSet(session, weightSet(benchPress, "70.0", 10)).andExpect(status().isCreated());
         postSet(session, weightSet(benchPress, "70.0", 9)).andExpect(status().isCreated());
-        complete(session);
 
         intensity(session)
                 .andExpect(status().isOk())
@@ -158,7 +155,6 @@ class StatsApiTest {
     void timeExerciseHasNoIntensity() throws Exception {
         long session = backfillSession(LocalDate.now().minusDays(1));
         postSet(session, timeSet(plank, 60)).andExpect(status().isCreated());
-        complete(session);
 
         intensity(session)
                 .andExpect(status().isOk())
@@ -173,7 +169,6 @@ class StatsApiTest {
     void otherUsersSessionIsNotFound() throws Exception {
         long session = backfillSession(LocalDate.now().minusDays(1));
         postSet(session, weightSet(benchPress, "70.0", 10)).andExpect(status().isCreated());
-        complete(session);
 
         String other = "o" + UUID.randomUUID().toString().substring(0, 8) + "@example.com";
         String otherBearer = "Bearer "
@@ -210,23 +205,18 @@ class StatsApiTest {
         for (int i = 0; i < sets; i++) {
             postSet(session, weightSet(exerciseId, weightKg, reps)).andExpect(status().isCreated());
         }
-        complete(session);
     }
 
-    /** {@code BACKFILL}이라야 과거 날짜로 만들 수 있고, 하루에 여러 개도 된다. */
+    /** 그날 기록을 연다. 이미 있으면 그 기록이다. */
     private long backfillSession(LocalDate performedOn) throws Exception {
         String body = mvc.perform(post("/api/v1/workout-sessions")
                         .header(HttpHeaders.AUTHORIZATION, bearer)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"performedOn\":\"" + performedOn + "\",\"source\":\"BACKFILL\"}"))
-                .andExpect(status().isCreated())
+                        .content("{\"performedOn\":\"" + performedOn + "\"}"))
+                // 같은 날을 두 번 열면 두 번째는 200이다 — 하루에 기록은 하나다
+                .andExpect(status().is2xxSuccessful())
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         return firstId(body);
-    }
-
-    private void complete(long sessionId) throws Exception {
-        mvc.perform(post("/api/v1/workout-sessions/" + sessionId + "/complete")
-                .header(HttpHeaders.AUTHORIZATION, bearer)).andExpect(status().isOk());
     }
 
     private ResultActions postSet(long sessionId, String body) throws Exception {

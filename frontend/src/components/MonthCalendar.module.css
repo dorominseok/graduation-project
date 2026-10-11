@@ -82,10 +82,6 @@
 }
 
 /* 진행 중인 세션이 있는 날. 아직 끝내지 않았다는 뜻이라 테두리를 끊어 둔다 */
-.cellDraft {
-  border: 1.5px dashed var(--warn);
-}
-
 /* 기록 표시. 날짜 아래 점 하나로만 둔다 */
 .dot {
   width: 5px;
@@ -96,15 +92,6 @@
 }
 
 /* 하루에 두 번 이상 운동한 날은 점을 키운다 */
-.dotMany {
-  width: 6px;
-  height: 6px;
-}
-
-.dotDraft {
-  background: var(--warn);
-}
-
 /* ── 유리 테마 */
 
 .monthNav {

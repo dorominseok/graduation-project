@@ -1,5 +1,6 @@
 package com.fitness.backend.analysis.web;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -110,23 +111,23 @@ class AnalysisApiTest {
     }
 
     @Test
-    @DisplayName("워밍업과 진행 중 기록은 볼륨에 세지 않는다")
-    void excludesWarmupAndDraft() throws Exception {
+    @DisplayName("워밍업은 볼륨에 세지 않고, 같은 날 다시 와서 한 세트는 센다")
+    void excludesWarmupCountsSecondVisit() throws Exception {
         LocalDate reference = LocalDate.now().minusDays(1);
 
         long done = backfillSession(reference);
         postSet(done, weightSet(benchPress)).andExpect(status().isCreated());
         postSet(done, weightSet(benchPress)).andExpect(status().isCreated());
         postSet(done, warmupSet(benchPress)).andExpect(status().isCreated());
-        complete(done);
 
-        // 종료하지 않은 세션 — 아직 "한 운동"이 아니다
-        long draft = backfillSession(reference);
-        postSet(draft, weightSet(benchPress)).andExpect(status().isCreated());
+        // 같은 날 다시 열면 같은 기록이다. 종료가 없어 체크한 세트는 바로 센다
+        long again = backfillSession(reference);
+        assertEquals(done, again);
+        postSet(again, weightSet(benchPress)).andExpect(status().isCreated());
 
         volume(1, reference)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.tiers[0].totalSets").value(2));
+                .andExpect(jsonPath("$.tiers[0].totalSets").value(3));
     }
 
     @Test
@@ -187,7 +188,7 @@ class AnalysisApiTest {
         volume(1, reference)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.confidence.level").value("LOW"))
-                .andExpect(jsonPath("$.confidence.doneSessionCount").value(1))
+                .andExpect(jsonPath("$.confidence.workoutDayCount").value(1))
                 .andExpect(jsonPath("$.confidence.threshold").value(6))
                 .andExpect(jsonPath("$.confidence.message").isNotEmpty())
                 // 신뢰도가 낮아도 판정 자체는 숨기지 않는다
@@ -364,22 +365,17 @@ class AnalysisApiTest {
         for (int i = 0; i < sets; i++) {
             postSet(session, weightSet(exerciseId)).andExpect(status().isCreated());
         }
-        complete(session);
     }
 
     private long backfillSession(LocalDate performedOn) throws Exception {
         String body = mvc.perform(post("/api/v1/workout-sessions")
                         .header(HttpHeaders.AUTHORIZATION, bearer)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"performedOn\":\"" + performedOn + "\",\"source\":\"BACKFILL\"}"))
-                .andExpect(status().isCreated())
+                        .content("{\"performedOn\":\"" + performedOn + "\"}"))
+                // 같은 날을 두 번 열면 두 번째는 200이다 — 하루에 기록은 하나다
+                .andExpect(status().is2xxSuccessful())
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         return firstId(body);
-    }
-
-    private void complete(long sessionId) throws Exception {
-        mvc.perform(post("/api/v1/workout-sessions/" + sessionId + "/complete")
-                .header(HttpHeaders.AUTHORIZATION, bearer)).andExpect(status().isOk());
     }
 
     private ResultActions postSet(long sessionId, String body) throws Exception {
