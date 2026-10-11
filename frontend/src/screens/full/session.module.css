@@ -139,9 +139,12 @@
   gap: var(--space-10);
 }
 
-/* 휴식 타이머가 떠 있으면 마지막 버튼이 가려진다 */
-.scrollWithRest {
-  padding-bottom: 90px;
+/* 휴식 타이머가 떠 있으면 마지막 버튼(세트 추가 등)이 그 밑에 깔린다. 타이머 높이만큼 비운다.
+   두 클래스를 겹쳐 쓰는 것은 아래 .setScroll이 파일에서 더 뒤에 있어, 한 클래스로만 쓰면
+   그 padding이 이 여백을 덮어쓰기 때문이다 */
+.listScroll.scrollWithRest,
+.setScroll.scrollWithRest {
+  padding-bottom: 120px;
 }
 
 /* 카드와 빼기 버튼. 빼기는 카드를 여는 것과 다른 일이라 카드 밖에 둔다 */
