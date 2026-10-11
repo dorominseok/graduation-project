@@ -123,15 +123,15 @@ export function WeaknessView({ volume, balance }: WeaknessViewProps) {
     </div>
   )
 
-  // 완료한 운동이 하나도 없으면 전 부위가 "부족"으로 뜬다. 틀린 말은 아니지만
+  // 운동한 날이 하나도 없으면 전 부위가 "부족"으로 뜬다. 틀린 말은 아니지만
   // 막 가입한 사람에게 빨간 막대 여섯 개를 보여줄 이유는 없다.
-  if (volume.confidence.doneSessionCount === 0) {
+  if (volume.confidence.workoutDayCount === 0) {
     return (
       <>
         {period}
         <div className={styles.emptyCard}>
-          <div className={styles.emptyTitle}>최근 {volume.periodWeeks}주 동안 완료한 운동이 없어요</div>
-          <div className={styles.emptyBody}>운동을 기록하고 종료하면 부위별로 부족한 곳을 알려드려요</div>
+          <div className={styles.emptyTitle}>최근 {volume.periodWeeks}주 동안 기록한 운동이 없어요</div>
+          <div className={styles.emptyBody}>운동을 기록하면 부위별로 부족한 곳을 알려드려요</div>
           <button type="button" className={styles.emptyButton} onClick={() => navigate(paths.session)}>
             운동 기록하기
           </button>
@@ -153,7 +153,7 @@ export function WeaknessView({ volume, balance }: WeaknessViewProps) {
             {volume.confidence.message}
             <span className={styles.bannerSub}>
               {' '}
-              완료한 운동이 {volume.confidence.threshold}회 이상이면 믿을 만해져요
+              운동한 날이 {volume.confidence.threshold}일 이상이면 믿을 만해져요
             </span>
           </span>
         </div>

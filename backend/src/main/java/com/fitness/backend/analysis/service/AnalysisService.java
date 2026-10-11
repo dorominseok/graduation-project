@@ -22,7 +22,6 @@ import com.fitness.backend.analysis.web.AnalysisDtos.TierResponse;
 import com.fitness.backend.common.config.AnalysisProperties;
 import com.fitness.backend.common.error.ApiException;
 import com.fitness.backend.common.error.ErrorCode;
-import com.fitness.backend.workout.domain.SessionStatus;
 import com.fitness.backend.workout.repository.WorkoutSessionRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -188,15 +187,14 @@ public class AnalysisService {
 
     private ConfidenceResponse confidence(Long userId, Period period) {
         int threshold = properties.confidenceSessionThreshold();
-        int done = sessionRepository.countByUserIdAndStatusAndPerformedOnBetween(
-                userId, SessionStatus.DONE, period.from(), period.to());
+        int done = sessionRepository.countRecordedDays(userId, period.from(), period.to());
 
         if (done >= threshold) {
             // 충분할 때 띄울 문구는 없다. 있으면 화면이 늘 무언가를 보여줘야 한다.
             return new ConfidenceResponse(ConfidenceLevel.NORMAL, done, threshold, null);
         }
         return new ConfidenceResponse(ConfidenceLevel.LOW, done, threshold,
-                "최근 %d주 완료된 운동이 %d회로 적어 판정 신뢰도가 낮습니다.".formatted(period.weeks(), done));
+                "최근 %d주 운동한 날이 %d일로 적어 판정 신뢰도가 낮습니다.".formatted(period.weeks(), done));
     }
 
     private BigDecimal weeklyAverage(long totalSets, int basisDays) {
@@ -221,7 +219,7 @@ public class AnalysisService {
         int windowDays = weeks * 7;
         // 분모는 구간 길이가 아니라 기록을 시작한 뒤 지난 기간이다(LOG-31). 4주가 넘었으면 같다
         int basisDays = AveragingBasis.days(
-                sessionRepository.findFirstDonePerformedOn(userId, to), to, windowDays, properties.minBasisDays());
+                sessionRepository.findFirstRecordedOn(userId, to), to, windowDays, properties.minBasisDays());
         return new Period(weeks, to, to.minusDays(windowDays - 1L), to, basisDays);
     }
 

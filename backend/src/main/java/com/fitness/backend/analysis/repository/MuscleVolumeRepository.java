@@ -19,12 +19,11 @@ public interface MuscleVolumeRepository extends Repository<WorkoutSet, Long> {
     /**
      * 기간 내 본세트를 근육별로 센다.
      *
-     * <p>네 가지 조건이 전부 판정의 전제다.
+     * <p>세 가지 조건이 전부 판정의 전제다.
      * <ul>
-     *   <li>{@code status = DONE} — 진행 중({@code DRAFT})은 아직 한 운동이 아니다</li>
      *   <li>{@code isWarmup = false} — 워밍업을 세면 볼륨이 부풀어 부족이 최적으로 뒤집힌다</li>
      *   <li>{@code performedOn} 기준 — 저장 시각이 아니다. 어제 운동을 오늘 입력해도 어제로 센다</li>
-     *   <li>{@code source} 무관 — {@code BACKFILL}도 실제로 한 운동이라 포함한다(명세 8.2)</li>
+     *   <li>오늘 체크한 세트도 센다 — 종료가 없으므로 체크한 세트가 곧 한 운동이다(LOG-39)</li>
      * </ul>
      *
      * <p>{@code join}을 쓰지 않고 {@code where}로 이은 것은 {@code WorkoutSet}에
@@ -37,7 +36,6 @@ public interface MuscleVolumeRepository extends Repository<WorkoutSet, Long> {
              where w.sessionId = s.id
                and w.exerciseId = e.id
                and s.userId = :userId
-               and s.status = com.fitness.backend.workout.domain.SessionStatus.DONE
                and w.isWarmup = false
                and s.performedOn >= :from
                and s.performedOn <= :to

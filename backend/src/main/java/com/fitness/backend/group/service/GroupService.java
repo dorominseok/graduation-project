@@ -28,11 +28,11 @@ import com.fitness.backend.group.web.GroupDtos.TodayActivity;
 import com.fitness.backend.group.web.GroupDtos.WeekActivity;
 import com.fitness.backend.user.domain.User;
 import com.fitness.backend.user.repository.UserRepository;
-import com.fitness.backend.workout.domain.SessionStatus;
 import com.fitness.backend.workout.domain.WorkoutSession;
 import com.fitness.backend.workout.repository.WorkoutSessionRepository;
 import com.fitness.backend.workout.service.WorkoutService;
 import com.fitness.backend.workout.web.WorkoutDtos.CalendarResponse;
+import com.fitness.backend.workout.web.WorkoutDtos.DayTimes;
 import com.fitness.backend.workout.web.WorkoutDtos.ExerciseGroup;
 import com.fitness.backend.workout.web.WorkoutDtos.SessionResponse;
 import java.time.Clock;
@@ -42,7 +42,6 @@ import java.time.OffsetDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -116,8 +115,8 @@ public class GroupService {
      * 내 그룹 목록. 그룹은 보통 한두 개라, 들어가기 전에도 누가 오늘 운동했는지 보이게
      * 멤버별 오늘 상태를 함께 담는다.
      *
-     * <p>그룹마다 멤버·세션을 조회하면 그룹 수만큼 쿼리가 나간다. 내 그룹들의 멤버와 그들의
-     * 오늘 세션을 한 번씩 읽어 메모리에서 나눈다.
+     * <p>그룹마다 멤버·기록을 조회하면 그룹 수만큼 쿼리가 나간다. 내 그룹들의 멤버와 그들의
+     * 오늘 기록을 한 번씩 읽어 메모리에서 나눈다.
      */
     public List<GroupSummary> myGroups(Long userId) {
         List<Long> groupIds = memberRepository.findByUserIdOrderByJoinedAtAscIdAsc(userId).stream()
@@ -139,9 +138,9 @@ public class GroupService {
         Map<Long, String> nicknames = nicknames(allMemberIds);
 
         LocalDate today = LocalDate.now(clock);
-        Map<Long, List<WorkoutSession>> todayByMember = sessionRepository
-                .findByUserIdInAndPerformedOnBetween(allMemberIds, today, today).stream()
-                .collect(Collectors.groupingBy(WorkoutSession::getUserId));
+        Map<Long, WorkoutSession> todayByMember = sessionRepository
+                .findRecorded(allMemberIds, today, today).stream()
+                .collect(Collectors.toMap(WorkoutSession::getUserId, Function.identity()));
 
         return groupIds.stream()
                 // 멤버십을 읽은 뒤 방장이 그룹을 지웠으면 여기서 빠진다
@@ -152,8 +151,7 @@ public class GroupService {
                     List<MemberPreview> previews = memberIds.stream()
                             .map(memberId -> new MemberPreview(memberId, nicknames.get(memberId),
                                     memberId.equals(userId),
-                                    todayActivity(todaySession(todayByMember.getOrDefault(memberId, List.of()), today)
-                                            .orElse(null), NO_CHEERS).status()))
+                                    todayActivity(todayByMember.get(memberId), NO_CHEERS).status()))
                             .toList();
                     return new GroupSummary(groupId, group.getName(), memberIds.size(), group.isOwnedBy(userId),
                             (int) previews.stream().filter(p -> p.todayStatus() == TodayStatus.DONE).count(),
@@ -168,7 +166,7 @@ public class GroupService {
     /**
      * 그룹 상세(UC-05-03) — 멤버별 오늘 운동 여부와 이번 주(월~일) 횟수·시간.
      *
-     * <p>집계 테이블 없이 그때그때 센다(기능명세 2.6). 멤버 전원의 이번 주 세션을 한 번에 읽는다.
+     * <p>집계 테이블 없이 그때그때 센다(기능명세 2.6). 멤버 전원의 이번 주 기록과 세트를 한 번에 읽는다.
      */
     public GroupDetailResponse detail(Long userId, Long groupId) {
         FriendGroup group = mustFindMyGroup(userId, groupId);
@@ -178,15 +176,13 @@ public class GroupService {
 
         LocalDate today = LocalDate.now(clock);
         LocalDate weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        Map<Long, List<WorkoutSession>> weekByMember = sessionRepository
-                .findByUserIdInAndPerformedOnBetween(memberIds, weekStart, weekStart.plusDays(6)).stream()
+        List<WorkoutSession> week = sessionRepository.findRecorded(memberIds, weekStart, weekStart.plusDays(6));
+        Map<Long, DayTimes> times = workoutService.timesOf(week);
+        Map<Long, List<WorkoutSession>> weekByMember = week.stream()
                 .collect(Collectors.groupingBy(WorkoutSession::getUserId));
-
-        Map<Long, WorkoutSession> todayByMember = new HashMap<>();
-        for (Long memberId : memberIds) {
-            todaySession(weekByMember.getOrDefault(memberId, List.of()), today)
-                    .ifPresent(session -> todayByMember.put(memberId, session));
-        }
+        Map<Long, WorkoutSession> todayByMember = week.stream()
+                .filter(session -> session.getPerformedOn().isEqual(today))
+                .collect(Collectors.toMap(WorkoutSession::getUserId, Function.identity()));
         CheerTally cheers = tally(userId, todayByMember.values().stream().map(WorkoutSession::getId).toList());
 
         List<MemberActivity> activities = members.stream()
@@ -195,7 +191,7 @@ public class GroupService {
                     return new MemberActivity(memberId, nicknames.get(memberId), group.isOwnedBy(memberId),
                             memberId.equals(userId), member.getJoinedAt(),
                             todayActivity(todayByMember.get(memberId), cheers),
-                            weekActivity(weekByMember.getOrDefault(memberId, List.of())));
+                            weekActivity(weekByMember.getOrDefault(memberId, List.of()), times));
                 })
                 .toList();
 
@@ -321,31 +317,29 @@ public class GroupService {
     public CalendarResponse memberCalendar(Long userId, Long groupId, Long memberId, int year, int month) {
         mustBeMember(groupId, userId, "그룹");
         mustBeMember(groupId, memberId, "멤버");
-        // 끝난 운동만. 진행 중인 기록은 그룹에 보이지 않는다
-        return workoutService.calendar(memberId, year, month, true);
+        return workoutService.calendar(memberId, year, month);
     }
 
-    /** 멤버의 하루 기록. 끝난 운동만, 세트까지 보이고 메모는 빠진다. */
+    /** 멤버의 하루 기록. 세트까지 보이고 메모는 빠진다. 운동하지 않은 날이면 기록이 비어 있다. */
     public MemberDayResponse memberDay(Long userId, Long groupId, Long memberId, LocalDate date) {
         mustBeMember(groupId, userId, "그룹");
         mustBeMember(groupId, memberId, "멤버");
         String nickname = userRepository.findById(memberId).map(User::getNickname).orElse(null);
 
-        List<SessionResponse> sessions = workoutService.sessionsOn(memberId, date).stream()
-                .filter(session -> session.status() == SessionStatus.DONE)
-                .toList();
-        CheerTally cheers = tally(userId, sessions.stream().map(SessionResponse::id).toList());
+        Optional<SessionResponse> day = workoutService.dayOf(memberId, date);
+        if (day.isEmpty()) {
+            return new MemberDayResponse(memberId, nickname, date, null);
+        }
+        SessionResponse session = day.get();
+        CheerTally cheers = tally(userId, List.of(session.id()));
         // 종목 카드에 동작 그림을 붙이려면 영문명이 있어야 한다. 그날 종목을 한 번에 읽는다
-        Map<Long, String> namesEn = exerciseRepository.findAllById(sessions.stream()
-                        .flatMap(session -> session.exercises().stream())
+        Map<Long, String> namesEn = exerciseRepository.findAllById(session.exercises().stream()
                         .map(ExerciseGroup::exerciseId)
-                        .distinct()
                         .toList())
                 .stream()
                 .filter(exercise -> exercise.getNameEn() != null)
                 .collect(Collectors.toMap(Exercise::getId, Exercise::getNameEn));
-        return new MemberDayResponse(memberId, nickname, date,
-                sessions.stream().map(session -> toMemberSession(session, cheers, namesEn)).toList());
+        return new MemberDayResponse(memberId, nickname, date, toMemberSession(session, cheers, namesEn));
     }
 
     // ── 응원
@@ -424,14 +418,10 @@ public class GroupService {
         return cleaned;
     }
 
-    /**
-     * 같은 그룹 멤버의 <b>끝난</b> 세션만. 그룹 밖 사람의 세션과 진행 중인 세션은 그룹에
-     * 보이지 않으므로 있는지조차 드러내지 않는다.
-     */
+    /** 같은 그룹 멤버의 기록만. 그룹 밖 사람의 기록은 있는지조차 드러내지 않는다. */
     private WorkoutSession mustFindMemberSession(Long userId, Long groupId, Long sessionId) {
         mustBeMember(groupId, userId, "그룹");
         return sessionRepository.findById(sessionId)
-                .filter(WorkoutSession::isDone)
                 .filter(session -> memberRepository.existsByGroupIdAndUserId(groupId, session.getUserId()))
                 .orElseThrow(() -> ApiException.notFound("운동 기록"));
     }
@@ -467,18 +457,6 @@ public class GroupService {
 
     // ── 집계
 
-    /**
-     * 오늘의 대표 운동 — 응원이 붙을 대상. 오늘 날짜로 완료한 것 중 가장 최근에 끝낸 것이다.
-     * 진행 중인 운동은 그룹에 보이지 않으므로 대상이 아니다.
-     */
-    private static Optional<WorkoutSession> todaySession(List<WorkoutSession> sessions, LocalDate today) {
-        return sessions.stream()
-                .filter(session -> session.isDone() && session.getPerformedOn().isEqual(today))
-                .max(Comparator.comparing(WorkoutSession::getEndedAt,
-                                Comparator.nullsFirst(Comparator.naturalOrder()))
-                        .thenComparing(WorkoutSession::getId));
-    }
-
     private static TodayActivity todayActivity(WorkoutSession session, CheerTally cheers) {
         if (session == null) {
             return new TodayActivity(TodayStatus.NONE, null, 0, false);
@@ -488,18 +466,17 @@ public class GroupService {
     }
 
     /**
-     * 이번 주 활동. 완료한 운동만 센다(기능명세 2.6) — 횟수에는 사후 입력이 들어가고,
-     * 시간 합에서는 시간이 없는 사후 입력이 빠진다(보정값을 넣었으면 들어간다).
+     * 이번 주 활동(기능명세 2.6) — 횟수는 운동한 날 수이고 사후 입력도 들어간다. 시간 합에서는
+     * 시간이 없는 사후 입력이 빠진다(보정값을 넣었으면 들어간다).
      */
-    private static WeekActivity weekActivity(List<WorkoutSession> sessions) {
-        List<WorkoutSession> done = sessions.stream().filter(WorkoutSession::isDone).toList();
-        int totalDuration = done.stream()
-                .map(WorkoutSession::effectiveDurationSec)
+    private static WeekActivity weekActivity(List<WorkoutSession> days, Map<Long, DayTimes> times) {
+        int totalDuration = days.stream()
+                .map(day -> times.get(day.getId()).effectiveSec(day))
                 .filter(Objects::nonNull)
                 .mapToInt(Integer::intValue)
                 .sum();
-        List<LocalDate> dates = done.stream().map(WorkoutSession::getPerformedOn).distinct().sorted().toList();
-        return new WeekActivity(done.size(), totalDuration, dates);
+        List<LocalDate> dates = days.stream().map(WorkoutSession::getPerformedOn).sorted().toList();
+        return new WeekActivity(days.size(), totalDuration, dates);
     }
 
     private CheerTally tally(Long viewerId, Collection<Long> sessionIds) {
@@ -522,7 +499,7 @@ public class GroupService {
                                         set.durationSec(), set.isWarmup()))
                                 .toList()))
                 .toList();
-        return new MemberSession(session.id(), session.status(), session.source(), session.startedAt(),
+        return new MemberSession(session.id(), session.startedAt(),
                 session.endedAt(), session.effectiveDurationSec(), exercises,
                 cheers.count(session.id()), cheers.byMe(session.id()));
     }

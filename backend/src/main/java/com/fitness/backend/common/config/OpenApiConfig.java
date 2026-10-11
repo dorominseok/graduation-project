@@ -44,7 +44,7 @@ public class OpenApiConfig {
             "401", "인증이 필요하거나 토큰이 유효하지 않음 (AUTHENTICATION_REQUIRED)",
             "403", "권한 없음 (ACCESS_DENIED)",
             "404", "대상을 찾을 수 없음 (RESOURCE_NOT_FOUND)",
-            "409", "현재 상태와 충돌 (DRAFT_SESSION_EXISTS 등)",
+            "409", "현재 상태와 충돌 (DAY_ALREADY_RECORDED 등)",
             "422", "처리할 수 없는 상태",
             "500", "서버 오류 (INTERNAL_ERROR)");
 

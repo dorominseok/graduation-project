@@ -31,9 +31,9 @@ class AnalysisPropertiesTest {
         assertEquals(6, props.confidenceSessionThreshold());
         assertEquals(12, props.oneRmMaxReps());
         assertEquals(7, props.minBasisDays());
-        assertEquals(Duration.ofMinutes(15), props.interSetCap());
+        assertEquals(Duration.ofMinutes(30), props.boutGap());
         assertEquals(Duration.ofSeconds(90), props.lastSetBonus());
-        assertEquals(Duration.ofHours(4), props.sessionCap());
+        assertEquals(Duration.ofHours(4), props.dayCap());
     }
 
     @Test
@@ -57,8 +57,8 @@ class AnalysisPropertiesTest {
     @DisplayName("운동 시간 보정도 설정에서 그대로 넘어간다")
     void durationPolicyFromConfig() {
         var p = props.durationPolicy();
-        assertEquals(Duration.ofMinutes(15), p.interSetCap());
+        assertEquals(Duration.ofMinutes(30), p.boutGap());
         assertEquals(Duration.ofSeconds(90), p.lastSetBonus());
-        assertEquals(Duration.ofHours(4), p.sessionCap());
+        assertEquals(Duration.ofHours(4), p.dayCap());
     }
 }

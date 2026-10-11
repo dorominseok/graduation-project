@@ -1,8 +1,6 @@
 package com.fitness.backend.workout.web;
 
 import com.fitness.backend.exercise.domain.MeasureType;
-import com.fitness.backend.workout.domain.SessionSource;
-import com.fitness.backend.workout.domain.SessionStatus;
 import com.fitness.backend.workout.domain.WorkoutSession;
 import com.fitness.backend.workout.domain.WorkoutSet;
 import jakarta.validation.constraints.DecimalMin;
@@ -11,6 +9,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -23,17 +22,34 @@ public final class WorkoutDtos {
     }
 
     /**
-     * 세션 생성(명세 6.2).
+     * 하루 기록 열기(명세 6.2, LOG-39).
      *
-     * <p>{@code source}를 화면에서 고르게 하지 않고 진입 경로로 정하므로,
-     * 생략되면 {@code LIVE}로 본다.
+     * <p>{@code performedOn}을 생략하면 오늘이다. 단 어젯밤 운동이 자정을 넘겨 이어지는 중이면
+     * 어제 기록을 연다 — 서버가 정한다.
      */
-    public record CreateSessionRequest(
-            @NotNull(message = "필수 항목입니다.") LocalDate performedOn,
-            SessionSource source) {
+    public record OpenDayRequest(LocalDate performedOn) {
+    }
 
-        public SessionSource sourceOrDefault() {
-            return source == null ? SessionSource.LIVE : source;
+    /** 하루 기록 열기 결과. {@code created}가 {@code 201}과 {@code 200}을 가른다 */
+    public record OpenDayResult(SessionResponse session, boolean created) {
+    }
+
+    /**
+     * 세트 저장 시각으로 계산한 하루의 시각과 시간. 저장하지 않고 읽을 때 계산한다(LOG-39).
+     *
+     * @param startedAt 첫 세트 저장 시각. 세트가 없으면 null
+     * @param endedAt   마지막 세트 저장 시각. 세트가 없으면 null
+     * @param duration  산출한 운동 시간. 세트가 없거나 사후 입력만 있으면 null
+     */
+    public record DayTimes(OffsetDateTime startedAt, OffsetDateTime endedAt, Duration duration) {
+
+        public Integer durationSec() {
+            return duration == null ? null : (int) duration.toSeconds();
+        }
+
+        /** 화면과 그룹 집계가 쓰는 값. 사용자가 고친 값이 있으면 그것을, 없으면 산출값을 쓴다 */
+        public Integer effectiveSec(WorkoutSession session) {
+            return session.getDurationOverrideSec() != null ? session.getDurationOverrideSec() : durationSec();
         }
     }
 
@@ -103,15 +119,15 @@ public final class WorkoutDtos {
     }
 
     /**
-     * 세션 상세. 명세 6.5.
+     * 하루 기록 상세. 명세 6.5.
      *
      * <p>{@code exercises}는 <b>수행 순서</b>로 정렬한다 — 각 종목의 가장 이른
      * 저장 시각 오름차순이다. 화면이 운동한 차례대로 그리기 때문이다.
+     *
+     * <p>{@code startedAt}·{@code endedAt}·{@code durationSec}은 세트 저장 시각으로 계산한 값이다.
      */
     public record SessionResponse(Long id,
                                   LocalDate performedOn,
-                                  SessionStatus status,
-                                  SessionSource source,
                                   Long routineId,
                                   OffsetDateTime startedAt,
                                   OffsetDateTime endedAt,
@@ -123,10 +139,10 @@ public final class WorkoutDtos {
                                   OffsetDateTime updatedAt,
                                   List<ExerciseGroup> exercises) {
 
-        public static SessionResponse of(WorkoutSession s, List<ExerciseGroup> exercises) {
-            return new SessionResponse(s.getId(), s.getPerformedOn(), s.getStatus(), s.getSource(),
-                    s.getRoutineId(), s.getStartedAt(), s.getEndedAt(), s.getDurationSec(),
-                    s.getDurationOverrideSec(), s.effectiveDurationSec(), s.getMemo(),
+        public static SessionResponse of(WorkoutSession s, DayTimes times, List<ExerciseGroup> exercises) {
+            return new SessionResponse(s.getId(), s.getPerformedOn(), s.getRoutineId(),
+                    times.startedAt(), times.endedAt(), times.durationSec(),
+                    s.getDurationOverrideSec(), times.effectiveSec(s), s.getMemo(),
                     s.getCreatedAt(), s.getUpdatedAt(), exercises);
         }
     }
@@ -183,22 +199,20 @@ public final class WorkoutDtos {
      */
     public record SessionSummary(Long id,
                                  LocalDate performedOn,
-                                 SessionStatus status,
-                                 SessionSource source,
                                  Integer effectiveDurationSec,
                                  int setCount,
                                  int exerciseCount,
                                  List<ExerciseRef> exercises) {
     }
 
-    /** 캘린더의 하루(명세 6.8). 기록이 있는 날짜만 담는다 */
-    public record CalendarDay(LocalDate date, int sessionCount, boolean hasDraft) {
+    /** 캘린더의 하루(명세 6.8). 운동한 날만 담는다. 하루에 기록이 하나라 날짜면 충분하다 */
+    public record CalendarDay(LocalDate date) {
     }
 
     /**
      * 직전 수행 기록(명세 5.5). 종목을 고르는 순간 세트 행을 채우는 데 쓴다.
      *
-     * <p>세트에 {@code id}를 담지 않는다 — 새 세션에 채워 넣을 참조값이지 편집 대상
+     * <p>세트에 {@code id}를 담지 않는다 — 새 기록에 채워 넣을 참조값이지 편집 대상
      * 행이 아니다. 프리필된 행은 완료 체크 시점에 새로 저장된다(LOG-05).
      */
     public record LastPerformanceResponse(Long exerciseId,

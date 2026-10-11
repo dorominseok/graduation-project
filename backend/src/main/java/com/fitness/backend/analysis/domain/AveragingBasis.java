@@ -25,7 +25,7 @@ public final class AveragingBasis {
     }
 
     /**
-     * @param firstRecordOn 기준일 이전(포함) 첫 완료 기록일. 없으면 {@code null}
+     * @param firstRecordOn 기준일 이전(포함) 첫 운동한 날. 없으면 {@code null}
      * @param referenceDate 기준일
      * @param windowDays    집계 구간 길이(보통 28)
      * @param minDays       분모 최솟값(보통 7)

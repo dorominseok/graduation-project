@@ -314,7 +314,7 @@ function MemberRow({
               ))}
             </span>
             <span>
-              {week.sessionCount}회
+              {week.dayCount}회
               {week.totalDurationSec > 0 && ` · ${formatDuration(week.totalDurationSec)}`}
             </span>
           </span>

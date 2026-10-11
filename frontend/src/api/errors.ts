@@ -19,10 +19,8 @@ export const ErrorCodes = {
   TOKEN_EXPIRED: 'TOKEN_EXPIRED',
   TOKEN_INVALID: 'TOKEN_INVALID',
   EMAIL_ALREADY_EXISTS: 'EMAIL_ALREADY_EXISTS',
-  /** 진행 중인 세션이 이미 있다 (명세 6.2). 새로 만들지 말고 이어쓰기로 보낸다 */
-  DRAFT_SESSION_EXISTS: 'DRAFT_SESSION_EXISTS',
-  /** 세트가 하나도 없는 세션을 종료하려 했다 (명세 6.3) */
-  EMPTY_SESSION: 'EMPTY_SESSION',
+  /** 기록을 옮기려는 날짜에 이미 기록이 있다 (명세 6.9). 하루에 기록은 하나다 */
+  DAY_ALREADY_RECORDED: 'DAY_ALREADY_RECORDED',
   /** 종목의 측정 유형이 요구하는 값이 빠졌다 (명세 6.4) */
   INVALID_MEASURE_INPUT: 'INVALID_MEASURE_INPUT',
   RESOURCE_NOT_FOUND: 'RESOURCE_NOT_FOUND',

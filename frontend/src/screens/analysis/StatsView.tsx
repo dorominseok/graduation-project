@@ -46,7 +46,6 @@ export function StatsView({ selectedId, onSelect }: StatsViewProps) {
         from.setDate(from.getDate() - LOOKBACK_DAYS)
         const history = await workoutApi.getHistory({
           from: toDateString(from),
-          status: 'DONE',
           size: 30,
         })
         const ids: number[] = []

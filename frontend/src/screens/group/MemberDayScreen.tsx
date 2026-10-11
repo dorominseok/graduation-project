@@ -56,15 +56,13 @@ function MemberDayView({ groupId, memberId, date }: { groupId: number; memberId:
       />
 
       <div className={styles.page}>
-        {day && day.sessions.length === 0 && (
+        {day && day.session === null && (
           <div className={styles.empty}>
             <div className={styles.emptyText}>이날은 기록이 없어요.</div>
           </div>
         )}
 
-        {day?.sessions.map((session) => (
-          <SessionBlock key={session.id} groupId={groupId} session={session} mine={mine} />
-        ))}
+        {day?.session && <SessionBlock groupId={groupId} session={day.session} mine={mine} />}
       </div>
     </>
   )
@@ -76,15 +74,15 @@ function formatClock(iso: string): string {
 }
 
 /**
- * 운동 머리 한 줄 — "오후 7:12 시작 · 1시간 10분". 서버가 끝난 운동만 보내므로 진행 중은 없다.
+ * 운동 머리 한 줄 — "오후 7:12 시작 · 1시간 10분". 하루에 두 번 운동했으면 시간은 둘을 더한 것이다.
  *
  * <p>나중에 입력한 기록인지는 보이지 않는다 — 친구에게는 그날 무엇을 했는지가 중요하고,
- * 입력 시점을 붙이면 기록을 의심하는 표시처럼 읽힌다. 시작 시각은 실제 운동한 기록(LIVE)일
- * 때만 적는다. 나중에 입력한 기록의 저장 시각은 운동한 시각이 아니다.
+ * 입력 시점을 붙이면 기록을 의심하는 표시처럼 읽힌다. 시작 시각은 운동 시간이 있을 때만
+ * 적는다. 시간이 없으면 나중에 입력한 기록이라 저장 시각이 운동한 시각이 아니다.
  */
 function metaOf(session: MemberSession): string[] {
   const parts: string[] = []
-  if (session.source === 'LIVE' && session.startedAt) parts.push(`${formatClock(session.startedAt)} 시작`)
+  if (session.durationSec != null && session.startedAt) parts.push(`${formatClock(session.startedAt)} 시작`)
   if (session.durationSec != null) parts.push(formatDuration(session.durationSec))
   return parts
 }
@@ -93,7 +91,7 @@ type MemberExercise = MemberSession['exercises'][number]
 type MemberSet = MemberExercise['sets'][number]
 
 /**
- * 운동 한 번 — 머리 줄(시각·시간·세트 수·따봉) 아래에 종목마다 카드 하나.
+ * 그날 기록 — 머리 줄(시각·시간·세트 수·따봉) 아래에 종목마다 카드 하나.
  * 세트를 칸으로 늘어놓아, 줄글보다 한눈에 들어오게 한다.
  */
 function SessionBlock({ groupId, session, mine }: { groupId: number; session: MemberSession; mine: boolean }) {

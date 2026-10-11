@@ -5,8 +5,8 @@ package com.fitness.backend.common.error;
  * 예외 핸들러가 상태 코드와 응답 본문을 만들 수 있다.
  *
  * <p>메시지를 따로 주지 않으면 {@link ErrorCode#defaultMessage()}를 쓴다. 상황별
- * 안내가 필요할 때만 덮어쓴다 — 예컨대 {@code DRAFT_SESSION_EXISTS}는 이어쓰기를
- * 유도하는 문구가 필요하다(명세 6.2).
+ * 안내가 필요할 때만 덮어쓴다 — 예컨대 {@code GROUP_LIMIT_EXCEEDED}는 그룹 인원과
+ * 내 그룹 수 중 무엇이 찼는지 알려야 한다(명세 10장).
  */
 public class ApiException extends RuntimeException {
 

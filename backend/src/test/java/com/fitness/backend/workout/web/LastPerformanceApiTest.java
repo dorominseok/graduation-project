@@ -47,10 +47,9 @@ class LastPerformanceApiTest {
     @Test
     @DisplayName("직전 수행 기록을 세트째로 준다 — 워밍업도 담고 구분만 한다")
     void returnsLastPerformedSets() throws Exception {
-        long sessionId = createSession(LocalDate.now(), "LIVE");
+        long sessionId = openDay(LocalDate.now().minusDays(1));
         postSet(sessionId, set(benchPress, "60.0", 12, true)).andExpect(status().isCreated());
         postSet(sessionId, set(benchPress, "70.0", 10, false)).andExpect(status().isCreated());
-        complete(sessionId);
 
         mvc.perform(get("/api/v1/exercises/" + benchPress + "/last-performance")
                         .header(HttpHeaders.AUTHORIZATION, bearer))
@@ -62,7 +61,7 @@ class LastPerformanceApiTest {
                 .andExpect(jsonPath("$.sets.length()").value(2))
                 .andExpect(jsonPath("$.sets[0].isWarmup").value(true))
                 .andExpect(jsonPath("$.sets[1].weightKg").value(70.0))
-                // 새 세션에 채워 넣을 참조값이라 세트 id는 담지 않는다.
+                // 새 기록에 채워 넣을 참조값이라 세트 id는 담지 않는다.
                 .andExpect(jsonPath("$.sets[0].id").doesNotExist());
     }
 
@@ -75,9 +74,9 @@ class LastPerformanceApiTest {
     }
 
     @Test
-    @DisplayName("진행 중인 세션은 직전 기록이 아니다 — 끝난 기록만 본다")
-    void draftSessionIsNotCounted() throws Exception {
-        long sessionId = createSession(LocalDate.now(), "LIVE");
+    @DisplayName("오늘 기록은 직전 기록이 아니다 — 프리필은 지난번에 한 것을 채운다")
+    void todayIsNotCounted() throws Exception {
+        long sessionId = openDay(LocalDate.now());
         postSet(sessionId, set(benchPress, "70.0", 10, false)).andExpect(status().isCreated());
 
         mvc.perform(get("/api/v1/exercises/" + benchPress + "/last-performance")
@@ -88,29 +87,26 @@ class LastPerformanceApiTest {
     @Test
     @DisplayName("나중에 입력한 과거 기록이 직전 기록을 밀어내지 않는다 — 저장 시각이 아니라 운동 날짜로 고른다")
     void backfillDoesNotOverrideNewerSession() throws Exception {
-        // 오늘 운동을 먼저 끝낸다.
-        long today = createSession(LocalDate.now(), "LIVE");
-        postSet(today, set(benchPress, "80.0", 5, false)).andExpect(status().isCreated());
-        complete(today);
+        // 이틀 전 운동을 먼저 기록한다.
+        long recent = openDay(LocalDate.now().minusDays(2));
+        postSet(recent, set(benchPress, "80.0", 5, false)).andExpect(status().isCreated());
 
         // 그 뒤에 일주일 전 운동을 사후 입력한다. 저장 시각은 이쪽이 더 최근이다.
-        long past = createSession(LocalDate.now().minusDays(7), "BACKFILL");
+        long past = openDay(LocalDate.now().minusDays(7));
         postSet(past, set(benchPress, "50.0", 15, false)).andExpect(status().isCreated());
-        complete(past);
 
         mvc.perform(get("/api/v1/exercises/" + benchPress + "/last-performance")
                         .header(HttpHeaders.AUTHORIZATION, bearer))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.sessionId").value(today))
+                .andExpect(jsonPath("$.sessionId").value(recent))
                 .andExpect(jsonPath("$.sets[0].weightKg").value(80.0));
     }
 
     @Test
     @DisplayName("남의 기록은 보이지 않는다")
     void othersRecordIsNotVisible() throws Exception {
-        long sessionId = createSession(LocalDate.now(), "LIVE");
+        long sessionId = openDay(LocalDate.now().minusDays(1));
         postSet(sessionId, set(benchPress, "70.0", 10, false)).andExpect(status().isCreated());
-        complete(sessionId);
 
         String other = "Bearer " + authService
                 .signUp("o" + UUID.randomUUID().toString().substring(0, 8) + "@example.com", "hunter2hunter2", "타인")
@@ -139,19 +135,14 @@ class LastPerformanceApiTest {
 
     // ── 헬퍼
 
-    private long createSession(LocalDate performedOn, String source) throws Exception {
+    private long openDay(LocalDate performedOn) throws Exception {
         String body = mvc.perform(post("/api/v1/workout-sessions")
                         .header(HttpHeaders.AUTHORIZATION, bearer)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"performedOn\":\"" + performedOn + "\",\"source\":\"" + source + "\"}"))
+                        .content("{\"performedOn\":\"" + performedOn + "\"}"))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         return firstId(body);
-    }
-
-    private void complete(long sessionId) throws Exception {
-        mvc.perform(post("/api/v1/workout-sessions/" + sessionId + "/complete")
-                .header(HttpHeaders.AUTHORIZATION, bearer)).andExpect(status().isOk());
     }
 
     private ResultActions postSet(long sessionId, String body) throws Exception {

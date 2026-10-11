@@ -23,7 +23,6 @@ export function HistoryScreen() {
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth() + 1)
   const [calendar, setCalendar] = useState<CalendarResponse | null>(null)
-  const [opening, setOpening] = useState(false)
 
   const fail = useCallback(
     (err: unknown) => {
@@ -58,28 +57,10 @@ export function HistoryScreen() {
   }
 
   /**
-   * 그날 기록으로 들어간다.
-   *
-   * <p>세션 id는 달력 응답에 없으므로 그 날짜로 한 번 조회한다. 하루에 여러 번
-   * 운동했으면 가장 먼저 한 것으로 가고, 나머지는 기록 화면의 날짜 이동으로 본다.
+   * 그날 기록으로 들어간다. 기록 화면이 날짜로 그날 기록을 연다 — 하루에 기록은 하나라
+   * 운동한 날이면 그 기록이, 아니면 빠뜨린 운동을 채울 빈 기록이 열린다(LOG-39).
    */
-  const openDay = async (key: string) => {
-    if (opening) return
-    setOpening(true)
-    try {
-      const page = await workoutApi.getHistory({ from: key, to: key, size: 5 })
-      if (page.content.length > 0) {
-        navigate(paths.sessionDetail(page.content[0].id))
-      } else {
-        // 기록이 없는 날 — 그 날짜로 사후 입력을 시작한다(명세 6.2의 BACKFILL).
-        navigate(`${paths.session}?date=${key}`)
-      }
-    } catch (err) {
-      fail(err)
-    } finally {
-      setOpening(false)
-    }
-  }
+  const openDay = (key: string) => navigate(`${paths.session}?date=${key}`)
 
   return (
     <>
@@ -91,7 +72,7 @@ export function HistoryScreen() {
           month={month}
           days={calendar?.days}
           onMoveMonth={moveMonth}
-          onSelectDay={(key) => void openDay(key)}
+          onSelectDay={openDay}
         />
       </div>
     </>

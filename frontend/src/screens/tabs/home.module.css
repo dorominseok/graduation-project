@@ -32,7 +32,7 @@
   color: var(--text-primary);
 }
 
-/* ── 시작 / 이어쓰기 */
+/* ── 기록 버튼 */
 
 .start {
   width: 100%;
@@ -43,60 +43,6 @@
   color: var(--on-fill);
   font-size: var(--font-md);
   font-weight: var(--weight-heavy);
-}
-
-/* 이어쓰기는 새로 시작하는 것과 결과가 달라서 모양을 다르게 둔다 */
-.resume {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-  padding: var(--space-14) var(--space-16);
-  border: 1px solid var(--accent-strong);
-  border-radius: var(--radius-xl);
-  background: var(--accent-soft);
-}
-
-.resumeText {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.resumeLabel {
-  font-size: 13.5px;
-  font-weight: var(--weight-bold);
-  color: var(--accent-strong);
-}
-
-.resumeMeta {
-  font-size: var(--font-xs);
-  color: var(--text-secondary);
-}
-
-.resumeActions {
-  display: flex;
-  gap: var(--space-8);
-}
-
-.resumePrimary,
-.resumeSecondary {
-  flex: 1;
-  height: 40px;
-  border-radius: var(--radius-md);
-  font-size: var(--font-sm);
-  font-weight: var(--weight-bold);
-}
-
-.resumePrimary {
-  border: none;
-  background: var(--accent);
-  color: var(--on-fill);
-}
-
-.resumeSecondary {
-  border: 1px solid var(--card-border);
-  background: var(--card-bg);
-  color: var(--text-secondary);
 }
 
 /* ── 카드 공통 */
@@ -206,51 +152,6 @@ button.card {
   color: var(--text-tertiary);
   font-size: var(--font-xs);
   padding: var(--space-6) 0;
-}
-
-/* ── 종료 확인 시트 */
-
-/* 시트가 이미 좌우 여백을 갖고 있어 여기서는 더하지 않는다 */
-.sheetBody {
-  padding: var(--space-4) 0 0;
-  font-size: var(--font-sm);
-  line-height: 1.5;
-  color: var(--text-secondary);
-}
-
-.sheetActions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  padding-top: var(--space-16);
-}
-
-.sheetPrimary,
-.sheetDanger,
-.sheetCancel {
-  height: 46px;
-  border-radius: var(--radius-lg);
-  font-size: var(--font-body);
-  font-weight: var(--weight-heavy);
-}
-
-.sheetPrimary {
-  border: none;
-  background: var(--accent);
-  color: var(--on-fill);
-}
-
-.sheetDanger {
-  border: none;
-  background: var(--danger);
-  color: var(--on-fill);
-}
-
-.sheetCancel {
-  border: none;
-  background: transparent;
-  color: var(--text-tertiary);
-  font-weight: var(--weight-medium);
 }
 
 /* ── 오늘 운동. 목업 루틴 카드의 무게를 이어받는다 */
@@ -574,28 +475,8 @@ button.card {
   composes: g-card from global;
 }
 
-.resume {
-  composes: g-tint-good from global;
-}
-
 .start {
   composes: g-primary from global;
-}
-
-.resumePrimary {
-  composes: g-primary from global;
-}
-
-.resumeSecondary {
-  composes: g-secondary from global;
-}
-
-.sheetPrimary {
-  composes: g-primary from global;
-}
-
-.sheetDanger {
-  composes: g-danger from global;
 }
 
 .weekDotOn {
@@ -633,17 +514,6 @@ button.card {
 
 :global(:root[data-theme='glass']) .start {
   height: 54px;
-  border-radius: var(--radius-pill);
-}
-
-:global(:root[data-theme='glass']) .resume {
-  border-radius: var(--radius-xl);
-}
-
-:global(:root[data-theme='glass']) .resumePrimary,
-:global(:root[data-theme='glass']) .resumeSecondary,
-:global(:root[data-theme='glass']) .sheetPrimary,
-:global(:root[data-theme='glass']) .sheetDanger {
   border-radius: var(--radius-pill);
 }
 

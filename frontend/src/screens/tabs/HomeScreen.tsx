@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BottomSheet, Chevron, useToast } from '../../components'
+import { Chevron, useToast } from '../../components'
 import { analysisApi, isApiError, workoutApi } from '../../api'
-import type { Balance, MuscleVolume, SessionSummary, WorkoutSession } from '../../api'
+import type { Balance, MuscleVolume, SessionSummary } from '../../api'
 import { BAR_TICKS, barPercent, basisLabel } from '../analysis/format'
 import { useAuth } from '../../auth'
 import { paths } from '../../app/paths'
@@ -64,7 +64,7 @@ interface Counts {
   month: number
   total: number
   week: SessionSummary[]
-  /** 가장 최근에 종료한 운동 둘. 누적을 세는 요청에서 같이 받는다 */
+  /** 가장 최근에 운동한 날 둘. 누적을 세는 요청에서 같이 받는다 */
   recent: SessionSummary[]
 }
 
@@ -75,22 +75,16 @@ interface Counts {
  * 그전에 "준비 중" 카드를 두면 검증 참여자에게 메인 기능이 고장 난 앱으로 보인다.
  * 그동안은 "운동 시작"이 주 버튼이다.
  *
- * <p>횟수는 전부 <b>종료한</b> 운동만 센다. 캘린더 응답은 진행 중 세션까지 세서
- * 쓰지 않고 히스토리를 `DONE`으로 거른다.
+ * <p>횟수는 운동한 날을 센다. 하루에 두 번 운동해도 한 번이다 — 기록이 하루에 하나다(LOG-39).
+ * 체크한 세트는 바로 저장되므로 종료를 기다리지 않고 바로 센다.
  */
 export function HomeScreen() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { showToast } = useToast()
 
-  const [current, setCurrent] = useState<WorkoutSession | null>(null)
   const [counts, setCounts] = useState<Counts | null>(null)
   const [analysis, setAnalysis] = useState<{ volume: MuscleVolume; balance: Balance } | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [ending, setEnding] = useState(false)
-  const [busy, setBusy] = useState(false)
-  // 진행 중 세션을 끝내면 횟수·약점이 바뀌므로 다시 읽는다
-  const [version, setVersion] = useState(0)
 
   const today = new Date()
   const todayKey = toDateString(today)
@@ -110,22 +104,15 @@ export function HomeScreen() {
     const load = async () => {
       try {
         const monthStart = toDateString(new Date(now.getFullYear(), now.getMonth(), 1))
-        const [session, month, total, week, volume, balance] = await Promise.all([
-          workoutApi.getCurrent(),
-          workoutApi.getHistory({ from: monthStart, to: toDateString(now), status: 'DONE', size: 1 }),
+        const [month, total, week, volume, balance] = await Promise.all([
+          workoutApi.getHistory({ from: monthStart, to: toDateString(now), size: 1 }),
           // 날짜를 생략하면 서버가 최근 30일만 보므로 시작일을 아주 앞으로 둔다
-          workoutApi.getHistory({ from: '2000-01-01', to: toDateString(now), status: 'DONE', size: 2 }),
-          workoutApi.getHistory({
-            from: toDateString(mondayOf(now)),
-            to: toDateString(now),
-            status: 'DONE',
-            size: 50,
-          }),
+          workoutApi.getHistory({ from: '2000-01-01', to: toDateString(now), size: 2 }),
+          workoutApi.getHistory({ from: toDateString(mondayOf(now)), to: toDateString(now), size: 7 }),
           analysisApi.getMuscleVolume(),
           analysisApi.getBalance(),
         ])
         if (!alive) return
-        setCurrent(session)
         setCounts({
           month: month.page.totalElements,
           total: total.page.totalElements,
@@ -135,40 +122,17 @@ export function HomeScreen() {
         setAnalysis({ volume, balance })
       } catch (err) {
         fail(err)
-      } finally {
-        if (alive) setLoading(false)
       }
     }
     void load()
     return () => {
       alive = false
     }
-  }, [fail, version])
-
-  const currentSets = current?.exercises.reduce((sum, group) => sum + group.sets.length, 0) ?? 0
-
-  /**
-   * 진행 중 세션을 홈에서 끝낸다.
-   *
-   * <p>세트가 하나도 없으면 종료가 아니라 삭제다 — 서버가 빈 세션 종료를
-   * 422로 막는다(명세 6.3). 지우지 않으면 그 세션이 남아 새 운동을 계속 막는다.
-   */
-  const endCurrent = async () => {
-    if (!current || busy) return
-    setBusy(true)
-    try {
-      if (currentSets === 0) await workoutApi.deleteSession(current.id)
-      else await workoutApi.complete(current.id)
-      setEnding(false)
-      setVersion((v) => v + 1)
-    } catch (err) {
-      fail(err)
-    } finally {
-      setBusy(false)
-    }
-  }
+  }, [fail])
 
   const weekDays = new Set(counts?.week.map((s) => s.performedOn))
+  // 오늘 기록. 세트가 있는 날만 히스토리에 오므로, 있으면 오늘 이미 운동한 것이다
+  const todayRecord = counts?.week.find((s) => s.performedOn === todayKey)
 
   return (
     <div className={styles.page}>
@@ -178,45 +142,27 @@ export function HomeScreen() {
         <div className={styles.greetingStats}>{counts ? greetingStats(today, counts) : ' '}</div>
       </div>
 
-      {!loading && current && (
-        <div className={styles.resume}>
-          <div className={styles.resumeText}>
-            <span className={styles.resumeLabel}>
-              {current.performedOn === todayKey
-                ? '진행 중인 운동이 있어요'
-                : `${formatMonthDay(current.performedOn)} 운동이 끝나지 않았어요`}
-            </span>
-            <span className={styles.resumeMeta}>
-              {current.exercises.length}종목 · {currentSets}세트 기록됨
-            </span>
-          </div>
-          <div className={styles.resumeActions}>
-            <button type="button" className={styles.resumePrimary} onClick={() => navigate(paths.session)}>
-              이어서 기록
-            </button>
-            <button type="button" className={styles.resumeSecondary} onClick={() => setEnding(true)}>
-              여기서 종료
-            </button>
-          </div>
-        </div>
-      )}
-
       {/*
         목업의 루틴 추천 카드 자리. 루틴이 들어오는 10월5주에는 이 카드가 루틴 카드가 된다 —
-        그전까지는 얼마나 쉬었는지와 시작 버튼을 둔다.
+        그전까지는 오늘 한 것(또는 얼마나 쉬었는지)과 기록 버튼을 둔다. 시작·종료가 없어서
+        오늘 이미 운동했으면 같은 기록에 이어서 쌓는다.
       */}
-      {!loading && !current && counts && (
+      {counts && (
         <div className={styles.hero}>
           <div className={styles.heroTitle}>오늘 운동</div>
-          <div className={styles.heroSub}>{restLine(counts.recent[0], today)}</div>
+          <div className={styles.heroSub}>
+            {todayRecord
+              ? `${todayRecord.exerciseCount}종목 · ${todayRecord.setCount}세트 기록했어요`
+              : restLine(counts.recent[0], today)}
+          </div>
           <button type="button" className={styles.start} onClick={() => navigate(paths.session)}>
-            운동 시작
+            {todayRecord ? '이어서 기록' : '운동 시작'}
           </button>
         </div>
       )}
 
       {analysis && <WeaknessCard volume={analysis.volume} />}
-      {analysis && analysis.volume.confidence.doneSessionCount > 0 && (
+      {analysis && analysis.volume.confidence.workoutDayCount > 0 && (
         <BalanceCard volume={analysis.volume} balance={analysis.balance} />
       )}
 
@@ -251,7 +197,7 @@ export function HomeScreen() {
         <div className={styles.card}>
           <div className={styles.cardLabel}>최근 기록</div>
           {counts.recent.length === 0 ? (
-            <div className={styles.weakEmpty}>종료한 운동이 여기 쌓여요</div>
+            <div className={styles.weakEmpty}>운동한 날이 여기 쌓여요</div>
           ) : (
             <ul className={styles.recentList}>
               {counts.recent.map((session) => (
@@ -279,31 +225,6 @@ export function HomeScreen() {
       <button type="button" className={styles.browse} onClick={() => navigate(paths.exerciseList)}>
         운동 종목 둘러보기 →
       </button>
-
-      <BottomSheet
-        open={ending}
-        onClose={() => setEnding(false)}
-        title={currentSets === 0 ? '이 운동을 지울까요?' : '여기서 종료할까요?'}
-      >
-        <div className={styles.sheetBody}>
-          {currentSets === 0
-            ? '기록한 세트가 없어 종료할 수 없어요. 지우면 새 운동을 시작할 수 있어요.'
-            : `${current?.exercises.length ?? 0}종목 ${currentSets}세트를 기록하고 종료해요. 체크하지 않은 세트는 남지 않아요.`}
-        </div>
-        <div className={styles.sheetActions}>
-          <button
-            type="button"
-            className={currentSets === 0 ? styles.sheetDanger : styles.sheetPrimary}
-            disabled={busy}
-            onClick={() => void endCurrent()}
-          >
-            {currentSets === 0 ? '지우기' : '종료'}
-          </button>
-          <button type="button" className={styles.sheetCancel} onClick={() => setEnding(false)}>
-            취소
-          </button>
-        </div>
-      </BottomSheet>
     </div>
   )
 }
@@ -342,11 +263,11 @@ function WeaknessCard({ volume }: { volume: MuscleVolume }) {
     </button>
   )
 
-  if (volume.confidence.doneSessionCount === 0) {
+  if (volume.confidence.workoutDayCount === 0) {
     return (
       <div className={styles.card}>
         {head('약점')}
-        <div className={styles.weakEmpty}>운동을 기록하고 종료하면 부족한 부위를 알려드려요</div>
+        <div className={styles.weakEmpty}>운동을 기록하면 부족한 부위를 알려드려요</div>
       </div>
     )
   }
@@ -433,7 +354,7 @@ function WeaknessCard({ volume }: { volume: MuscleVolume }) {
 
       {volume.confidence.level === 'LOW' && (
         <div className={styles.weakNote}>
-          완료한 운동이 {volume.confidence.doneSessionCount}회라 참고만 해주세요
+          운동한 날이 {volume.confidence.workoutDayCount}일이라 참고만 해주세요
         </div>
       )}
     </div>
@@ -447,7 +368,6 @@ function WeaknessCard({ volume }: { volume: MuscleVolume }) {
 function restLine(last: SessionSummary | undefined, today: Date): string {
   if (!last) return '첫 운동을 시작해보세요'
   const days = daysSince(last.performedOn, today)
-  if (days === 0) return '오늘 이미 한 번 운동했어요'
   if (days === 1) return '마지막 운동은 어제예요'
   return `마지막 운동 ${days}일 전 · ${formatMonthDay(last.performedOn)}`
 }

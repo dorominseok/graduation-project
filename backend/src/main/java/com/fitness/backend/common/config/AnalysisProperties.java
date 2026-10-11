@@ -33,7 +33,7 @@ public record AnalysisProperties(
         /** 균형 판정 비율 임계. 큰 쪽 ÷ 작은 쪽이 이 값을 초과하면 불균형(4.2). */
         @NotNull @Positive BigDecimal balanceRatioThreshold,
 
-        /** 최근 {@code weeks}주 완료 세션이 이 값 미만이면 신뢰도 낮음(기록 방식 5.5). */
+        /** 최근 {@code weeks}주 운동한 날이 이 값 미만이면 신뢰도 낮음(기록 방식 5.5). */
         @Min(1) int confidenceSessionThreshold,
 
         /** 추정 1RM 산출 대상 반복 횟수 상한(LOG-07). */
@@ -45,10 +45,10 @@ public record AnalysisProperties(
          */
         @Min(1) int minBasisDays,
 
-        /** 운동 시간 산출 보정(기록 방식 4.2). */
-        @NotNull Duration interSetCap,
+        /** 운동 시간 산출 규칙(기록 방식 4.2, LOG-39). */
+        @NotNull Duration boutGap,
         @NotNull Duration lastSetBonus,
-        @NotNull Duration sessionCap) {
+        @NotNull Duration dayCap) {
 
     /**
      * @param insufficientBelow 미만이면 부족
@@ -67,7 +67,7 @@ public record AnalysisProperties(
 
     /** 운동 시간 산출에 넘길 값 객체. */
     public DurationPolicy durationPolicy() {
-        return new DurationPolicy(interSetCap, lastSetBonus, sessionCap);
+        return new DurationPolicy(boutGap, lastSetBonus, dayCap);
     }
 
     /** 집계 구간의 시작일 오프셋. 기준일을 포함하므로 하루를 뺀다(8.2, LOG-13). */

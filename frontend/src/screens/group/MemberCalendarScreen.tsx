@@ -84,7 +84,7 @@ function MemberCalendar({ groupId, memberId }: { groupId: number; memberId: numb
       <div className={styles.calendarPage}>
         {member && (
           <div className={styles.calendarSummary}>
-            이번 주 {member.week.sessionCount}회
+            이번 주 {member.week.dayCount}회
             {member.week.totalDurationSec > 0 && ` · ${formatDuration(member.week.totalDurationSec)}`}
           </div>
         )}

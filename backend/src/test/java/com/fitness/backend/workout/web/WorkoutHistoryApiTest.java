@@ -67,11 +67,10 @@ class WorkoutHistoryApiTest {
     }
 
     @Test
-    @DisplayName("종목으로 거르면 그 종목이 있는 세션만 나온다 — 세션 단위 필터다")
+    @DisplayName("종목으로 거르면 그 종목이 있는 날만 나온다 — 날 단위 필터다")
     void historyFiltersByExercise() throws Exception {
         long withBench = liveSessionWith(benchPress);
-        complete(withBench);
-        long withPlankOnly = createSession(LocalDate.now().minusDays(1), "BACKFILL");
+        long withPlankOnly = openDay(LocalDate.now().minusDays(1));
         postSet(withPlankOnly, timeSet(plank, 60)).andExpect(status().isCreated());
 
         mvc.perform(get("/api/v1/workout-sessions")
@@ -90,19 +89,11 @@ class WorkoutHistoryApiTest {
     }
 
     @Test
-    @DisplayName("상태로도 거를 수 있다")
-    void historyFiltersByStatus() throws Exception {
-        long draft = liveSessionWith(benchPress);
+    @DisplayName("세트가 없는 날은 히스토리에 나오지 않는다 — 열기만 하고 체크하지 않은 날이다")
+    void emptyDaysAreNotListed() throws Exception {
+        openDay(LocalDate.now());
 
-        mvc.perform(get("/api/v1/workout-sessions")
-                        .param("status", "DRAFT")
-                        .header(HttpHeaders.AUTHORIZATION, bearer))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].id").value(draft));
-
-        mvc.perform(get("/api/v1/workout-sessions")
-                        .param("status", "DONE")
-                        .header(HttpHeaders.AUTHORIZATION, bearer))
+        mvc.perform(get("/api/v1/workout-sessions").header(HttpHeaders.AUTHORIZATION, bearer))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.page.totalElements").value(0));
     }
@@ -110,10 +101,12 @@ class WorkoutHistoryApiTest {
     // ── 캘린더 (6.8)
 
     @Test
-    @DisplayName("캘린더는 기록이 있는 날짜만 주고 진행 중 여부를 함께 준다")
+    @DisplayName("캘린더는 운동한 날짜만 준다 — 세트 없이 열기만 한 날은 빠진다")
     void calendarListsOnlyRecordedDays() throws Exception {
         liveSessionWith(benchPress);
         LocalDate today = LocalDate.now();
+        // 같은 달의 다른 날을 열기만 한다. 오늘이 1일이면 지난달이라 이 달 캘린더와 무관하다
+        openDay(today.minusDays(1));
 
         mvc.perform(get("/api/v1/workout-sessions/calendar")
                         .param("year", String.valueOf(today.getYear()))
@@ -121,9 +114,8 @@ class WorkoutHistoryApiTest {
                         .header(HttpHeaders.AUTHORIZATION, bearer))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.year").value(today.getYear()))
-                .andExpect(jsonPath("$.days[0].date").value(today.toString()))
-                .andExpect(jsonPath("$.days[0].sessionCount").value(1))
-                .andExpect(jsonPath("$.days[0].hasDraft").value(true));
+                .andExpect(jsonPath("$.days.length()").value(1))
+                .andExpect(jsonPath("$.days[0].date").value(today.toString()));
     }
 
     @Test
@@ -137,7 +129,7 @@ class WorkoutHistoryApiTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
-    // ── 세션 수정 (6.9)
+    // ── 기록 수정 (6.9)
 
     @Test
     @DisplayName("메모만 바꾸면 다른 값은 그대로 둔다")
@@ -170,7 +162,6 @@ class WorkoutHistoryApiTest {
     @DisplayName("보정값을 넣으면 effectiveDurationSec이 그 값이 된다")
     void overrideWinsOverCalculated() throws Exception {
         long sessionId = liveSessionWith(benchPress);
-        complete(sessionId);
 
         patchSession(sessionId, "{\"durationOverrideSec\":4200}")
                 .andExpect(status().isOk())
@@ -179,19 +170,9 @@ class WorkoutHistoryApiTest {
     }
 
     @Test
-    @DisplayName("진행 중 기록의 날짜는 바꿀 수 없다 — 오늘 기록이라는 전제가 깨진다")
-    void liveSessionDateIsFixed() throws Exception {
-        long sessionId = liveSessionWith(benchPress);
-
-        patchSession(sessionId, "{\"performedOn\":\"" + LocalDate.now().minusDays(2) + "\"}")
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
-    }
-
-    @Test
-    @DisplayName("지난 기록은 날짜를 정정할 수 있다")
-    void backfillDateIsCorrectable() throws Exception {
-        long sessionId = createSession(LocalDate.now().minusDays(3), "BACKFILL");
+    @DisplayName("기록의 날짜를 정정할 수 있다")
+    void dateIsCorrectable() throws Exception {
+        long sessionId = openDay(LocalDate.now().minusDays(3));
         LocalDate corrected = LocalDate.now().minusDays(5);
 
         patchSession(sessionId, "{\"performedOn\":\"" + corrected + "\"}")
@@ -221,7 +202,7 @@ class WorkoutHistoryApiTest {
     // ── 삭제 (6.10, 6.12, LOG-22)
 
     @Test
-    @DisplayName("세션을 지우면 세트도 함께 사라진다")
+    @DisplayName("기록을 지우면 세트도 함께 사라진다")
     void deletingSessionRemovesSets() throws Exception {
         long sessionId = liveSessionWith(benchPress);
 
@@ -233,7 +214,7 @@ class WorkoutHistoryApiTest {
     }
 
     @Test
-    @DisplayName("세트 하나를 지워도 세션은 남는다")
+    @DisplayName("마지막 세트를 지워도 기록은 남는다")
     void deletingLastSetKeepsSession() throws Exception {
         long sessionId = liveSessionWith(benchPress);
         long setId = firstSetId(sessionId);
@@ -289,9 +270,9 @@ class WorkoutHistoryApiTest {
 
     // ── 헬퍼
 
-    /** 세션을 만들고 종목마다 세트를 하나씩 넣는다 */
+    /** 오늘 기록을 열고 종목마다 세트를 하나씩 넣는다 */
     private long liveSessionWith(long... exerciseIds) throws Exception {
-        long sessionId = createSession(LocalDate.now(), "LIVE");
+        long sessionId = openDay(LocalDate.now());
         for (long exerciseId : exerciseIds) {
             String body = exerciseId == plank ? timeSet(exerciseId, 60) : weightSet(exerciseId, "70.0", 10);
             postSet(sessionId, body).andExpect(status().isCreated());
@@ -299,19 +280,14 @@ class WorkoutHistoryApiTest {
         return sessionId;
     }
 
-    private long createSession(LocalDate performedOn, String source) throws Exception {
+    private long openDay(LocalDate performedOn) throws Exception {
         String body = mvc.perform(post("/api/v1/workout-sessions")
                         .header(HttpHeaders.AUTHORIZATION, bearer)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"performedOn\":\"" + performedOn + "\",\"source\":\"" + source + "\"}"))
+                        .content("{\"performedOn\":\"" + performedOn + "\"}"))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         return firstId(body);
-    }
-
-    private void complete(long sessionId) throws Exception {
-        mvc.perform(post("/api/v1/workout-sessions/" + sessionId + "/complete")
-                .header(HttpHeaders.AUTHORIZATION, bearer)).andExpect(status().isOk());
     }
 
     private ResultActions postSet(long sessionId, String body) throws Exception {
