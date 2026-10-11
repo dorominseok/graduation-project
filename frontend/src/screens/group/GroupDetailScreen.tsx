@@ -22,12 +22,6 @@ function weekOf(weekStart: string): string[] {
   )
 }
 
-/** "2026-10-05" → "10/5" */
-function shortDate(key: string): string {
-  const date = fromDateKey(key)
-  return `${date.getMonth() + 1}/${date.getDate()}`
-}
-
 /**
  * 그룹 상세 (UC-05-03, LOG-38) — 멤버별 오늘 운동 여부와 이번 주(월~일) 횟수·시간.
  *
@@ -108,9 +102,6 @@ function GroupDetailView({ groupId }: { groupId: number }) {
           <div className={styles.cardLabel}>오늘</div>
           <div className={styles.bigLine}>
             {group.members.length}명 중 {doneCount}명이 운동했어요
-          </div>
-          <div className={styles.subLine}>
-            운동을 기록하면 바로 보여요 · 이번 주 {shortDate(weekDays[0])}~{shortDate(weekDays[6])}
           </div>
         </div>
 
