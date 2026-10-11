@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { BottomSheet, NumberPad, useToast } from '../../components'
+import { BottomSheet, useToast } from '../../components'
 import { ErrorCodes, exerciseApi, isApiError, statsApi, workoutApi } from '../../api'
 import type { Exercise, MeasureType, MuscleGroupKey, SessionIntensity, WorkoutSession } from '../../api'
 import { paths } from '../../app/paths'
 import { ExercisePicker } from './ExercisePicker'
 import type { PickerStep } from './ExercisePicker'
 import { BODY_PART_LABEL, EQUIPMENT_LABEL, MEASURE_CHIP_LABEL } from './exerciseLabels'
+import { NumberField } from './NumberField'
 import styles from './session.module.css'
 
 /** 화면에만 있는 세트 행. 완료 체크를 해야 서버로 간다(LOG-05). */
@@ -37,12 +38,8 @@ interface ExerciseCard {
   prevLabel: string | null
 }
 
-/** 어떤 값을 입력받는 중인지. 숫자 패드가 열릴 때만 채워진다 */
-interface Editing {
-  cardIndex: number
-  rowIndex: number
-  field: 'weightKg' | 'reps' | 'durationSec'
-}
+/** 세트에서 숫자로 입력하는 값 */
+type Field = 'weightKg' | 'reps' | 'durationSec'
 
 const FIELD_LABEL = { weightKg: '중량', reps: '횟수', durationSec: '시간' } as const
 const FIELD_UNIT = { weightKg: 'kg', reps: '회', durationSec: '초' } as const
@@ -72,7 +69,7 @@ function emptyRow(): SetRow {
 }
 
 /** 측정 유형이 실제로 쓰는 입력 칸만 고른다(명세 5.1 표). */
-function fieldsOf(measureType: MeasureType): Editing['field'][] {
+function fieldsOf(measureType: MeasureType): Field[] {
   if (measureType === 'TIME') return ['durationSec']
   if (measureType === 'BODYWEIGHT_REPS') return ['reps']
   return ['weightKg', 'reps']
@@ -151,7 +148,6 @@ export function SessionScreen() {
 
   const [session, setSession] = useState<WorkoutSession | null>(null)
   const [cards, setCards] = useState<ExerciseCard[]>([])
-  const [editing, setEditing] = useState<Editing | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [now, setNow] = useState(() => Date.now())
@@ -480,7 +476,7 @@ export function SessionScreen() {
   const patchValue = async (
     cardIndex: number,
     rowIndex: number,
-    field: Editing['field'],
+    field: Field,
     value: number,
   ) => {
     const row = cards[cardIndex].rows[rowIndex]
@@ -985,17 +981,14 @@ export function SessionScreen() {
                       <div className={styles.panel}>
                         <div className={styles.fieldRow}>
                           <span className={styles.fieldLabel}>{FIELD_LABEL[primaryField]}</span>
-                          <button
-                            type="button"
+                          {/* 누르면 휴대폰의 기본 키보드가 뜬다. 중량은 소수점 있는 숫자 키보드 */}
+                          <NumberField
                             className={styles.fieldValue}
-                            onClick={() =>
-                              setEditing({ cardIndex: openedIndex, rowIndex, field: primaryField })
-                            }
-                          >
-                            {row[primaryField] == null
-                              ? '–'
-                              : trimNumber(row[primaryField] as number)}
-                          </button>
+                            value={row[primaryField]}
+                            allowDecimal={primaryField === 'weightKg'}
+                            onCommit={(value) => void patchValue(openedIndex, rowIndex, primaryField, value)}
+                            aria-label={FIELD_LABEL[primaryField]}
+                          />
                           <span className={styles.fieldUnit}>{FIELD_UNIT[primaryField]}</span>
                           <button
                             type="button"
@@ -1030,15 +1023,12 @@ export function SessionScreen() {
                         {hasReps && (
                           <div className={styles.fieldRow}>
                             <span className={styles.fieldLabel}>횟수</span>
-                            <button
-                              type="button"
+                            <NumberField
                               className={styles.fieldValue}
-                              onClick={() =>
-                                setEditing({ cardIndex: openedIndex, rowIndex, field: 'reps' })
-                              }
-                            >
-                              {row.reps == null ? '–' : row.reps}
-                            </button>
+                              value={row.reps}
+                              onCommit={(value) => void patchValue(openedIndex, rowIndex, 'reps', value)}
+                              aria-label="횟수"
+                            />
                             <span className={styles.fieldUnit}>회</span>
                             <button
                               type="button"
@@ -1136,20 +1126,6 @@ export function SessionScreen() {
 
           {restOverlay}
         </div>
-
-        <NumberPad
-          open={editing !== null}
-          onClose={() => setEditing(null)}
-          label={editing ? `${opened.name} · ${FIELD_LABEL[editing.field]}` : undefined}
-          initialValue={editing ? (opened.rows[editing.rowIndex][editing.field] ?? 0) : 0}
-          unit={editing ? FIELD_UNIT[editing.field] : undefined}
-          allowDecimal={editing?.field === 'weightKg'}
-          onApply={(value) => {
-            if (!editing) return
-            void patchValue(editing.cardIndex, editing.rowIndex, editing.field, value)
-            setEditing(null)
-          }}
-        />
 
         {/*
           일괄 수정. 같은 무게로 다섯 세트를 채우는 일이 흔해서, 한 줄씩 고치는

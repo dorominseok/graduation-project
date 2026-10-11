@@ -532,6 +532,18 @@
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
   text-align: right;
+  /* 입력칸이다. 휴대폰 기본 키보드로 바로 고친다 */
+  width: 100%;
+  font-family: inherit;
+}
+
+.fieldValue:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.fieldValue::placeholder {
+  color: var(--text-tertiary);
 }
 
 .fieldUnit {
