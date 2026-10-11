@@ -7,6 +7,7 @@
 > 대상 범위: **9월 1~3주 구현분** — 인증·프로필 / 운동 기록 / 통계·분석
 > 제외 범위: 루틴 추천(UC-03-03~06), 뱃지(UC-04), 알림(UC-06) — 10~11월 별도 명세
 > 추가: 친구 그룹(UC-05)은 10장 (2026-10-11, LOG-38)
+> 개정: 2026-10-11 하루 기록(LOG-39) — 시작·종료를 없애고 하루에 기록 하나. 6장 대부분, 1.5·3.3·5.5·8.2·8.5·10장. 엔드포인트 46→44개
 
 ---
 
@@ -30,14 +31,14 @@
 | 설계 결정 | 출처 | 반영 위치 |
 |---|---|---|
 | 세트는 완료 체크 시점에만 INSERT (계획 행 미저장, `is_completed` 없음) | 기록 방식 3.3, LOG-05 | 6.4 세트 저장 |
-| 세션 상태 DRAFT / DONE, 분석 집계는 DONE만 | 기록 방식 5.1 | 6.3 세션 종료, 8장 집계 조건 |
+| 기록은 사용자의 하루에 하나, 시작·종료 없음. 세트가 있는 날이 운동한 날 (~~DRAFT / DONE~~) | 기록 방식 2.1·5.1, LOG-39 | 6.1·6.2, 8장 집계 조건 |
 | 볼륨 집계는 본세트만 (`is_warmup = false`) | 분석 1.2, LOG-02 | 8.2 |
-| 사후 입력(BACKFILL)은 볼륨에 포함, 시간 집계에서만 제외 | 기록 방식 4.3 | 6.2, 8.2 |
-| 운동 시간은 세트 저장 시각으로 자동 산출 (간격 15분 캡, 세션 4시간 상한) | 기록 방식 4.2 | 6.3, 8.5 |
+| 사후 입력은 볼륨에 포함, 시간 집계에서만 제외 (그 날짜에 시작하지 않은 구간은 시간에서 빠진다) | 기록 방식 4.3, LOG-39 | 6.5, 8.2 |
+| 운동 시간은 세트 저장 시각으로 읽을 때 계산 (30분 넘는 공백에서 구간 분할, 하루 4시간 상한) | 기록 방식 4.2, LOG-39 | 6.5, 8.5 |
 | 추정 1RM은 `WEIGHT_REPS` 종목의 `reps ≤ 12` 세트, 일자별 최댓값 | 분석 1.3, LOG-07 | 7.1, 8.5 |
 | 판정 부위 `primary_muscle` 기반 9종, 화면 표시는 상위 6종 / 하위 9종 2계층 | 분석 2.3·2.4, LOG-09·LOG-10 | 8.1, 8.2 |
 | 판정 결과는 서버가 완성해서 내려줌 (화면이 합산·분류하지 않음) | LOG-10 | 8.2 |
-| 최근 4주 DONE 세션 수가 임계 미만이면 신뢰도 낮음 표시 | 기록 방식 5.5 | 8.2 `confidence` |
+| 최근 4주 운동한 날 수가 임계 미만이면 신뢰도 낮음 표시 | 기록 방식 5.5 | 8.2 `confidence` |
 | 균형 판정: 밀기/당기기·상하체, 큰 쪽 ÷ 작은 쪽 2배 초과 시 경고 | 분석 4.2·4.3 | 8.3 |
 
 ---
@@ -150,10 +151,8 @@ Authorization: Bearer {accessToken}
 | 403 | `ACCESS_DENIED` | 타 사용자 리소스 접근 |
 | 404 | `RESOURCE_NOT_FOUND` | 대상 리소스 없음 |
 | 409 | `EMAIL_ALREADY_EXISTS` | 회원가입 이메일 중복. 구글 로그인에서 그 이메일이 이미 다른 구글 계정에 묶여 있을 때도 (4.9) |
-| 409 | `DRAFT_SESSION_EXISTS` | 이미 진행 중인 `DRAFT` 세션이 있는 상태에서 새 `LIVE` 세션 생성 시도 (6.2) |
-| 409 | `SESSION_ALREADY_COMPLETED` | 이미 `DONE`인 세션에 종료 재요청 |
+| 409 | `DAY_ALREADY_RECORDED` | 기록의 날짜를 옮기려는데 그 날짜에 기록이 이미 있음 (6.9, LOG-39) |
 | 409 | `GROUP_LIMIT_EXCEEDED` | 그룹 인원 20명 또는 한 사람의 그룹 10개 초과 (10장) |
-| 422 | `EMPTY_SESSION` | 세트가 하나도 없는 세션 종료 시도 (6.3) |
 | 429 | `RATE_LIMITED` | 요청 한도 초과 (도입 시) |
 | 500 | `INTERNAL_ERROR` | 서버 내부 오류 |
 
@@ -291,21 +290,22 @@ Authorization: Bearer {accessToken}
 | PUT | `/users/me/favorite-exercises/{exerciseId}` | 즐겨찾기 추가 (멱등) | ✔ |
 | DELETE | `/users/me/favorite-exercises/{exerciseId}` | 즐겨찾기 해제 (멱등) | ✔ |
 
-### 3.3 운동 기록 (세션·세트)
+### 3.3 운동 기록 (하루 기록·세트)
 
 | 메서드 | 경로 | 설명 | 인증 |
 |---|---|---|---|
-| POST | `/workout-sessions` | 세션 생성 (`LIVE` 또는 `BACKFILL`) | ✔ |
-| GET | `/workout-sessions` | 히스토리 목록 (기간·상태 필터) | ✔ |
-| GET | `/workout-sessions/current` | 진행 중(`DRAFT`) 세션 조회 — "이어서 기록" | ✔ |
+| POST | `/workout-sessions` | **그날 기록 열기** — 없으면 만들고 있으면 그 기록 (LOG-39) | ✔ |
+| GET | `/workout-sessions` | 히스토리 목록 (운동한 날, 기간·종목 필터) | ✔ |
 | GET | `/workout-sessions/calendar` | 월별 운동일 요약 (캘린더 렌더링용) | ✔ |
-| GET | `/workout-sessions/{id}` | 세션 상세 (세트 포함) | ✔ |
-| PATCH | `/workout-sessions/{id}` | 메모·수행일자·시간 수동 보정 수정 | ✔ |
-| POST | `/workout-sessions/{id}/complete` | 세션 종료 (`DRAFT` → `DONE`, 시간 산출) | ✔ |
-| DELETE | `/workout-sessions/{id}` | 세션 삭제 (세트 포함 CASCADE) | ✔ |
+| GET | `/workout-sessions/{id}` | 하루 기록 상세 (세트 포함) | ✔ |
+| PATCH | `/workout-sessions/{id}` | 메모·날짜·시간 수동 보정 수정 | ✔ |
+| DELETE | `/workout-sessions/{id}` | 하루 기록 삭제 (세트 포함 CASCADE) | ✔ |
 | POST | `/workout-sessions/{id}/sets` | 세트 저장 (완료 체크 시점) | ✔ |
 | PATCH | `/workout-sessions/{id}/sets/{setId}` | 세트 수정 | ✔ |
 | DELETE | `/workout-sessions/{id}/sets/{setId}` | 세트 삭제 | ✔ |
+| DELETE | `/workout-sessions/{id}/exercises/{exerciseId}` | 종목 단위 삭제 (LOG-22) | ✔ |
+
+> ~~`POST /workout-sessions/{id}/complete`~~(세션 종료), ~~`GET /workout-sessions/current`~~(진행 중 세션)는 **삭제했다**(LOG-39). 종료가 없어 둘 다 할 일이 없다.
 
 ### 3.4 통계
 
@@ -728,14 +728,13 @@ Authorization: Bearer {accessToken}
 | 조건 | 내용 |
 |---|---|
 | 소유자 | 요청자 본인의 기록만 |
-| 세션 상태 | `status = 'DONE'` 세션만 |
+| 날짜 | **오늘 이전**의 기록만 (LOG-39) |
 | 기간 | 제한 없음. 아무리 오래전이어도 마지막 수행분을 찾는다 |
-| 정렬 | `performed_on` 내림차순 → 동일 일자면 그 세션에 담긴 해당 종목 세트의 `MAX(recorded_at)` 내림차순. 그중 첫 세션 하나 |
-| 세트 범위 | 그 세션에서 해당 종목의 전 세트. 워밍업 세트도 포함하고 `isWarmup`으로 구분한다 |
+| 정렬 | `performed_on` 내림차순. 하루에 기록은 하나라 그중 첫 기록이다 |
+| 세트 범위 | 그날 기록에서 해당 종목의 전 세트. 워밍업 세트도 포함하고 `isWarmup`으로 구분한다 |
 
-- `DRAFT`(기록 중인 세션)를 제외하는 것은 프리필 ①과 세트 복사 ②의 담당을 나누기 위함이다. 진행 중 세션 안의 값을 이어받는 것은 ②가 화면 상태로 처리한다.
-- 하루 복수 세션이 허용되므로(6.1) 같은 일자에 후보가 둘일 수 있어 `recorded_at` 2차 정렬을 둔다.
-- `BACKFILL` 세션도 대상이다. 정렬 기준이 `performed_on`이라 오늘 입력한 과거 기록이 최신으로 올라오지 않는다.
+- 오늘을 빼는 것은 프리필 ①과 세트 복사 ②의 담당을 나누기 위함이다. 하루 기록에는 오늘 앞서 한 세트도 들어 있어서, 빼지 않으면 오늘 기록이 "지난번"으로 올라온다. 오늘 안의 값을 이어받는 것은 ②가 화면 상태로 처리한다.
+- 사후 입력도 대상이다. 정렬 기준이 `performed_on`이라 오늘 입력한 과거 기록이 최신으로 올라오지 않는다.
 
 **응답 `200 OK`**
 
@@ -759,11 +758,11 @@ Authorization: Bearer {accessToken}
 | `measureType` | 프리필 대상 필드를 정하는 데 쓴다(5.1 표). 종목 조회를 한 번 더 하지 않도록 함께 내려준다 |
 | `sessionId` / `performedOn` | 어느 기록에서 가져왔는지. "8/28 기록에서 채움" 같은 근거 표기에 쓸 수 있다 |
 | `sets[]` | `setNo` 오름차순. 저장 시 `기존 수 + 1`로 부여되므로 수행 순서와 일치한다 |
-| `sets[].setNo` | 참고용 표시값이다. 삭제로 구멍이 있을 수 있으며(6.12), 새 세션의 `setNo`는 저장 시점에 서버가 새로 부여한다 |
+| `sets[].setNo` | 참고용 표시값이다. 삭제로 구멍이 있을 수 있으며(6.12), 새 기록의 `setNo`는 저장 시점에 서버가 새로 부여한다 |
 
-> 세트에 `id`를 담지 않는다. 새 세션에 채워 넣을 참조값이지 편집 대상 행이 아니기 때문이다. 프리필된 행은 완료 체크 시점에 `POST /workout-sessions/{id}/sets`로 새로 저장된다(LOG-05).
+> 세트에 `id`를 담지 않는다. 새 기록에 채워 넣을 참조값이지 편집 대상 행이 아니기 때문이다. 프리필된 행은 완료 체크 시점에 `POST /workout-sessions/{id}/sets`로 새로 저장된다(LOG-05).
 
-**응답 `204 No Content`** — 해당 종목의 `DONE` 기록이 없을 때. 오류가 아니라 "처음 하는 종목"이라는 정상 상태이며, 클라이언트는 빈 세트 행 하나로 시작한다. `GET /workout-sessions/current`(6.7)의 204와 같은 성격이다.
+**응답 `204 No Content`** — 오늘 이전에 해당 종목 기록이 없을 때. 오류가 아니라 "처음 하는 종목"이라는 정상 상태이며, 클라이언트는 빈 세트 행 하나로 시작한다.
 
 **오류**
 
@@ -851,43 +850,41 @@ Authorization: Bearer {accessToken}
 ### 6.1 개념 모델
 
 ```
-workout_session (한 번의 운동)
+workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
   └─ workout_set (완료 체크한 세트 1개 = 1행)
 ```
 
-> **하루 복수 세션은 허용한다** (2026-08-31 확정). 오전·오후로 나눠 운동하는 사용자가 있고, 한 세션에 몰아넣으면 중간 공백이 운동 시간 산출에 15분 캡으로 잡혀 값이 왜곡된다(8.5). 6.8의 `sessionCount`가 2 이상일 수 있으며, 기록 탭·캘린더는 하루에 여러 세션 카드를 그릴 수 있어야 한다.
+> **하루에 기록은 하나다** (2026-10-11 개정, LOG-39). 처음에는 운동 한 번을 세션으로 두고 하루 여러 세션을 허용했으나(LOG-12), 같은 날 두 번째 운동을 시작하면 아침 기록이 그 화면에서 보이지 않았다. 지금은 아침·저녁에 두 번 운동해도 같은 기록에 쌓인다. 오전·오후 사이 공백이 운동 시간을 왜곡하던 문제(LOG-12의 근거)는 시간 규칙이 공백에서 구간을 나누는 것으로 해결한다(6.5, 8.5).
 >
-> 다만 **`DRAFT` 세션은 여전히 사용자당 하나**다(6.2). 진행 중인 세션을 끝내야 다음 세션을 시작할 수 있다.
+> **시작·종료가 없다.** 체크한 세트는 그 자리에서 저장되고(6.4), 마지막으로 체크한 세트가 곧 끝이다. 진행 중/완료 상태(`DRAFT`/`DONE`)와 사후 입력 표식(`LIVE`/`BACKFILL`)은 없앴다. **세트가 하나라도 있는 날**이 운동한 날이다 — 목록·캘린더·분석·그룹 모두 이 기준이다.
+>
+> 테이블 이름 `workout_sessions`와 경로 `/workout-sessions`는 운동 한 번을 뜻하던 시절의 이름이다. 세트와 응원이 `session_id`로 가리키고 있어 이름은 두고 뜻만 바꿨다.
 
-- **세션 생성 → 세트 저장(반복) → 세션 종료**가 기본 흐름(UC-02-01).
-- 프론트는 사용자가 **첫 세트를 완료 체크하는 순간** `POST /workout-sessions`로 세션을 만들고, 이어서 `POST .../sets`를 호출한다. 계획 행은 서버로 보내지 않는다(LOG-05).
-- `DRAFT` 세션은 사용자당 하나만 존재할 수 있다.
+- **그날 기록 열기 → 세트 저장(반복)**이 기본 흐름(UC-02-01).
+- 프론트는 기록 화면에 들어올 때 `POST /workout-sessions`로 그날 기록을 열고, 체크한 세트를 `POST .../sets`로 보낸다. 계획 행은 서버로 보내지 않는다(LOG-05). 세트 없이 나가면 빈 기록이 남지만 운동한 날로 세지 않는다.
 
 ### 6.2 POST /workout-sessions
+
+그날 기록을 연다. **없으면 만들고(`201`), 있으면 그 기록을 준다(`200`).** 두 번 불러도 기록은 하나다.
 
 **요청**
 
 ```json
-{
-  "performedOn": "2026-09-01",
-  "source": "LIVE"
-}
+{ "performedOn": "2026-09-01" }
 ```
 
 | 필드 | 규칙 |
 |---|---|
-| `performedOn` | 필수. `LIVE`면 오늘 날짜여야 한다(자정 넘김은 시작 일자 유지). `BACKFILL`이면 과거 날짜 허용, 미래 불가 |
-| `source` | `LIVE`(기본) \| `BACKFILL`. **클라이언트가 화면에서 사용자에게 고르게 하지 않는다** — 진입 경로로 정한다. 홈에서 "운동 시작"이면 `LIVE`, 캘린더에서 과거 날짜를 눌러 "기록 추가"면 `BACKFILL`을 보낸다 |
+| `performedOn` | 선택. 미래 불가. **생략하면 오늘이다.** 단 어제 기록의 마지막 세트가 30분(8.5의 구간 간격) 안이면 어젯밤 운동이 자정을 넘겨 이어지는 중이므로 **어제 기록**을 준다 |
+| ~~`source`~~ | 없앴다(LOG-39). 보내도 무시한다. 사후 입력인지는 운동 시간의 구간 규칙이 세트 단위로 가린다(6.5) |
 | ~~`routineId`~~ | **요청에서 받지 않는다**(LOG-26). 추천 루틴 연결(수행률 측정용)은 `routines` 테이블이 생기는 10월부터다. 그전까지 받으면 참조 없는 값이 쌓여 나중에 FK를 걸 수 없다. 응답에는 컬럼 값 그대로 `null`이 담긴다 |
 
-**응답 `201 Created`**
+**응답 `201 Created`** (그날 첫 기록) / **`200 OK`** (그날 기록이 이미 있음) — 6.5의 기록 상세.
 
 ```json
 {
   "id": 55,
   "performedOn": "2026-09-01",
-  "status": "DRAFT",
-  "source": "LIVE",
   "routineId": null,
   "startedAt": null,
   "endedAt": null,
@@ -905,39 +902,15 @@ workout_session (한 번의 운동)
 
 | 상황 | 응답 |
 |---|---|
-| 이미 `DRAFT` 세션 보유 (`LIVE` 생성 시) | `409 DRAFT_SESSION_EXISTS` — 본문 `message`에 안내, 클라이언트는 `GET /workout-sessions/current`로 이어쓰기 유도 |
-| `LIVE`인데 `performedOn`이 오늘이 아님 | `400 VALIDATION_ERROR` |
 | `performedOn`이 미래 | `400 INVALID_DATE_RANGE` |
 
-> **미래 날짜 세션은 허용하지 않는다** (대조표 A-4.2 미결정 항목의 확정). 미리 짜두는 운동은 "계획"이고, `workout_sessions`는 "기록"만 담는다 — LOG-05가 이 둘을 다른 테이블로 분리한 것이 핵심 결정이다. 미래 운동을 미리 구성하는 화면은 10월 `routines` 테이블의 일이다. 목업의 미래 날짜 선택 화면은 제거해야 한다(9장).
+> **미래 날짜 기록은 허용하지 않는다** (대조표 A-4.2 미결정 항목의 확정). 미리 짜두는 운동은 "계획"이고, `workout_sessions`는 "기록"만 담는다 — LOG-05가 이 둘을 다른 테이블로 분리한 것이 핵심 결정이다. 미래 운동을 미리 구성하는 화면은 10월 `routines` 테이블의 일이다.
 
-> **BACKFILL 편의(선택 구현)**: `POST /workout-sessions`에 `"sets": [ … ], "autoComplete": true`를 함께 받아 세션 생성 + 세트 일괄 저장 + 종료를 한 번에 처리할 수 있다. 기본 흐름은 위 3단계를 유지한다. 이 경로로 보내는 세트 항목도 6.4와 같은 형태이므로 각각 `clientSetId`를 갖는다.
->
-> **세션 생성의 멱등성 — 미결.** `LIVE`는 `DRAFT` 사용자당 1개 제약(위 409)이 재전송을 자연히 막지만, `BACKFILL`은 하루 복수 세션이 허용되므로(6.1) **응답 유실 후 재전송이 같은 날짜에 세션 두 개를 만든다.** 세트와 같은 방식(`clientSessionId` + `(user_id, client_session_id)` UNIQUE)으로 막을 수 있고, 완전 오프라인 시작을 지원하게 되면 어차피 필요해진다. 9월 범위에 넣을지는 오프라인 쓰기 큐의 범위와 함께 정한다.
+> **동시에 두 번 열어도 하나다.** "있는지 보고 넣기"를 하면 두 요청이 모두 "없음"을 보고 넣어 유니크 제약에 걸린다. 서버는 `INSERT … ON CONFLICT (user_id, performed_on) DO NOTHING` 뒤에 그 기록을 읽는다(응원과 같은 방식, 10.1). 이전에 미결로 두었던 세션 생성 멱등 키(`clientSessionId`)는 하루 하나 제약이 대신해 필요 없어졌다.
 
-### 6.3 POST /workout-sessions/{id}/complete
+### 6.3 ~~POST /workout-sessions/{id}/complete~~ — 삭제 (LOG-39)
 
-`DRAFT` → `DONE` 전환. 이 시점에 운동 시간을 산출한다(8.5의 규칙).
-
-**요청**: 본문 없음.
-
-**응답 `200 OK`** — 6.5의 세션 상세 형태. `status: "DONE"`, `startedAt`/`endedAt`/`durationSec` 채워짐.
-
-> **진행 중(`DRAFT`) 세션의 경과 시간 표시** (2026-08-31 확정). 서버는 진행 중 경과 시간을 내려주지 않는다 — `durationSec`은 종료 시점에만 산출된다. 화면에 경과 시간을 띄우려면 **클라이언트가 `startedAt`부터의 벽시계 차이를 계산해 표시**한다(`startedAt`은 첫 세트가 저장되면 채워진다 — 6.4 주석). 첫 세트 전에는 `startedAt`이 `null`이므로 경과 시간을 표시하지 않는다.
->
-> 이 값은 **서버가 산출할 `durationSec`과 다르다** — 서버는 세트 간 공백을 15분으로 캡하고 90초를 보정하지만(8.5), 클라이언트 표시는 단순 경과다. 따라서 화면 문구에 "자동 기록"처럼 서버 기록값으로 읽힐 표현을 쓰지 않는다. 종료 후에는 서버 `effectiveDurationSec`으로 교체해 표시한다.
-
-- `source = LIVE`: `durationSec` = 세트 `recordedAt` 기반 자동 산출.
-- `source = BACKFILL`: `durationSec`은 `null` 유지(그룹 시간 집계 제외). `durationOverrideSec`이 있으면 `effectiveDurationSec`에 반영.
-
-**오류**
-
-| 상황 | 응답 |
-|---|---|
-| 이미 `DONE` | `409 SESSION_ALREADY_COMPLETED` |
-| 세트 0개 | `422 EMPTY_SESSION` — 클라이언트는 세션을 `DELETE` 하도록 안내 |
-
-> 자정 경과 시 서버 스케줄러가 마지막 세트 시각 기준으로 `DRAFT`를 자동 `DONE` 처리한다(기록 방식 5.1). API 호출과 무관한 서버 내부 동작.
+세션 종료(`DRAFT` → `DONE`, 운동 시간 산출)였다. 종료가 없어져 지웠다. 운동 시간은 읽을 때 세트 저장 시각으로 계산하고(6.5), 오류 코드 `SESSION_ALREADY_COMPLETED`·`EMPTY_SESSION`도 함께 없앴다.
 
 ### 6.4 POST /workout-sessions/{id}/sets
 
@@ -1006,9 +979,9 @@ workout_session (한 번의 운동)
 | `clientSetId` 누락 또는 UUID 형식 아님 | `400 VALIDATION_ERROR` |
 | `measureType`에 필요한 값 누락 (예: `WEIGHT_REPS`인데 `reps` 없음) | `400 INVALID_MEASURE_INPUT` |
 | `exerciseId` 없음 | `404 RESOURCE_NOT_FOUND` |
-| 타인 세션 | `403 ACCESS_DENIED` |
+| 타인 기록 | `404 RESOURCE_NOT_FOUND` |
 
-> 세션 상태가 `DONE`이어도 세트 추가·수정·삭제를 허용한다(기록 방식 5.3, 사후 보정). `LIVE` 세션의 세트가 바뀌면 `durationSec`을 재산출한다. `DRAFT` 세션의 첫 세트가 저장되면 `startedAt`이 채워진다.
+> 지난 날의 기록에도 세트 추가·수정·삭제를 허용한다(기록 방식 5.3, 사후 보정). 시각과 운동 시간은 저장해 두지 않고 읽을 때 계산하므로 세트가 바뀌면 다음 조회에 그대로 반영된다.
 
 ### 6.5 GET /workout-sessions/{id}
 
@@ -1018,8 +991,6 @@ workout_session (한 번의 운동)
 {
   "id": 55,
   "performedOn": "2026-09-01",
-  "status": "DONE",
-  "source": "LIVE",
   "routineId": null,
   "startedAt": "2026-09-01T19:10:02+09:00",
   "endedAt": "2026-09-01T20:05:41+09:00",
@@ -1045,7 +1016,8 @@ workout_session (한 번의 운동)
 
 | 필드 | 설명 |
 |---|---|
-| `durationSec` | 자동 산출값 (`BACKFILL`은 `null`) |
+| `startedAt` / `endedAt` | 첫·마지막 세트의 저장 시각. 세트가 없으면 `null`. 저장하지 않고 읽을 때 계산한다 |
+| `durationSec` | 세트 저장 시각으로 계산한 운동 시간(8.5) — **30분 넘는 공백에서 구간을 나눠, 첫 세트가 그 날짜에 저장된 구간들만 합한다.** 아침·저녁 두 번 운동하면 둘을 더하고 사이 공백은 넣지 않는다. 지난 날짜에 나중에 채운 세트의 구간은 빠진다. 그런 구간만 있으면 `null` |
 | `durationOverrideSec` | 사용자 수동 보정값 (없으면 `null`) |
 | `effectiveDurationSec` | **서버가 결정한 최종 시간** = `durationOverrideSec ?? durationSec`. 화면은 이 값만 쓰면 된다 |
 | `exercises[]` | 종목별로 그룹핑. **정렬 = 각 종목의 가장 이른 `recordedAt` 오름차순**(= 사용자가 그 종목을 처음 수행한 순서). 별도 순서 컬럼은 두지 않는다 |
@@ -1056,18 +1028,18 @@ workout_session (한 번의 운동)
 
 ### 6.6 GET /workout-sessions
 
-히스토리 목록(UC-02-03). 세트는 포함하지 않는 요약 형태.
+히스토리 목록(UC-02-03). **운동한 날**(세트가 있는 기록)만 준다. 세트는 포함하지 않는 요약 형태.
 
 **쿼리 파라미터**
 
 | 파라미터 | 설명 |
 |---|---|
 | `from`, `to` | `performedOn` 범위 (둘 다 `YYYY-MM-DD`). 생략 시 최근 30일 |
-| `status` | `DRAFT` \| `DONE` 필터 (생략 시 전체) |
-| `exerciseId` | **종목별 필터.** 해당 종목의 세트가 하나라도 있는 세션만. 없는 종목 ID를 넣으면 오류가 아니라 빈 페이지다 |
+| ~~`status`~~ | 없앴다(LOG-39) |
+| `exerciseId` | **종목별 필터.** 해당 종목의 세트가 하나라도 있는 날만. 없는 종목 ID를 넣으면 오류가 아니라 빈 페이지다 |
 | `page`, `size`, `sort` | 기본 `sort=performedOn,desc` |
 
-> `exerciseId`는 「기능명세서」 1의 기본 기능 *"운동 히스토리 — 날짜별/**종목별** 필터"* 에 대응한다. 세트 단위가 아니라 **세션 단위 필터**다 — 응답은 그대로 세션 요약이며, 필터에 걸린 종목의 세트만 골라 담지 않는다. 종목 하나의 수치 추이는 통계 API(7.1)가, 직전 1회는 5.5가 담당한다.
+> `exerciseId`는 「기능명세서」 1의 기본 기능 *"운동 히스토리 — 날짜별/**종목별** 필터"* 에 대응한다. 세트 단위가 아니라 **날 단위 필터**다 — 응답은 그대로 하루 요약이며, 필터에 걸린 종목의 세트만 골라 담지 않는다. 종목 하나의 수치 추이는 통계 API(7.1)가, 직전 1회는 5.5가 담당한다.
 
 **응답 `200 OK`** — 페이지 envelope. `content` 항목:
 
@@ -1075,8 +1047,6 @@ workout_session (한 번의 운동)
 {
   "id": 55,
   "performedOn": "2026-09-01",
-  "status": "DONE",
-  "source": "LIVE",
   "effectiveDurationSec": 3339,
   "setCount": 12,
   "exerciseCount": 3,
@@ -1090,19 +1060,14 @@ workout_session (한 번의 운동)
 
 | 필드 | 설명 |
 |---|---|
-| `exercises[]` | 세션에 등장한 종목. **정렬은 6.5와 동일**(각 종목의 가장 이른 `recordedAt` 오름차순 = 수행 순서). `exerciseCount`와 길이가 같다 |
+| `exercises[]` | 그날 등장한 종목. **정렬은 6.5와 동일**(각 종목의 가장 이른 `recordedAt` 오름차순 = 수행 순서). `exerciseCount`와 길이가 같다 |
 | `exercises[].id` | 종목 ID. 5.2의 "최근 사용" 탭과 종목 상세 이동이 이 값을 쓴다 |
 
 > **이름 배열(`exerciseNames`)이 아니라 `{ id, nameKo }` 객체 배열이다.** 5.2가 "최근 사용" 탭을 *"이력에서 최근 등장 `exerciseId` 순으로 계산"* 하도록 정했는데, 이름만 내려주면 그 계산을 할 수 없고 목록에서 종목 상세·프리필로 이어갈 수도 없다. 이름으로 역조회하는 경로(`GET /exercises?q=`)는 부분 일치라 동명 종목을 구분하지 못한다.
 
-### 6.7 GET /workout-sessions/current
+### 6.7 ~~GET /workout-sessions/current~~ — 삭제 (LOG-39)
 
-진행 중 세션 이어쓰기(UC-02-01 예외 흐름 8a).
-
-**응답**
-
-- `200 OK` + 6.5의 세션 상세 (현재 `DRAFT` 세션)
-- `204 No Content` (진행 중 세션 없음)
+진행 중 세션 이어쓰기였다. 진행 중이라는 상태가 없어져 지웠다. 오늘 기록을 이어 쓰려면 날짜 없이 `POST /workout-sessions`(6.2)를 부른다.
 
 ### 6.8 GET /workout-sessions/calendar
 
@@ -1117,13 +1082,13 @@ workout_session (한 번의 운동)
   "year": 2026,
   "month": 9,
   "days": [
-    { "date": "2026-09-01", "sessionCount": 1, "hasDraft": false },
-    { "date": "2026-09-03", "sessionCount": 2, "hasDraft": false }
+    { "date": "2026-09-01" },
+    { "date": "2026-09-03" }
   ]
 }
 ```
 
-- 운동 기록이 있는 날짜만 배열에 포함.
+- **운동한 날**(세트가 있는 기록)만 배열에 포함. 하루에 기록이 하나라 날짜만 준다 — `sessionCount`·`hasDraft`는 없앴다(LOG-39).
 
 ### 6.9 PATCH /workout-sessions/{id}
 
@@ -1140,7 +1105,7 @@ workout_session (한 번의 운동)
 | 필드 | 규칙 |
 |---|---|
 | `memo` | ≤ 2000자. **빈 문자열**을 보내면 지운다 |
-| `performedOn` | `BACKFILL` 세션의 날짜 정정에 사용. 미래 불가. `LIVE` 세션은 변경 불가(`400`) |
+| `performedOn` | 날짜 정정. 미래 불가(`400`). **그 날짜에 기록이 이미 있으면 `409 DAY_ALREADY_RECORDED`** — 하루에 기록은 하나이고, 두 날의 메모·시간 보정을 어떻게 합칠지 서버가 정할 수 없어 합치지 않고 막는다 |
 | `durationOverrideSec` | 0 이상. 설정 시 `effectiveDurationSec`이 이 값이 됨. **`0`**을 보내면 보정 해제 |
 
 > **값을 비우는 신호는 `null`이 아니라 빈 문자열과 `0`이다** (2026-09-25 확정, LOG-23).
@@ -1149,7 +1114,7 @@ workout_session (한 번의 운동)
 > 날아간다** — 부분 수정의 전제가 깨진다. 두 필드 모두 빈 문자열·`0`이 실제 값으로
 > 쓰일 일이 없어(0초짜리 운동은 없다) 비움 신호로 쓴다.
 
-**응답 `200 OK`** — 6.5의 세션 상세.
+**응답 `200 OK`** — 6.5의 기록 상세.
 
 ### 6.10 DELETE /workout-sessions/{id}
 
@@ -1164,13 +1129,12 @@ workout_session (한 번의 운동)
 ```
 
 - `measureType` 검증은 6.4와 동일.
-- `LIVE` 세션이면 시간 재산출.
 
 **응답 `200 OK`** — 6.4의 세트 객체.
 
 ### 6.12 DELETE /workout-sessions/{id}/sets/{setId}
 
-**응답 `204 No Content`**. `LIVE` 세션이면 시간 재산출. 세션의 마지막 세트를 지워도 세션 자체는 남는다(빈 `DONE` 세션 가능 — 히스토리에 `setCount: 0`으로 표시).
+**응답 `204 No Content`**. 마지막 세트를 지워도 기록 자체는 남는다(메모가 있을 수 있다). 세트가 없는 날은 히스토리·캘린더·분석·그룹에 나오지 않는다.
 
 > **`setNo`는 재부여하지 않는다** (2026-08-31 확정). 저장 시점에 부여된 값을 그대로 두므로 삭제 후 `setNo`에 구멍이 생길 수 있다(예: 1, 2, 4). 재부여를 하려면 남은 세트마다 PATCH를 돌리거나 삭제 응답에 갱신된 목록을 실어야 하는데, 얻는 것에 비해 계약이 무거워진다.
 >
@@ -1178,16 +1142,16 @@ workout_session (한 번의 운동)
 
 ### 6.13 DELETE /workout-sessions/{id}/exercises/{exerciseId}
 
-세션에서 그 종목의 세트를 한 번에 지운다(LOG-22).
+기록에서 그 종목의 세트를 한 번에 지운다(LOG-22).
 
-**응답 `204 No Content`**. `LIVE` 세션이면 시간 재산출.
+**응답 `204 No Content`**.
 
 **오류**
 
 | 상황 | 응답 |
 |---|---|
-| 그 세션에 해당 종목의 세트가 없음 | `404 RESOURCE_NOT_FOUND` |
-| 타인 세션 | `404 RESOURCE_NOT_FOUND` |
+| 그 기록에 해당 종목의 세트가 없음 | `404 RESOURCE_NOT_FOUND` |
+| 타인 기록 | `404 RESOURCE_NOT_FOUND` |
 
 > 6.12의 세트 삭제를 반복해도 결과는 같지만, 5세트짜리 종목을 빼려면 요청이 다섯 번
 > 나가고 **중간에 끊기면 일부만 지워진 상태가 남는다.** 기록 화면에서 "이 종목 빼기"는
@@ -1220,7 +1184,7 @@ workout_session (한 번의 운동)
 - 대상: 해당 종목의 `reps ≤ 12`인 세트 (본세트·워밍업 무관하나 워밍업은 중량이 낮아 자연 배제됨).
 - 세트별 추정: Epley 공식 `1RM = weightKg × (1 + reps / 30)` (`reps = 1`이면 `weightKg`). 공식·`12` 경계는 서버 설정값.
 - 그날 값 = 그날 세트 추정값 중 **최댓값**.
-- `DONE` 세션만.
+- 오늘 체크한 세트도 바로 들어간다 — 종료가 없다(LOG-39).
 
 **응답 `200 OK`**
 
@@ -1346,14 +1310,14 @@ workout_session (한 번의 운동)
 
 **집계 조건** (전부 서버에서 적용)
 
-- `workout_sessions.status = 'DONE'` (`DRAFT` 제외)
+- 체크한 세트 전부. 오늘 세트도 바로 센다 — 종료가 없다(LOG-39)
 - `workout_sets.is_warmup = false` (본세트만)
 - 기간: `performed_on ∈ [referenceDate - (weeks × 7 - 1)일, referenceDate]` (기록 저장 시각 아님)
-- `source = 'BACKFILL'` 세션 **포함** (실제 수행한 운동)
+- 사후 입력 **포함** (실제 수행한 운동)
 - 세트 → 판정 부위: 종목의 `primary_muscle` 기준, 주동근에만 카운트(간접 자극 미반영)
 - 주당 평균 = `기간 내 세트 합 × 7 ÷ basisDays` (소수 1자리, HALF_UP). `basisDays`는 아래 참조
 
-> **`basisDays` — 기록이 4주 미만이면 분모를 줄인다 (2026-10-03, LOG-31).** 첫 완료 기록일(전체 기록 중 `referenceDate` 이전 최초)부터 `referenceDate`까지의 일수(양끝 포함)를 `[min-basis-days, weeks × 7]`로 자른 값이다(기본 `[7, 28]`). 기록이 없으면 `weeks × 7`. 28일 이상 기록했으면 `÷ weeks`와 정확히 같다. 근거는 분석 설계서 2.1 「기록이 4주 미만일 때의 분모」.
+> **`basisDays` — 기록이 4주 미만이면 분모를 줄인다 (2026-10-03, LOG-31).** 첫 운동한 날(전체 기록 중 `referenceDate` 이전 최초)부터 `referenceDate`까지의 일수(양끝 포함)를 `[min-basis-days, weeks × 7]`로 자른 값이다(기본 `[7, 28]`). 기록이 없으면 `weeks × 7`. 28일 이상 기록했으면 `÷ weeks`와 정확히 같다. 근거는 분석 설계서 2.1 「기록이 4주 미만일 때의 분모」.
 
 > **집계 구간은 `referenceDate`를 포함해 정확히 `weeks × 7`일이다.** `weeks = 4`면 28일이며, `referenceDate = 2026-09-01`일 때 `2026-08-05 ~ 2026-09-01`이다. 양끝을 포함하는 구간이므로 하한에서 하루를 빼야 분모(`weeks`)와 분자의 기간이 맞는다. LOG-12의 "오늘 포함 28일" 확정을 계산식으로 옮긴 것이다.
 
@@ -1379,9 +1343,9 @@ workout_session (한 번의 운동)
   "shoulderSplitResolved": true,
   "confidence": {
     "level": "LOW",
-    "doneSessionCount": 4,
+    "workoutDayCount": 4,
     "threshold": 6,
-    "message": "최근 4주 완료된 운동이 4회로 적어 판정 신뢰도가 낮습니다."
+    "message": "최근 4주 운동한 날이 4일로 적어 판정 신뢰도가 낮습니다."
   },
   "tiers": [
     {
@@ -1444,8 +1408,9 @@ workout_session (한 번의 운동)
 | `basisDays` | 주당 평균을 낼 때 나눈 일수. 기록이 4주 미만이면 첫 기록일부터 센 일수(최소 7), 아니면 `weeks × 7` (LOG-31) |
 | `basisFrom` | `periodTo - basisDays + 1`. `basisDays < weeks × 7`이면 화면은 "최근 4주" 대신 "최근 N일 · basisFrom ~ periodTo"로 적는다 |
 | `shoulderSplitResolved` | 세션에 `delt_region`이 채워진 어깨 종목이 있으면 `true`(정상), 아직 NULL만 있으면 `false`. `false`일 때만 화면이 어깨 하위 판정을 참고치로 낮춰 표시 (8.1) |
-| `confidence.level` | `LOW` \| `NORMAL`. `doneSessionCount < threshold`이면 `LOW` |
-| `confidence.threshold` | 최근 4주 DONE 세션 임계값. 서버 설정값(기본 6, 기록 방식 5.5) |
+| `confidence.workoutDayCount` | 집계 기간에 운동한 날 수. 이전 이름 `doneSessionCount`(완료한 세션 수)를 하루 기록에 맞춰 바꿨다(LOG-39) |
+| `confidence.level` | `LOW` \| `NORMAL`. `workoutDayCount < threshold`이면 `LOW` |
+| `confidence.threshold` | 최근 4주 운동한 날 임계값. 서버 설정값(기본 6, 기록 방식 5.5) |
 | `confidence.message` | `LOW`일 때만 채운다. `NORMAL`이면 `null` — 충분하다는 사실을 화면에 띄울 이유가 없다 (2026-09-29 구현 시 확정) |
 | `tiers[]` | **상위 6종**. 항상 6개, 고정 순서(`CHEST, BACK, SHOULDERS, ARMS, LEGS, CORE`) |
 | `tiers[].weeklySets` | 하위 합의 주당 평균 (서버가 합산). 소수 1자리 |
@@ -1553,13 +1518,13 @@ workout_session (한 번의 운동)
 | 주당 평균 분모 최솟값 | 7일 (`min-basis-days`). 기록이 4주 미만이면 첫 기록일부터 센 일수로 나누되 이보다 짧게는 나누지 않는다 | 분석 2.1, LOG-31 |
 | 부족 임계 | 주 4 / 10 / 20 세트 | 분석 2.2 |
 | 균형 비율 임계 | 2.0배 | 분석 4.2 |
-| 신뢰도 임계 | 최근 4주 `DONE` 세션 6회 | 기록 방식 5.5 |
+| 신뢰도 임계 | 최근 4주 운동한 날 6일 | 기록 방식 5.5 |
 | 1RM 대상 | `WEIGHT_REPS`, `reps ≤ 12`, 일자별 최댓값 | 분석 1.3, LOG-07 |
 | 1RM 공식 | Epley `w × (1 + reps/30)` | 분석 1.3 (예시) |
-| 운동 시간: 세트 간격 캡 | 900초 (15분) | 기록 방식 4.2 |
-| 운동 시간: 마지막 세트 보정 | +90초 | 기록 방식 4.2 |
-| 운동 시간: 세션 상한 | 14400초 (4시간) | 기록 방식 4.2 |
-| `BACKFILL` 세션 `durationSec` | `null` (시간 집계 제외, 횟수는 포함) | 기록 방식 4.3 |
+| 운동 시간: 구간 간격 (`bout-gap`) | 1800초 (30분). 이보다 긴 공백에서 구간을 나눈다 | 기록 방식 4.2, LOG-39 |
+| 운동 시간: 마지막 세트 보정 | 구간마다 +90초 | 기록 방식 4.2 |
+| 운동 시간: 하루 상한 (`day-cap`) | 14400초 (4시간) | 기록 방식 4.2 |
+| 사후 입력 구간 | 첫 세트가 그 날짜에 저장되지 않은 구간은 시간에서 뺀다. 그런 구간만 있으면 `durationSec`이 `null` (횟수는 포함) | 기록 방식 4.3, LOG-39 |
 
 > 모든 값은 `application.yaml`의 `app.analysis.*` 프로퍼티로 노출해 코드 수정 없이 조정 가능하게 한다.
 
@@ -1578,8 +1543,9 @@ workout_session (한 번의 운동)
 | `V6__add_exercise_group.sql` | `exercises.group_name`(VARCHAR 40) + 인덱스. 종목 선택 3단 탐색의 계열 축(5.7, LOG-24). 분류 13종은 컬럼 없이 `primary_muscle`·`delt_region`에서 파생하므로 이 한 컬럼이 전부다 | 완료 (9월 4주) |
 | 계열 값 채우기 | 109종 전부에 `group_name` 입력(40개 계열). 시드 CSV와 `R__seed_exercises.sql`에서 관리 | 완료 (9월 4주) |
 | `V8__friend_groups.sql` | 친구 그룹 — `friend_groups`·`friend_group_members`·`cheers` (10.11, LOG-38) | 완료 (10월 2주) |
-| `password_reset_tokens` 테이블 | 비밀번호 재설정(4.8 주석). 문서 곳곳에 `V5`로 적혀 있으나 `V5`~`V8`이 이미 쓰여(`V7` 구글 로그인, `V8` 그룹) 실제로는 **다음 빈 번호**다. d1에서 떼어 검증 이후로 미뤘다(LOG-25) | 검증 이후 |
-| 세션 생성 멱등 키 | `BACKFILL` 세션의 재전송 중복 방지(`clientSessionId`). 6.2 주석의 미결 항목이며, 오프라인 쓰기 큐 범위와 함께 판단 | 미정 |
+| `V9__daily_workout_record.sql` | 하루 기록(LOG-39) — 같은 날 기록을 가장 앞 기록으로 합치고(세트·응원 이동, 세트 순번 재부여, 메모 잇기), `status`·`source`·`started_at`·`ended_at`·`duration_sec` 삭제, `(user_id, performed_on)` UNIQUE | 완료 (10월 2주) |
+| `password_reset_tokens` 테이블 | 비밀번호 재설정(4.8 주석). 문서 곳곳에 `V5`로 적혀 있으나 `V5`~`V9`가 이미 쓰여(`V7` 구글 로그인, `V8` 그룹, `V9` 하루 기록) 실제로는 **다음 빈 번호**다. d1에서 떼어 검증 이후로 미뤘다(LOG-25) | 검증 이후 |
+| ~~세션 생성 멱등 키~~ | 하루 하나 제약(`V9`)과 "있으면 그 기록을 준다"(6.2)가 재전송 중복을 막아 **필요 없어졌다** | 해소 (LOG-39) |
 | `routines` FK | `workout_sessions.routine_id`는 컬럼만 존재. `routines` 생성 시 FK 마이그레이션 | 10월 |
 | 요약 배지 문안 | `summaryBadge` label 및 `MIXED` 표기 확정 (8.2). enum `key`는 고정 | 화면 구현 시 |
 | QUADS 화면 명칭 | `abductors`·`adductors` 포함이라 "앞허벅지"가 부정확 (LOG-10 한계) | 종목 정제 결과 확인 후 |
@@ -1598,6 +1564,8 @@ workout_session (한 번의 운동)
 ### 9.2 프론트엔드 목업 수정 필요
 
 명세와 8월 3주 목업이 어긋나는 지점. 명세를 기준으로 목업을 고친다.
+
+> 진행 중 세션·종료·`BACKFILL`을 전제로 한 행(재진입 다이얼로그, 빈 세션 종료, 홈 진행 중 배너 등)은 하루 기록(LOG-39)으로 전제가 없어졌다. 당시 결정의 기록으로 남겨 둔다.
 
 | 목업 화면 | 수정 내용 | 근거 |
 |---|---|---|
@@ -1646,7 +1614,7 @@ workout_session (한 번의 운동)
 
 ## 10. 친구 그룹 API
 
-> 2026-10-11 신설 (LOG-38). 기능명세서 2.6, UC-05-01~07. 엔드포인트 14개 — 전체 32→46개.
+> 2026-10-11 신설 (LOG-38). 기능명세서 2.6, UC-05-01~07. 엔드포인트 14개 — 전체 32→46개. 같은 날 하루 기록(LOG-39)으로 운동 기록 API 2개를 지워 44개.
 
 ### 10.1 원칙
 
@@ -1658,7 +1626,7 @@ workout_session (한 번의 운동)
 | 방장 승계 | 방장이 나가거나 탈퇴하면 남은 멤버 중 가장 먼저 들어온 사람(`joinedAt`, 같으면 `id`)에게 넘어간다. 마지막 한 명이 나가면 그룹을 지운다 |
 | 한도 | 한 그룹 20명, 한 사람 10개 그룹. 넘으면 `409 GROUP_LIMIT_EXCEEDED` |
 | 초대코드 | 대문자·숫자 6자리, 헷갈리는 글자(0·O, 1·I·L) 제외 — 31자 6자리 ≈ 8.9억 가지. 무작위 생성. 입력은 소문자·공백·하이픈을 받아 준다 |
-| 공개 범위 | 멤버에게 닉네임, **끝난** 운동 기록(날짜·종목·세트·운동 시간), 오늘 운동 여부. **메모와 진행 중인 운동은 보내지 않는다** — 진행 중인 기록은 보는 시점마다 세트 수가 달라 보이고, 운동하는 사람에게도 하는 중에 다 보이는 건 부담이다 |
+| 공개 범위 | 멤버에게 닉네임, 운동 기록(날짜·종목·세트·운동 시간), 오늘 운동 여부. **메모는 보내지 않는다.** 종료가 없으므로 친구가 운동하는 중이면 그때까지 체크한 세트가 보인다(LOG-39 — 처음에는 끝난 운동만 보였다) |
 | 동시성 | 멤버가 바뀌는 일(참여·나가기·내보내기·삭제)은 그룹 행을 잠그고(`SELECT … FOR UPDATE`) 한다. 응원은 `INSERT … ON CONFLICT DO NOTHING` |
 
 ### 10.2 POST /groups
@@ -1690,7 +1658,7 @@ workout_session (한 번의 운동)
 
 | 필드 | 규칙 |
 |---|---|
-| `todayWorkedOutCount` | 오늘 날짜로 **완료한** 운동이 있는 멤버 수 |
+| `todayWorkedOutCount` | 오늘 세트가 있는 멤버 수 |
 | `members` | 들어온 순서. `todayStatus`는 10.4의 `today.status`와 같은 기준이다. 응원 수는 담지 않는다 |
 
 ### 10.4 GET /groups/{groupId}
@@ -1710,7 +1678,7 @@ workout_session (한 번의 운동)
       "userId": 42, "nickname": "영희", "isOwner": true, "isMe": false,
       "joinedAt": "2026-10-11T09:00:00+09:00",
       "today": { "status": "DONE", "sessionId": 1166, "cheerCount": 2, "cheeredByMe": true },
-      "week": { "sessionCount": 3, "totalDurationSec": 9900, "workoutDates": ["2026-10-06", "2026-10-08", "2026-10-11"] }
+      "week": { "dayCount": 3, "totalDurationSec": 9900, "workoutDates": ["2026-10-06", "2026-10-08", "2026-10-11"] }
     }
   ]
 }
@@ -1720,13 +1688,13 @@ workout_session (한 번의 운동)
 |---|---|
 | `inviteCode` | 멤버 누구에게나 준다. 다시 만드는 것만 방장이 한다 |
 | `weekStart` | 이번 주 월요일(1.2, 홈의 "이번 주"와 같은 기준). 주는 월~일 |
-| `today.status` | `DONE` 오늘 날짜로 완료한 운동이 있음(사후 입력 포함) / `NONE`. **진행 중인 운동은 `NONE`이다** — 그룹에는 끝난 운동만 보인다(10.1) |
-| `today.sessionId` | 응원할 대상. 완료한 것이 여럿이면 가장 최근에 끝낸 것(`endedAt`). `NONE`이면 `null` |
-| `week.sessionCount` | 이번 주 완료 세션 수 (사후 입력 포함) |
-| `week.totalDurationSec` | 완료 세션의 `effectiveDurationSec` 합. 시간이 없는 사후 입력은 빠진다(보정값이 있으면 들어간다) |
-| `week.workoutDates` | 완료 세션이 있는 날짜, 오름차순 |
+| `today.status` | `DONE` 오늘 기록에 세트가 있음(사후 입력 포함) / `NONE`. 기록을 열기만 하고 체크하지 않았으면 `NONE` |
+| `today.sessionId` | 응원할 대상인 오늘 기록. `NONE`이면 `null` |
+| `week.dayCount` | 이번 주 운동한 날 수 (사후 입력 포함). 이전 이름 `sessionCount` |
+| `week.totalDurationSec` | 그날들의 `effectiveDurationSec` 합. 시간이 없는 사후 입력은 빠진다(보정값이 있으면 들어간다) |
+| `week.workoutDates` | 운동한 날짜, 오름차순 |
 
-멤버 전원의 이번 주 세션을 **한 번에** 읽어 메모리에서 나눈다. 별도 집계 테이블은 없다.
+멤버 전원의 이번 주 기록과 세트를 **한 번에** 읽어 메모리에서 나눈다. 별도 집계 테이블은 없다.
 
 ### 10.5 방장 — PATCH /groups/{groupId}, DELETE /groups/{groupId}, POST /groups/{groupId}/invite-code
 
@@ -1770,20 +1738,20 @@ workout_session (한 번의 운동)
 
 보는 사람과 대상이 **같은 그룹 멤버**여야 한다. 아니면 `404`.
 
-- **calendar** `?year=2026&month=10` — 6.8과 같은 모양이되 **끝난 운동만** 센다(`hasDraft`는 늘 `false`). `year`는 2000~2100
-- **days/{date}** — 그날의 **끝난** 세션들(시작한 순서). 6.5 세션 상세에서 **메모·세트 id·클라이언트 키를 뺀** 모양이다
+- **calendar** `?year=2026&month=10` — 6.8과 같은 모양. `year`는 2000~2100
+- **days/{date}** — 그날 기록. 6.5 기록 상세에서 **메모·세트 id·클라이언트 키를 뺀** 모양이다. 운동하지 않은 날이면 `session`이 `null`이다
 
 ```json
 {
   "userId": 42, "nickname": "영희", "date": "2026-10-11",
-  "sessions": [{
-    "id": 1166, "status": "DONE", "source": "LIVE",
+  "session": {
+    "id": 1166,
     "startedAt": "2026-10-11T19:12:03+09:00", "endedAt": "2026-10-11T20:22:41+09:00",
     "durationSec": 4200,
     "exercises": [{ "exerciseId": 1, "exerciseName": "바벨 벤치프레스", "exerciseNameEn": "Barbell Bench Press", "measureType": "WEIGHT_REPS",
                     "sets": [{ "setNo": 1, "weightKg": 40.00, "reps": 10, "durationSec": null, "isWarmup": false }] }],
     "cheerCount": 2, "cheeredByMe": true
-  }]
+  }
 }
 ```
 
@@ -1799,9 +1767,9 @@ workout_session (한 번의 운동)
 | 상황 | 응답 |
 |---|---|
 | 내 운동 | `400 VALIDATION_ERROR` |
-| 세션 주인이 이 그룹 멤버가 아님 / 내가 멤버가 아님 / 진행 중인 세션 | `404` |
+| 기록 주인이 이 그룹 멤버가 아님 / 내가 멤버가 아님 | `404` |
 
-응원은 그룹이 아니라 **세션**에 붙는다. 같은 사람과 그룹 두 개를 함께해도 그 사람의 운동은 하나라, 어느 그룹에서 눌렀든 같은 응원이다.
+응원은 그룹이 아니라 **하루 기록**에 붙는다. 같은 사람과 그룹 두 개를 함께해도 그 사람의 운동은 하나라, 어느 그룹에서 눌렀든 같은 응원이다. 하루에 두 번 운동해도 응원은 그 하루에 하나다(LOG-39).
 
 ### 10.11 스키마 (V8)
 
@@ -1819,8 +1787,6 @@ workout_session (한 번의 운동)
 
 | 그룹 | 값 |
 |---|---|
-| `session.status` | `DRAFT`, `DONE` |
-| `session.source` | `LIVE`, `BACKFILL` |
 | `exercise.bodyPart` | `CHEST`, `BACK`, `LEGS`, `SHOULDERS`, `ARMS`, `CORE` |
 | `exercise.pushPull` | `PUSH`, `PULL`, `NONE` |
 | `exercise.measureType` | `WEIGHT_REPS`, `BODYWEIGHT_REPS`, `WEIGHTED_BODYWEIGHT`, `TIME` |
