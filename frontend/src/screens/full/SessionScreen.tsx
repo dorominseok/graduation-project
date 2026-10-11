@@ -8,6 +8,7 @@ import { ExercisePicker } from './ExercisePicker'
 import type { PickerStep } from './ExercisePicker'
 import { BODY_PART_LABEL, EQUIPMENT_LABEL, MEASURE_CHIP_LABEL } from './exerciseLabels'
 import { NumberField } from './NumberField'
+import { RestField } from './RestField'
 import styles from './session.module.css'
 
 /** 화면에만 있는 세트 행. 완료 체크를 해야 서버로 간다(LOG-05). */
@@ -1058,7 +1059,13 @@ export function SessionScreen() {
 
                         <div className={styles.fieldRow}>
                           <span className={styles.fieldLabel}>휴식</span>
-                          <span className={styles.restValue}>{formatRest(row.restSec)}</span>
+                          {/* 숫자만 치면 된다 — 130은 1분 30초, 90은 90초 */}
+                          <RestField
+                            className={styles.fieldValue}
+                            value={row.restSec}
+                            onCommit={(seconds) => updateRow(openedIndex, rowIndex, { restSec: seconds })}
+                            aria-label="휴식 시간"
+                          />
                           <span className={styles.fieldUnit} />
                           <button
                             type="button"
