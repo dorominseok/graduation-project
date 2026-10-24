@@ -5,9 +5,10 @@
 > 작성 시점: 2026년 8월 5주 (프론트–백엔드 연동 직전)
 > 개정: 2026-09-02 (LOG-13·14·16 반영) / 2026-09-04 (정합성 정정 — 커밋 `c824be6`)
 > 대상 범위: **9월 1~3주 구현분** — 인증·프로필 / 운동 기록 / 통계·분석
-> 제외 범위: 루틴 추천(UC-03-03~06), 뱃지(UC-04), 알림(UC-06) — 10~11월 별도 명세
+> 제외 범위: 뱃지(UC-04), 알림(UC-06) — 별도 명세
 > 추가: 친구 그룹(UC-05)은 10장 (2026-10-11, LOG-38)
 > 개정: 2026-10-11 하루 기록(LOG-39) — 시작·종료를 없애고 하루에 기록 하나. 6장 대부분, 1.5·3.3·5.5·8.2·8.5·10장. 엔드포인트 46→44개
+> 추가: 오늘의 루틴(UC-03-03~06)은 11장 (2026-10-24, LOG-40). 1단계 규칙 루틴 — 엔드포인트 44→52개
 
 ---
 
@@ -23,6 +24,7 @@
 | 통계 (1RM 추이, 세트별 강도) | UC-02-04 | 7장 |
 | 약점·불균형 분석 | UC-03-01, UC-03-02 | 8장 |
 | 친구 그룹 | UC-05-01 ~ UC-05-07 | 10장 |
+| 오늘의 루틴 (추천·후보정·만족도) | UC-03-03 ~ UC-03-06 | 11장 |
 
 ### 0.2 설계 결정 반영 대응표
 
@@ -153,6 +155,7 @@ Authorization: Bearer {accessToken}
 | 409 | `EMAIL_ALREADY_EXISTS` | 회원가입 이메일 중복. 구글 로그인에서 그 이메일이 이미 다른 구글 계정에 묶여 있을 때도 (4.9) |
 | 409 | `DAY_ALREADY_RECORDED` | 기록의 날짜를 옮기려는데 그 날짜에 기록이 이미 있음 (6.9, LOG-39) |
 | 409 | `GROUP_LIMIT_EXCEEDED` | 그룹 인원 20명 또는 한 사람의 그룹 10개 초과 (10장) |
+| 409 | `ROUTINE_FEEDBACK_EXISTS` | 이미 만족도를 답했거나 건너뛴 루틴 (11.8) |
 | 429 | `RATE_LIMITED` | 요청 한도 초과 (도입 시) |
 | 500 | `INTERNAL_ERROR` | 서버 내부 오류 |
 
@@ -339,6 +342,19 @@ Authorization: Bearer {accessToken}
 | GET | `/groups/{groupId}/members/{memberId}/days/{date}` | 멤버의 하루 기록 (메모 제외) | ✔ 멤버 |
 | PUT | `/groups/{groupId}/sessions/{sessionId}/cheer` | 응원하기 | ✔ 멤버 |
 | DELETE | `/groups/{groupId}/sessions/{sessionId}/cheer` | 응원 취소 | ✔ 멤버 |
+
+### 3.7 오늘의 루틴 (11장, LOG-40)
+
+| 메서드 | 경로 | 설명 | 인증 |
+|---|---|---|---|
+| POST | `/routines/today` | 오늘 루틴 만들기 (이미 있으면 그 루틴) | ✔ |
+| GET | `/routines/today` | 오늘 루틴 | ✔ |
+| GET | `/routines/feedback-pending` | 만족도를 물을 지난 루틴 | ✔ |
+| GET | `/routines/{routineId}` | 루틴 상세 | ✔ |
+| PATCH | `/routines/{routineId}/items/{itemId}` | 후보정 — 종목 교체·세트 조정 | ✔ |
+| DELETE | `/routines/{routineId}/items/{itemId}` | 후보정 — 종목 빼기 | ✔ |
+| GET | `/routines/{routineId}/items/{itemId}/alternatives` | 교체 후보 | ✔ |
+| PUT | `/routines/{routineId}/feedback` | 만족도 답하기·건너뛰기 | ✔ |
 
 ---
 
@@ -877,7 +893,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 |---|---|
 | `performedOn` | 선택. 미래 불가. **생략하면 오늘이다.** 단 어제 기록의 마지막 세트가 30분(8.5의 구간 간격) 안이면 어젯밤 운동이 자정을 넘겨 이어지는 중이므로 **어제 기록**을 준다 |
 | ~~`source`~~ | 없앴다(LOG-39). 보내도 무시한다. 사후 입력인지는 운동 시간의 구간 규칙이 세트 단위로 가린다(6.5) |
-| ~~`routineId`~~ | **요청에서 받지 않는다**(LOG-26). 추천 루틴 연결(수행률 측정용)은 `routines` 테이블이 생기는 10월부터다. 그전까지 받으면 참조 없는 값이 쌓여 나중에 FK를 걸 수 없다. 응답에는 컬럼 값 그대로 `null`이 담긴다 |
+| ~~`routineId`~~ | **요청에서 받지 않는다**(LOG-26). 루틴과 기록은 서버가 잇는다 — 오늘 루틴을 만들 때 그날 기록을 열어 `routineId`를 채운다(11.2). 응답에는 그 값이, 루틴이 없는 날은 `null`이 담긴다 |
 
 **응답 `201 Created`** (그날 첫 기록) / **`200 OK`** (그날 기록이 이미 있음) — 6.5의 기록 상세.
 
@@ -1546,7 +1562,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | `V9__daily_workout_record.sql` | 하루 기록(LOG-39) — 같은 날 기록을 가장 앞 기록으로 합치고(세트·응원 이동, 세트 순번 재부여, 메모 잇기), `status`·`source`·`started_at`·`ended_at`·`duration_sec` 삭제, `(user_id, performed_on)` UNIQUE | 완료 (10월 2주) |
 | `password_reset_tokens` 테이블 | 비밀번호 재설정(4.8 주석). 문서 곳곳에 `V5`로 적혀 있으나 `V5`~`V9`가 이미 쓰여(`V7` 구글 로그인, `V8` 그룹, `V9` 하루 기록) 실제로는 **다음 빈 번호**다. d1에서 떼어 검증 이후로 미뤘다(LOG-25) | 검증 이후 |
 | ~~세션 생성 멱등 키~~ | 하루 하나 제약(`V9`)과 "있으면 그 기록을 준다"(6.2)가 재전송 중복을 막아 **필요 없어졌다** | 해소 (LOG-39) |
-| `routines` FK | `workout_sessions.routine_id`는 컬럼만 존재. `routines` 생성 시 FK 마이그레이션 | 10월 |
+| ~~`routines` FK~~ | `V10`에서 `workout_sessions.routine_id → routines(id)` FK를 걸었다(`ON DELETE SET NULL`) | 완료 (LOG-40) |
 | 요약 배지 문안 | `summaryBadge` label 및 `MIXED` 표기 확정 (8.2). enum `key`는 고정 | 화면 구현 시 |
 | QUADS 화면 명칭 | `abductors`·`adductors` 포함이라 "앞허벅지"가 부정확 (LOG-10 한계) | 종목 정제 결과 확인 후 |
 | 우선순위 산출 | 여러 부위 동시 부족·불균형 시 보완 순서 (분석 8장) | 10월 |
@@ -1783,6 +1799,178 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 
 ---
 
+## 11. 오늘의 루틴 API
+
+> 2026-10-24 신설 (LOG-40). 「루틴생성_로직_설계서」, 기능명세서 2.1, UC-03-03~06. 엔드포인트 8개 — 전체 44→52개.
+> **1단계(규칙 루틴)** 기준이다. LLM 연결(3단계)은 응답 모양을 바꾸지 않는다 — `generatedBy`가 `LLM`이 되고 `comment`가 LLM의 설명이 될 뿐이다.
+
+### 11.1 원칙
+
+| 항목 | 규칙 |
+|---|---|
+| 역할 분담 | **부위·세트는 규칙**이 정한다(분석 결과 + 회복 + 하루 총량). 종목·순서·설명은 LLM이, 없거나 실패하면 규칙이 정한다. 화면에 보이는 숫자(근거·세트·반복 범위)는 전부 규칙이 쓴다 |
+| 하루 하나 | 사용자의 하루에 루틴은 하나다. **다시 만들기는 없다** — 마음에 안 들면 후보정(11.6·11.7)한다. 하루 하나라 만족도·수행률이 루틴과 1:1이다 |
+| 기준일 | 판정은 **어제**까지의 기록으로 한다(`referenceDate`). 오늘 체크한 세트가 오늘 루틴의 근거를 흔들지 않게. 회복 제외(오늘·어제 한 부위)만 오늘 기록까지 본다 |
+| 계획 저장 | 계획은 `routine_items`에만 있다. `workout_sets`에 계획 행을 넣지 않는다(LOG-05) — 기록 화면이 "계획 − 체크한 세트"로 남은 계획을 다시 만든다 |
+| 원래 계획 | 후보정은 지우지 않고 원래 값을 남긴다(`original_exercise_id`·`original_sets`·`removed`). 수행률의 분모가 **후보정 전 원래 계획**이다(설계서 11.2) |
+| 권한 | 남의 루틴은 있는지조차 드러내지 않도록 `404`(6.5·10.1과 같은 원칙) |
+
+### 11.2 POST /routines/today
+
+**요청** 본문 없음.
+
+**응답 `201 Created`** (오늘 첫 루틴) / **`200 OK`** (오늘 루틴이 이미 있음) — 11.4의 루틴. 동시에 두 번 눌러도 하나만 생긴다(`INSERT … ON CONFLICT DO NOTHING`).
+
+만들 때 **그날 기록을 열어(6.2) `routineId`를 채운다.** 기록 화면은 그 값으로 루틴을 찾아 남은 계획을 붙인다.
+
+오늘 할 부위가 없으면(전부 회복 중이거나 충분) `items`가 빈 루틴이 만들어지고 `comment`가 쉬어 가라는 문장이다. 버튼을 막지 않는다 — 기록이 없는 사람도 기본값(주 3회, 큰 근육부터)으로 루틴을 받는다(설계서 2.6).
+
+### 11.3 GET /routines/today · GET /routines/feedback-pending
+
+| 요청 | 응답 |
+|---|---|
+| `GET /routines/today` | `200` 오늘 루틴 / `204` 아직 받지 않음 |
+| `GET /routines/feedback-pending` | `200` 만족도를 물을 지난 루틴 / `204` 물을 루틴 없음 |
+
+`feedback-pending`은 다음 홈 방문 때 **한 번만** 묻기 위한 것이다(설계서 11.4). 최근 7일(`feedback-lookback-days`)의 지난 루틴 중 **루틴 부위를 체크한 가장 최근 하나**만 본다. 그 루틴에 이미 답했거나 건너뛰었으면 더 오래된 루틴은 묻지 않는다 — 밀린 숙제처럼 연달아 묻지 않게. 오늘 루틴은 여기 오지 않는다(홈 카드가 `askFeedback`으로 묻는다).
+
+### 11.4 GET /routines/{routineId}
+
+**응답 `200 OK`**
+
+```json
+{
+  "id": 31,
+  "routineDate": "2026-10-24",
+  "referenceDate": "2026-10-23",
+  "generatedBy": "RULE",
+  "comment": "큰 근육 위주로, 큰 부위부터 하는 순서예요.",
+  "lowConfidence": true,
+  "totalSets": 16,
+  "doneSets": 4,
+  "items": [
+    {
+      "id": 101, "position": 1,
+      "muscleGroup": "CHEST", "muscleLabel": "가슴",
+      "exerciseId": 5, "exerciseName": "바벨 벤치프레스", "exerciseNameEn": "Barbell Bench Press - Medium Grip",
+      "measureType": "WEIGHT_REPS", "equipment": "BARBELL",
+      "plannedSets": 4, "targetMin": 8, "targetMax": 12,
+      "firstTime": true,
+      "basisWeeklySets": 0.0, "basisVerdict": "INSUFFICIENT", "basisVerdictLabel": "부족",
+      "removed": false, "adjusted": false,
+      "doneSets": 4
+    }
+  ],
+  "feedback": { "rating": null, "reason": null, "skipped": false },
+  "askFeedback": true
+}
+```
+
+| 필드 | 규칙 |
+|---|---|
+| `generatedBy` | `RULE` / `LLM`. 1단계는 모두 `RULE` |
+| `comment` | 조합 설명 1~2문장. 종목·순서의 이유만 말하고 숫자는 쓰지 않는다. 규칙 문장은 그날 담긴 부위(큰 근육·작은 근육·코어)로 고른다(설계서 7.2) |
+| `lowConfidence` | 기준일까지 4주 동안 운동한 날이 신뢰도 임계(8.5) 미만. 화면이 "기록이 쌓일수록…" 안내를 띄운다 |
+| `totalSets` | 빼지 않은 항목의 `plannedSets` 합 |
+| `doneSets` | 빼지 않은 항목마다 `min(그날 체크한 본세트, plannedSets)`의 합 — 진행 표시용. 계획보다 많이 해도 계획만큼만 센다 |
+| `items` | `position` 순. 큰 근육 → 작은 근육 → 코어. 뺀 항목도 `removed: true`로 내려온다 |
+| `items[].targetMin`·`targetMax` | 반복 범위 — 측정 유형으로 고정. 중량 8~12회, 맨몸 10~15회, 시간 30~60**초**(설계서 9.1). 중량은 정하지 않는다 |
+| `items[].firstTime` | 루틴 날짜 전에 이 종목 세트가 하나도 없다. 화면이 [처음]과 "동작 보기"를 띄운다 |
+| `items[].basisWeeklySets`·`basisVerdict` | 근거 — 만든 날 기준 최근 4주 주당 평균 세트와 판정(8.2). "가슴 · 주 0세트(부족)" |
+| `items[].adjusted` | 교체·세트 조정·빼기 중 하나라도 했다 |
+| `items[].doneSets` | 그날 이 종목의 체크한 본세트 수 (워밍업 제외) |
+| `askFeedback` | **오늘** 루틴이고, 루틴 부위를 하나라도 체크했고, 아직 답하지 않았다 — 홈 카드 아래 "오늘 루틴 어땠어요?" |
+
+### 11.5 GET /routines/{routineId}/items/{itemId}/alternatives
+
+교체 후보. **같은 판정 부위**에서 루틴에 이미 있는 종목을 빼고, 최대 10개.
+
+```json
+[{ "exerciseId": 34, "exerciseName": "랫풀다운: 와이드 그립", "exerciseNameEn": "Wide-Grip Lat Pulldown",
+   "equipment": "CABLE", "measureType": "WEIGHT_REPS", "firstTime": true, "sameEquipment": false }]
+```
+
+정렬은 **기구가 다른 종목 먼저**(LOG-08 — 기구가 없어서 바꾸는 경우가 많다) → 최근 8주에 자주 한 순 → 입문 대표 종목 순(설계서 4.1) → 시드 순. `sameEquipment`는 화면이 "다른 기구 / 같은 기구"로 묶는 데 쓴다.
+
+### 11.6 PATCH /routines/{routineId}/items/{itemId}
+
+**요청** — 보내지 않은 항목은 그대로 둔다.
+
+```json
+{ "exerciseId": 34, "plannedSets": 3 }
+```
+
+| 필드 | 규칙 |
+|---|---|
+| `exerciseId` | 선택. **같은 판정 부위**의 종목만. 반복 범위와 `firstTime`은 새 종목으로 다시 정한다 |
+| `plannedSets` | 선택. 1~10 |
+
+**응답 `200 OK`** — 바뀐 루틴(11.4). 처음 바꿀 때 원래 종목·세트를 `original_*`에 남긴다. 몇 번을 바꿔도 원래 값은 처음 것이다.
+
+| 상황 | 응답 |
+|---|---|
+| 다른 부위의 종목 | `400 VALIDATION_ERROR` — 다른 부위로 바꾸면 루틴의 근거("이 부위가 부족하다")가 성립하지 않는다. 다른 부위는 기록 화면에서 직접 추가한다 |
+| `plannedSets`가 1~10 밖 | `400 VALIDATION_ERROR` |
+| 지난 루틴 | `400 VALIDATION_ERROR` — 고치면 이미 쌓인 수행률이 바뀐다 |
+| 없는 종목 / 없는·남의 루틴·항목 | `404` |
+
+### 11.7 DELETE /routines/{routineId}/items/{itemId}
+
+**응답 `200 OK`** — 바뀐 루틴(11.4). 항목을 지우지 않고 `removed: true`로 남긴다(11.1 원래 계획). 되돌리기는 없다. 지난 루틴이면 `400`.
+
+### 11.8 PUT /routines/{routineId}/feedback
+
+**요청** — 답하거나 건너뛴다.
+
+```json
+{ "rating": "OKAY", "reason": "TOO_MUCH" }
+{ "skipped": true }
+```
+
+| 필드 | 규칙 |
+|---|---|
+| `rating` | `GOOD` / `OKAY` / `BAD` |
+| `reason` | 선택. `EXERCISE`(종목이 안 맞음) / `TOO_MUCH`(양이 많음) / `TOO_LITTLE`(양이 적음) / `OTHER`. `GOOD`이면 보내도 저장하지 않는다 |
+| `skipped` | `true`면 건너뜀. 다시 묻지 않는다 |
+
+**응답 `200 OK`** — 바뀐 루틴(11.4).
+
+| 상황 | 응답 |
+|---|---|
+| `rating`도 `skipped`도 없음 | `400 VALIDATION_ERROR` |
+| 이미 답했거나 건너뜀 | `409 ROUTINE_FEEDBACK_EXISTS` — 루틴당 한 번 |
+| 없는·남의 루틴 | `404` |
+
+지난 루틴에도 답할 수 있다(다음 방문 시트, 11.3).
+
+### 11.9 스키마 (V10·V11)
+
+| 테이블 | 컬럼 | 제약·인덱스 |
+|---|---|---|
+| `routines` | `id`, `user_id`, `routine_date`, `reference_date`, `generated_by`, `llm_attempts`, `fallback_reason`, `comment`, `comment_by`, `final_check_passed`, `final_check_failures`, `feedback_rating`, `feedback_reason`, `feedback_skipped`, `feedback_at`, `created_at` | `(user_id, routine_date)` UNIQUE, `user_id` FK 연쇄 삭제, 열거값 CHECK |
+| `routine_items` | `id`, `routine_id`, `position`, `muscle_group`, `exercise_id`, `planned_sets`, `target_min`, `target_max`, `first_time`, `basis_weekly_sets`, `basis_verdict`, `original_exercise_id`, `original_sets`, `removed` | `routine_id` FK 연쇄 삭제 + 인덱스, `exercise_id` FK, `planned_sets` 1~10 |
+| `workout_sessions` | `routine_id` → `routines(id)` | FK `ON DELETE SET NULL` (V10) |
+| `exercises` | `starter_rank SMALLINT NULL` | 입문 대표 종목 순위(V11, 설계서 4.1). 값은 종목 CSV → 반복 마이그레이션 |
+
+`llm_attempts`·`fallback_reason`·`comment_by`·`final_check_*`는 응답에 내리지 않는다 — 검증 지표(LLM 1차 통과율, 폴백률, 운동학적 기준 통과율)를 계산하는 데 쓴다(설계서 11장). 1단계 루틴은 `generated_by = RULE`, `fallback_reason = LLM_DISABLED`로 남아, LLM 연결 뒤 규칙 루틴과 LLM 루틴을 나눠 비교할 수 있다.
+
+### 11.10 설정값 (`app.routine.*`)
+
+| 설정 | 기본값 | 의미 |
+|---|---|---|
+| `target-weekly-sets` | 10 | 부위당 주간 목표 세트 (권장 구간의 아래 끝) |
+| `per-muscle-min-sets` · `per-muscle-max-sets` | 2 · 6 | 하루 한 부위 세트 범위 |
+| `fill-max-sets` | 3 | 하루 총량을 못 채울 때 최적 부위로 채우는 세트 |
+| `daily-min-sets` · `daily-max-sets` | 12 · 18 | 하루 총 세트 범위 |
+| `recovery-days` | 2 | 이 날수 안에 한 부위는 뺀다 (오늘·어제) |
+| `default-days-per-week` | 3 | 기록이 적을 때 쓰는 주당 운동 일수 |
+| `min-known-days` | 3 | 운동한 날이 이보다 적으면 주당 일수를 기본값으로 |
+| `candidates-per-muscle` | 5 | 부위당 후보 종목 |
+| `history-weeks` · `history-max-candidates` | 8 · 3 | 해 본 종목을 보는 기간과 후보 안의 최대 개수 |
+| `feedback-lookback-days` | 7 | 만족도를 물을 지난 루틴을 찾는 기간 |
+
+---
+
 ## 부록 A. Enum 정의 모음
 
 | 그룹 | 값 |
@@ -1799,6 +1987,10 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | `verdict` | `INSUFFICIENT`, `BELOW_RECOMMENDED`, `OPTIMAL`, `EXCESSIVE` |
 | `summaryBadge` | `ALL_OPTIMAL`, `PARTIAL_BELOW`, `PARTIAL_INSUFFICIENT`, `PARTIAL_EXCESSIVE`, `MIXED` |
 | `balance.verdict` | `BALANCED`, `IMBALANCED`, `INSUFFICIENT_DATA` |
+| `routine.generatedBy` | `RULE`, `LLM` |
+| `routine.feedback.rating` | `GOOD`, `OKAY`, `BAD` |
+| `routine.feedback.reason` | `EXERCISE`, `TOO_MUCH`, `TOO_LITTLE`, `OTHER` |
+| `routines.fallback_reason` (응답 없음) | `LLM_DISABLED`, `LLM_ERROR`, `VALIDATION_FAILED` |
 | 에러 `code` | 1.5의 표 참조 |
 
 ---
