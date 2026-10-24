@@ -6,13 +6,8 @@ import { ExercisePicker } from './ExercisePicker'
 import type { PickerStep } from './ExercisePicker'
 
 /**
- * 종목 둘러보기 (명세 5.2).
- *
- * 고르는 동작 자체는 ExercisePicker가 하고, 여기서는 단계를 URL에 실어
+ * 종목 둘러보기. 고르는 동작은 ExercisePicker가 하고, 여기서는 단계를 URL에 실어
  * 뒤로가기가 한 단계씩 거슬러 올라가게 한다.
- *
- * 기록 중에 종목을 고를 때는 이 화면이 아니라 기록 화면의 시트를 쓴다 —
- * 화면을 옮기면 아직 체크하지 않은 종목이 사라지기 때문이다.
  */
 export function ExerciseListScreen() {
   const navigate = useNavigate()

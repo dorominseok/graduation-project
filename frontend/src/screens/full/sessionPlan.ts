@@ -3,15 +3,14 @@ import type { LastPerformance, MeasureType, Routine, RoutineItem, WorkoutSession
 import { activeItems, lastPerformanceLine, repRangeLabel } from '../routine/format'
 
 /**
- * 기록 화면의 카드 만들기 — 체크한 세트 + 오늘 루틴의 남은 계획 + 브라우저 임시 저장
- * (설계서 9.2, LOG-40).
+ * 기록 화면의 카드 만들기 — 체크한 세트 + 오늘 루틴의 남은 계획 + 브라우저 임시 저장.
  *
  * <p>계획 줄은 서버에 저장하지 않는다. 루틴 계획은 `routine_items`에 있으니 열 때마다 "계획 − 체크한
  * 세트"로 다시 만들고, 루틴 밖에서 추가한 종목과 체크 전에 고친 값만 브라우저에 그날까지 둔다.
- * 계획이 `workout_sets`에 섞이지 않아야 분석이 하지 않은 운동을 세지 않는다(LOG-05).
+ * 계획이 `workout_sets`에 섞이지 않아야 분석이 하지 않은 운동을 세지 않는다.
  */
 
-/** 화면에만 있는 세트 행. 완료 체크를 해야 서버로 간다(LOG-05). */
+/** 화면에만 있는 세트 행. 완료 체크를 해야 서버로 간다. */
 export interface SetRow {
   /** 멱등 키이자 React key. 완료 체크 시점이 아니라 행을 만들 때 미리 만든다 */
   clientSetId: string
@@ -21,7 +20,7 @@ export interface SetRow {
   isWarmup: boolean
   /**
    * 세트 사이 쉬는 시간. 서버에는 보내지 않는다 — 기록이 아니라 운동 중에만
-   * 쓰는 타이머 값이고, workout_sets에 그 칸이 없다(명세 6.10).
+   * 쓰는 타이머 값이고, workout_sets에 그 칸이 없다.
    */
   restSec: number
   /** 저장된 세트의 서버 id. null이면 아직 계획 행이다 */
@@ -56,7 +55,7 @@ export function emptyRow(): SetRow {
   }
 }
 
-/** 직전 기록의 세트로 계획 행을 만든다(명세 5.5). 저장 전이라 id는 새로 만든다 */
+/** 직전 기록의 세트로 계획 행을 만든다. 저장 전이라 id는 새로 만든다 */
 export function rowsFromLast(sets: LastPerformance['sets']): SetRow[] {
   return sets.map((set) => ({
     clientSetId: crypto.randomUUID(),
@@ -119,7 +118,7 @@ export function routineKeyOf(routine: Routine | null): string | null {
 /**
  * 루틴 항목 하나를 카드로. 이미 체크한 세트는 그대로 두고, 덜 한 만큼 계획 행을 붙인다.
  * 해 본 종목은 지난 본세트 값으로 채우고(세트가 더 필요하면 마지막 세트를 이어서), 처음인 종목은
- * 빈 칸이다(설계서 9.1).
+ * 빈 칸이다.
  */
 async function routineCard(item: RoutineItem, saved: ExerciseCard | undefined): Promise<ExerciseCard> {
   const savedRows = saved?.rows ?? []

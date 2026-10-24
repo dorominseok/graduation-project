@@ -2,10 +2,7 @@ import { createContext, use } from 'react'
 import type { MeResponse } from '../api'
 
 /**
- * 인증 상태.
- *
- * `loading`이 따로 있는 이유는 부트스트랩 때문이다. 액세스 토큰은 메모리에만 있어
- * 새로고침하면 사라지고, 리프레시 쿠키로 복구되기까지 한 번의 왕복이 걸린다.
+ * 인증 상태. `loading`은 새로고침 뒤 리프레시 쿠키로 복구하는 한 번의 왕복 동안이다 —
  * 그 사이를 `anonymous`로 보면 이미 로그인한 사용자가 로그인 화면으로 튕긴다.
  */
 export type AuthStatus = 'loading' | 'authenticated' | 'anonymous'
@@ -14,7 +11,7 @@ export interface AuthContextValue {
   status: AuthStatus
   user: MeResponse | null
   login: (email: string, password: string) => Promise<void>
-  /** 구글 로그인. 처음이면 서버가 가입까지 한다(LOG-37). */
+  /** 구글 로그인. 처음이면 서버가 가입까지 한다. */
   loginWithGoogle: (credential: string) => Promise<void>
   signUp: (email: string, password: string, nickname: string) => Promise<void>
   logout: () => Promise<void>

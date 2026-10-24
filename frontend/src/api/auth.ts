@@ -1,5 +1,5 @@
 /**
- * 인증·프로필 엔드포인트 (명세 4장).
+ * 인증·프로필 엔드포인트.
  *
  * 각 함수는 호출만 담당하고 토큰 저장은 하지 않는다 — 상태 관리는 AuthProvider의
  * 일이다. 여기서 토큰까지 만지면 로그인 흐름이 두 곳에 나뉜다.
@@ -20,13 +20,13 @@ export interface LoginBody {
   password: string
 }
 
-/** 가입. 성공하면 곧바로 로그인 상태가 되도록 토큰이 함께 온다(명세 4.1). */
+/** 가입. 성공하면 곧바로 로그인 상태가 되도록 토큰이 함께 온다. */
 export function signUp(body: SignUpBody): Promise<TokenResponse> {
   return request<TokenResponse>('/auth/signup', { method: 'POST', body, anonymous: true })
 }
 
 /**
- * 로그인 (명세 4.2).
+ * 로그인.
  *
  * 실패는 이메일이 없을 때와 비밀번호가 틀렸을 때가 같은 `INVALID_CREDENTIALS`로 온다.
  * 화면도 구분하지 말고 한 문구로 보여줘야 한다 — 구분하면 가입 여부가 드러난다.
@@ -36,7 +36,7 @@ export function login(body: LoginBody): Promise<TokenResponse> {
 }
 
 /**
- * 구글 로그인 (LOG-37). 구글 창에서 받은 ID 토큰을 넘긴다.
+ * 구글 로그인. 구글 창에서 받은 ID 토큰을 넘긴다.
  *
  * 처음이면 서버가 그 자리에서 가입시키고, 같은 이메일로 가입한 계정이 있으면 거기에 묶는다.
  * 응답은 로그인과 같다.
@@ -46,7 +46,7 @@ export function googleLogin(credential: string): Promise<TokenResponse> {
 }
 
 /**
- * 로그아웃 (명세 4.4). 서버가 리프레시를 폐기하고 쿠키를 만료시킨다.
+ * 로그아웃. 서버가 리프레시를 폐기하고 쿠키를 만료시킨다.
  *
  * 서버 호출이 실패해도 로컬 토큰은 지운다. 사용자가 로그아웃을 눌렀는데 화면이
  * 로그인 상태로 남아 있는 것이 더 나쁘기 때문이다.
@@ -59,18 +59,18 @@ export async function logout(): Promise<void> {
   }
 }
 
-/** 내 프로필 (명세 4.5). */
+/** 내 프로필. */
 export function getMe(): Promise<MeResponse> {
   return request<MeResponse>('/users/me')
 }
 
-/** 프로필 부분 수정 (명세 4.6). */
+/** 프로필 부분 수정. */
 export function updateMe(body: UpdateMeRequest): Promise<MeResponse> {
   return request<MeResponse>('/users/me', { method: 'PATCH', body })
 }
 
 /**
- * 비밀번호 변경 (명세 4.8).
+ * 비밀번호 변경.
  *
  * 성공하면 서버가 리프레시 토큰을 전부 폐기하고 쿠키를 만료시키므로 이 세션은 더
  * 이어갈 수 없다. 다만 액세스 토큰은 남은 시간 동안 유효하므로 여기서 지우지 않는다
@@ -81,8 +81,8 @@ export function changePassword(body: ChangePasswordRequest): Promise<void> {
 }
 
 /**
- * 회원 탈퇴 (명세 4.7). 되돌릴 수 없어 본인 확인을 다시 받는다 — 비밀번호, 또는 구글로만
- * 가입한 계정이면 구글 로그인을 한 번 더 해서 받은 ID 토큰(LOG-37).
+ * 회원 탈퇴. 되돌릴 수 없어 본인 확인을 다시 받는다 — 비밀번호, 또는 구글로만
+ * 가입한 계정이면 구글 로그인을 한 번 더 해서 받은 ID 토큰.
  */
 export async function deleteMe(
   confirm: { password: string } | { googleCredential: string },

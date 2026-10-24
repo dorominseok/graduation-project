@@ -50,7 +50,7 @@ export function formatMonthDay(isoDate: string): string {
 }
 
 /**
- * 판정 기간 표기. 기록이 4주가 안 되면 실제로 나눈 일수를 적는다(LOG-31) —
+ * 판정 기간 표기. 기록이 4주가 안 되면 실제로 나눈 일수를 적는다 —
  * "최근 4주"라고 써놓고 17일로 나누면 화면과 계산이 다른 말을 한다.
  */
 export function basisLabel(volume: { periodWeeks: number; basisDays: number }): string {

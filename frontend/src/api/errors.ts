@@ -1,8 +1,8 @@
 /**
- * 오류 응답 파싱. API 명세서 1.5의 단일 envelope를 따른다.
+ * 오류 응답 파싱. 서버의 오류는 모두 같은 envelope로 온다.
  *
  * 화면 분기는 `message`가 아니라 **`code`로** 한다 — 문구는 바뀔 수 있지만
- * 코드는 계약이기 때문이다(명세 1.5).
+ * 코드는 계약이기 때문이다.
  */
 
 /** 필드 단위 검증 오류. 400 VALIDATION_ERROR에만 딸려온다. */
@@ -19,9 +19,9 @@ export const ErrorCodes = {
   TOKEN_EXPIRED: 'TOKEN_EXPIRED',
   TOKEN_INVALID: 'TOKEN_INVALID',
   EMAIL_ALREADY_EXISTS: 'EMAIL_ALREADY_EXISTS',
-  /** 기록을 옮기려는 날짜에 이미 기록이 있다 (명세 6.9). 하루에 기록은 하나다 */
+  /** 기록을 옮기려는 날짜에 이미 기록이 있다. 하루에 기록은 하나다 */
   DAY_ALREADY_RECORDED: 'DAY_ALREADY_RECORDED',
-  /** 종목의 측정 유형이 요구하는 값이 빠졌다 (명세 6.4) */
+  /** 종목의 측정 유형이 요구하는 값이 빠졌다 */
   INVALID_MEASURE_INPUT: 'INVALID_MEASURE_INPUT',
   RESOURCE_NOT_FOUND: 'RESOURCE_NOT_FOUND',
   /** 통신 자체가 실패한 경우. 서버가 준 코드가 아니라 클라이언트가 붙인다. */

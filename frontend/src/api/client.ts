@@ -1,9 +1,6 @@
 /**
- * API 클라이언트. 모든 백엔드 호출이 여기를 지난다.
- *
- * 여기 한 곳에 모아두는 이유는 **토큰 부착·만료 시 재발급·재시도**가 화면마다
- * 흩어지면 새 화면을 붙일 때 같은 실수를 반복하기 때문이다. 운동 중에는 세트마다
- * 요청이 나가므로 만료가 걸리는 지점도 잦다(명세 2.2).
+ * API 클라이언트. 모든 백엔드 호출이 여기를 지난다 — 토큰 부착·만료 시 재발급·재시도를
+ * 화면마다 흩어 두지 않으려고 한 곳에 모았다.
  *
  * 개발 중에는 Vite 프록시가 `/api`를 `localhost:8080`으로 넘긴다. 같은 오리진이라
  * 리프레시 쿠키(`HttpOnly`, `SameSite=Strict`)가 CORS 없이 그대로 실린다.
@@ -41,11 +38,11 @@ export function setAuthExpiredListener(listener: AuthExpiredListener | null): vo
 }
 
 /**
- * 진행 중인 재발급 요청. **한 번에 하나만** 보낸다 (명세 4.3 클라이언트 요구사항).
+ * 진행 중인 재발급 요청. **한 번에 하나만** 보낸다.
  *
  * 액세스가 만료되는 순간 여러 요청이 함께 401을 받는데, 각자 재발급을 쏘면 회전
- * 때문에 뒤의 것들이 이미 폐기된 토큰을 들고 가게 된다. 서버의 30초 유예 창
- * (LOG-16)이 그 상황을 구제하지만, 애초에 하나로 묶는 게 설계가 의도한 동작이다.
+ * 때문에 뒤의 것들이 이미 폐기된 토큰을 들고 가게 된다. 서버의 30초 유예 창이
+ * 그 상황을 구제하지만, 처음부터 하나로 묶는다.
  */
 let inflightRefresh: Promise<string> | null = null
 
@@ -137,7 +134,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   return parseBody<T>(response)
 }
 
-/** 204와 빈 본문을 정상으로 처리한다. 로그아웃·탈퇴가 204로 온다(명세 4.4·4.7). */
+/** 204와 빈 본문을 정상으로 처리한다. 로그아웃·탈퇴가 204로 온다. */
 async function parseBody<T>(response: Response): Promise<T> {
   if (response.status === 204) return undefined as T
   const text = await response.text()

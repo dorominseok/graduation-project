@@ -2,13 +2,13 @@ import type { CalendarResponse } from '../api'
 import { toDateKey } from '../app/dates'
 import styles from './MonthCalendar.module.css'
 
-// 주는 월요일에 시작한다(명세 1.2). 홈의 "이번 주"와 같은 기준이어야 두 화면이 안 어긋난다
+// 주는 월요일에 시작한다. 홈의 "이번 주"와 같은 기준이어야 두 화면이 안 어긋난다
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
 
 interface MonthCalendarProps {
   year: number
   month: number
-  /** 운동한 날짜만 온다(명세 6.8). 아직 읽는 중이면 비워 둔다 */
+  /** 운동한 날짜만 온다. 아직 읽는 중이면 비워 둔다 */
   days?: CalendarResponse['days']
   onMoveMonth: (delta: number) => void
   onSelectDay: (dateKey: string) => void

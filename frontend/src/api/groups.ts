@@ -1,5 +1,5 @@
 /**
- * 친구 그룹 (명세 10장, LOG-38).
+ * 친구 그룹.
  *
  * 멤버가 아닌 그룹은 서버가 404로 답한다 — 그룹이 있는지조차 드러내지 않으려는 것이라,
  * 화면도 "없는 그룹"과 "내 그룹이 아님"을 구분하지 않는다.
@@ -63,7 +63,7 @@ export function removeMember(groupId: number, memberId: number): Promise<void> {
   return request<void>(`/groups/${groupId}/members/${memberId}`, { method: 'DELETE' })
 }
 
-/** 멤버의 월별 기록. 내 캘린더(명세 6.8)와 같은 모양이다. */
+/** 멤버의 월별 기록. 내 캘린더와 같은 모양이다. */
 export function getMemberCalendar(
   groupId: number,
   memberId: number,

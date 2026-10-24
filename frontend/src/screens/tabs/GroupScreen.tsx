@@ -12,7 +12,7 @@ import formStyles from '../full/settings.module.css'
 type Sheet = 'create' | 'join' | null
 
 /**
- * 그룹 탭 — 내 그룹 목록 (명세 10장, LOG-38).
+ * 그룹 탭 — 내 그룹 목록.
  *
  * <p>그룹이 없으면 무엇을 하는 곳인지부터 알려준다. 만들기와 코드로 참여하기는 목록이
  * 있어도 아래에 남긴다 — 그룹은 여러 개 들어갈 수 있다.

@@ -3,11 +3,8 @@ import { paths } from '../app/paths'
 import { useAuth } from './auth-context'
 
 /**
- * 로그인이 필요한 경로를 감싸는 가드.
- *
- * 서버 쪽 `SecurityConfig`가 최종 방어선이고(명세 1.3), 이건 화면이 401을 받고
- * 나서야 반응하는 걸 막기 위한 것이다. 목록은 서버와 맞춰둘 필요가 없다 —
- * 어차피 보호 경로에 들어가면 API가 거절한다.
+ * 로그인이 필요한 경로를 감싸는 가드. 최종 방어선은 서버이고, 이건 화면이 401을 받고
+ * 나서야 반응하는 걸 막는다.
  */
 export function RequireAuth() {
   const { status } = useAuth()

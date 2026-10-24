@@ -2,7 +2,7 @@
  * 라우트 경로 한 곳 정의.
  *
  * "미래 날짜 루틴 미리 짜기" 화면은 두지 않는다 — 기록은 미래 날짜를 받지 않고,
- * 루틴은 오늘 하루 것만 만든다(LOG-05, LOG-40).
+ * 루틴은 오늘 하루 것만 만든다.
  */
 export const paths = {
   // 탭 밖 — 인증
@@ -28,7 +28,7 @@ export const paths = {
   personalInfo: '/settings/personal',
   feedback: '/feedback',
 
-  // 친구 그룹 (LOG-38). 그룹 탭 아래에 둬서 하단바의 "그룹"에 불이 켜진다
+  // 친구 그룹. 그룹 탭 아래에 둬서 하단바의 "그룹"에 불이 켜진다
   groupDetail: (groupId: number | string = ':groupId') => `/group/${groupId}`,
   groupMember: (groupId: number | string = ':groupId', memberId: number | string = ':memberId') =>
     `/group/${groupId}/members/${memberId}`,

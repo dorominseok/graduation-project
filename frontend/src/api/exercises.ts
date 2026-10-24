@@ -12,15 +12,15 @@ import type {
   Page,
 } from './types'
 
-/** 종목 목록 조회 조건 (명세 5.2). 지정하지 않은 항목은 조건을 걸지 않는다. */
+/** 종목 목록 조회 조건. 지정하지 않은 항목은 조건을 걸지 않는다. */
 export interface ExerciseQuery {
   /** 한글·영문 부분 일치 */
   q?: string
   bodyPart?: BodyPart
-  /** 탐색 분류 12종 (LOG-24). 부위 그리드에서 고른 값 */
+  /** 탐색 분류 12종. 부위 그리드에서 고른 값 */
   category?: BrowseCategory
   /**
-   * 판정 부위 9종 (LOG-29). 홈의 약점에서 그 부위 종목으로 바로 갈 때 쓴다.
+   * 판정 부위 9종. 홈의 약점에서 그 부위 종목으로 바로 갈 때 쓴다.
    * 탐색 분류와 축이 달라 어깨 앞·뒤를 가르고, 뒤허벅지·둔근처럼 분류 둘에 걸친 것도 한 번에 고른다
    */
   muscleGroup?: MuscleGroupKey
@@ -46,7 +46,7 @@ function toQueryString(query: ExerciseQuery): string {
 }
 
 /**
- * 종목 목록 (명세 5.2).
+ * 종목 목록.
  *
  * 토큰이 없어도 조회된다. 다만 그때는 각 항목에 `isFavorite`가 담기지 않는다.
  */
@@ -55,7 +55,7 @@ export function search(query: ExerciseQuery = {}): Promise<Page<Exercise>> {
 }
 
 /**
- * 부위 그리드 (LOG-24). 종목 선택 1단계.
+ * 부위 그리드. 종목 선택 1단계.
  *
  * 109종을 한 목록에 늘어놓으면 검색 말고는 찾을 길이 없어서, 부위에서 계열로,
  * 계열에서 변형으로 좁혀 들어간다.
@@ -64,28 +64,28 @@ export function categories(): Promise<CategoryCount[]> {
   return request<CategoryCount[]>('/exercises/categories')
 }
 
-/** 한 분류의 계열 목록 (LOG-24). 종목 선택 2단계. */
+/** 한 분류의 계열 목록. 종목 선택 2단계. */
 export function groups(category: BrowseCategory): Promise<GroupCount[]> {
   return request<GroupCount[]>(`/exercises/groups?category=${category}`)
 }
 
-/** 종목 상세 (명세 5.3). */
+/** 종목 상세. */
 export function get(exerciseId: number): Promise<Exercise> {
   return request<Exercise>(`/exercises/${exerciseId}`)
 }
 
-/** 즐겨찾기 등록 (명세 5.4). 이미 등록돼 있어도 오류가 아니다. */
+/** 즐겨찾기 등록. 이미 등록돼 있어도 오류가 아니다. */
 export function addFavorite(exerciseId: number): Promise<void> {
   return request<void>(`/users/me/favorite-exercises/${exerciseId}`, { method: 'PUT' })
 }
 
-/** 즐겨찾기 해제 (명세 5.4). */
+/** 즐겨찾기 해제. */
 export function removeFavorite(exerciseId: number): Promise<void> {
   return request<void>(`/users/me/favorite-exercises/${exerciseId}`, { method: 'DELETE' })
 }
 
 /**
- * 직전 수행 기록 (명세 5.5).
+ * 직전 수행 기록.
  *
  * 처음 하는 종목이면 서버가 204를 주고 여기서는 `null`이 된다 — 오류가 아니라
  * "채울 기록이 없다"는 정상 상태이므로 호출부는 빈 행으로 시작하면 된다.

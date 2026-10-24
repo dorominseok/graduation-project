@@ -7,10 +7,10 @@ import { validateNickname } from '../auth/validation'
 import styles from './settings.module.css'
 
 /**
- * 개인정보 수정 — 닉네임(명세 4.6).
+ * 개인정보 수정 — 닉네임.
  *
  * 훈련 목표는 화면에서 뺐다(2026-09-20). 계획서에 없던 항목이고, 루틴 추천도
- * 운동 기록만 보고 짜서 어디에도 쓰이지 않는다(LOG-40).
+ * 운동 기록만 보고 짜서 어디에도 쓰이지 않는다.
  */
 export function PersonalInfoScreen() {
   const navigate = useNavigate()
@@ -36,7 +36,7 @@ export function PersonalInfoScreen() {
     setSaving(true)
 
     try {
-      // profile 객체를 보내지 않으면 서버가 프로필을 건드리지 않는다(명세 4.6).
+      // profile 객체를 보내지 않으면 서버가 프로필을 건드리지 않는다.
       const next = await authApi.updateMe({ nickname })
       applyUser(next)
       showToast({ message: '저장했어요' })

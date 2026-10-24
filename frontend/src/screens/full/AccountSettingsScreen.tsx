@@ -12,10 +12,8 @@ type Sheet = 'password' | 'withdraw' | null
 /**
  * 계정 설정 — 이메일 확인, 비밀번호 변경, 회원 탈퇴.
  *
- * 구글로만 가입한 계정은 비밀번호가 없어 비밀번호 변경을 숨기고, 탈퇴 확인을 구글로 받는다(LOG-37).
- *
- * 이메일은 읽기 전용이다. 로그인 식별자라 바꾸려면 중복 검사와 기존 세션 처리가
- * 따라붙는데, 지인 10명 검증에서 바꿀 이유가 없다(LOG-21).
+ * 구글로만 가입한 계정은 비밀번호가 없어 비밀번호 변경을 숨기고, 탈퇴 확인을 구글로 받는다.
+ * 이메일은 읽기 전용이다 — 로그인 식별자라 바꾸려면 중복 검사와 기존 세션 처리가 따라붙는다.
  */
 export function AccountSettingsScreen() {
   const navigate = useNavigate()
@@ -141,7 +139,7 @@ function ChangePasswordForm({ onDone }: { onDone: () => void | Promise<void> }) 
       if (!isApiError(err)) throw err
 
       // 현재 비밀번호가 틀린 경우다. 새 비밀번호 칸이 아니라 그 칸에 붙여야
-      // 어디를 고쳐야 하는지 분명하다(명세 4.8).
+      // 어디를 고쳐야 하는지 분명하다.
       if (err.code === ErrorCodes.INVALID_CREDENTIALS) {
         setErrors({ current: err.message })
         return

@@ -1,10 +1,8 @@
 /**
- * 구글 로그인(Google Identity Services, LOG-37).
+ * 구글 로그인(Google Identity Services).
  *
- * 버튼은 구글이 그린다. 구글 로그인 브랜드 규정상 모양을 직접 만들지 않고, 그 버튼이 띄운
- * 창에서 받은 ID 토큰(`credential`)을 서버로 넘기기만 한다. 검증과 가입·로그인 판단은 서버 일이다.
- *
- * 클라이언트 ID는 공개값이라 `.env.development`·`.env.production`에 둔다. 비어 있으면 버튼을 그리지 않는다.
+ * 버튼은 구글 브랜드 규정상 구글이 그리고, 여기서는 받은 ID 토큰(`credential`)을 서버로
+ * 넘기기만 한다. 클라이언트 ID는 공개값이라 `.env.*`에 두며, 비어 있으면 버튼을 그리지 않는다.
  */
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined

@@ -14,11 +14,8 @@ import { OneRmTrendPanel } from '../analysis/OneRmTrendPanel'
 import styles from './exerciseDetail.module.css'
 
 /**
- * 종목 상세 (명세 5.3).
- *
- * 종목 정보, 직전 수행 기록, 그리고 중량·횟수 종목이면 추정 1RM 추이(7.1)를
- * 보여준다. 추이 패널은 분석 탭 통계와 같은 것이다 — 성장을 보려는 사람이
- * 어느 쪽으로 들어오든 같은 그림을 보게 한다.
+ * 종목 상세 — 종목 정보, 직전 수행 기록, 중량·횟수 종목이면 추정 1RM 추이.
+ * 추이 패널은 분석 탭 통계와 같은 것이다.
  */
 export function ExerciseDetailScreen() {
   const { exerciseId } = useParams()

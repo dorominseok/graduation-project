@@ -11,7 +11,7 @@ import styles from './auth.module.css'
 /**
  * 회원가입 화면.
  *
- * 가입 성공 시 서버가 토큰을 함께 내려주므로 로그인 왕복은 없다(API 명세서 4.1).
+ * 가입 성공 시 서버가 토큰을 함께 내려주므로 로그인 왕복은 없다.
  */
 export function SignupScreen() {
   const navigate = useNavigate()

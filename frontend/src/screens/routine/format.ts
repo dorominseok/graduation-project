@@ -9,13 +9,13 @@ export function formatRoutineDay(isoDate: string): string {
   return `${month}월 ${day}일 (${WEEKDAYS[new Date(year, month - 1, day).getDay()]})`
 }
 
-/** 반복 범위. 측정 유형으로 고정이다(설계서 9.1) — 시간 종목만 초로 적는다 */
+/** 반복 범위. 측정 유형으로 고정이다 — 시간 종목만 초로 적는다 */
 export function repRangeLabel(item: Pick<RoutineItem, 'measureType' | 'targetMin' | 'targetMax'>): string {
   const unit = item.measureType === 'TIME' ? '초' : '회'
   return `${item.targetMin}~${item.targetMax}${unit}`
 }
 
-/** 근거 한 줄 — "가슴 · 주 4세트(권장 이하)". 숫자는 규칙이 쓴다(LOG-40) */
+/** 근거 한 줄 — "가슴 · 주 4세트(권장 이하)". 숫자는 규칙이 쓴다 */
 export function basisLine(item: RoutineItem): string {
   return `${item.muscleLabel} · 주 ${item.basisWeeklySets}세트(${item.basisVerdictLabel})`
 }

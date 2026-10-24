@@ -42,7 +42,7 @@ const FLASH_MS = 600
 /** "휴식 끝" 띠를 띄워두는 시간 */
 const REST_DONE_MS = 3000
 
-/** 측정 유형이 실제로 쓰는 입력 칸만 고른다(명세 5.1 표). */
+/** 측정 유형이 실제로 쓰는 입력 칸만 고른다. */
 function fieldsOf(measureType: MeasureType): Field[] {
   if (measureType === 'TIME') return ['durationSec']
   if (measureType === 'BODYWEIGHT_REPS') return ['reps']
@@ -72,19 +72,15 @@ function formatRest(seconds: number): string {
 }
 
 /**
- * 하루 기록 (명세 6.2~6.4, LOG-39).
+ * 하루 기록.
  *
- * <p>두 단계다. 목록에서는 그날 무슨 종목을 했는지만 보고, 종목을 누르면 그
- * 종목의 세트만 남는다 — 종목 셋에 세트 다섯이면 한 화면에 열다섯 줄이 되어
- * 어느 줄을 누르는지 알 수 없다.
+ * <p>두 단계다. 목록에서는 그날 무슨 종목을 했는지만 보고, 종목을 누르면 그 종목의 세트만 남는다 —
+ * 한 화면에 모든 세트를 펼치면 어느 줄을 누르는지 알 수 없다.
  *
- * <p>화면이 곧 그날 기록이다. 시작·종료가 없다 — 들어오면 그날 기록을 열고(없으면 서버가
- * 만든다), 체크한 세트가 그 자리에서 쌓인다. 하루에 두 번 운동하러 와도 같은 기록이 열려
- * 아침에 한 운동이 그대로 보인다. 세트 없이 나가면 빈 기록이 남지만 목록·달력·횟수에는
- * 나오지 않는다.
+ * <p>시작·종료가 없다. 들어오면 그날 기록을 열고(없으면 서버가 만든다), 체크한 세트가 그
+ * 자리에서 쌓인다. 세트 없이 나가면 빈 기록이 남지만 목록·달력·횟수에는 나오지 않는다.
  *
  * <p>오늘 루틴이 있으면 열 때마다 "체크한 세트 + 루틴의 남은 계획"으로 카드를 다시 만든다.
- * 체크하지 않은 행(루틴 밖 종목, 고친 값)은 브라우저에 그날까지 둔다(설계서 9.2, LOG-40).
  */
 export function SessionScreen() {
   const navigate = useNavigate()
@@ -122,7 +118,7 @@ export function SessionScreen() {
   // 하나씩 수행하는 흐름이 이걸로 가능해진다.
   //
   // 홈의 약점에서 "오늘 운동에 추가"로 들어오면(?pick=판정 부위) 그 부위 종목만 띄운 채
-  // 시트를 연다(LOG-29). 무슨 종목이 있는지 구경하는 게 아니라 오늘 할 운동에 바로 넣는 길이다.
+  // 시트를 연다. 무슨 종목이 있는지 구경하는 게 아니라 오늘 할 운동에 바로 넣는 길이다.
   const pickParam = params.get('pick') as MuscleGroupKey | null
   const [pickerOpen, setPickerOpen] = useState(pickParam !== null)
   const [pickerStep, setPickerStep] = useState<PickerStep>(() =>
@@ -140,7 +136,7 @@ export function SessionScreen() {
   // 빼려는 종목의 자리. 기록된 세트가 있을 때만 채워진다
   const [removeTarget, setRemoveTarget] = useState<number | null>(null)
 
-  // 그날 추정 1RM(명세 7.2). 세트가 저장·수정·삭제될 때마다 다시 읽는다 —
+  // 그날 추정 1RM. 세트가 저장·수정·삭제될 때마다 다시 읽는다 —
   // 화면에서 Epley를 계산하면 서버와 공식이 둘이 된다.
   const [intensity, setIntensity] = useState<SessionIntensity | null>(null)
   const [statsVersion, setStatsVersion] = useState(0)
@@ -163,7 +159,7 @@ export function SessionScreen() {
     setParams(next, { replace: true })
   }, [pickParam, params, setParams])
 
-  // 그날 기록을 연다(명세 6.2·6.5). id로 들어왔으면 그 기록, 아니면 날짜(없으면 오늘)의 기록이다
+  // 그날 기록을 연다. id로 들어왔으면 그 기록, 아니면 날짜(없으면 오늘)의 기록이다
   useEffect(() => {
     let alive = true
     void (async () => {
@@ -222,7 +218,7 @@ export function SessionScreen() {
     }
   }, [sessionId, openedId, statsVersion])
 
-  // 운동 시간은 서버가 세트 저장 시각으로 계산한다(LOG-39). 세트가 바뀌면 그날 기록을 다시 읽는다.
+  // 운동 시간은 서버가 세트 저장 시각으로 계산한다. 세트가 바뀌면 그날 기록을 다시 읽는다.
   // 세트 행은 화면이 들고 있으므로 건드리지 않는다 — 체크하지 않은 계획 행이 사라지면 안 된다
   useEffect(() => {
     if (sessionId === null || statsVersion === 0) return
@@ -269,7 +265,7 @@ export function SessionScreen() {
   }, [flashId])
 
   const addExercise = useCallback(async (exercise: Exercise) => {
-    // 직전 기록으로 행을 채운다(명세 5.5). 없으면 빈 행 하나로 시작한다.
+    // 직전 기록으로 행을 채운다. 없으면 빈 행 하나로 시작한다.
     const last = await lastPerformanceOf(exercise.id)
     const hasLast = last !== null && last.sets.length > 0
     const rows: SetRow[] = hasLast ? rowsFromLast(last.sets) : [emptyRow()]
@@ -372,18 +368,15 @@ export function SessionScreen() {
   }
 
   /**
-   * 워밍업 표시 (LOG-02).
-   *
-   * 워밍업 세트는 볼륨 집계에서 빠진다 — ACSM 기준이 본세트 기준이라 단위를 맞춰야
-   * 하고, 준비 세트까지 세면 부족한 부위가 충분한 것으로 보인다. 표시할 방법이
-   * 없으면 그 규칙 자체가 동작하지 않는다.
+   * 워밍업 표시. 워밍업 세트는 볼륨 집계에서 빠진다 — 준비 세트까지 세면 부족한 부위가
+   * 충분한 것으로 보인다.
    */
   const toggleWarmup = async (cardIndex: number, rowIndex: number) => {
     const row = cards[cardIndex].rows[rowIndex]
     const next = !row.isWarmup
     updateRow(cardIndex, rowIndex, { isWarmup: next })
 
-    // 이미 저장된 세트면 서버 값도 맞춘다(명세 6.11).
+    // 이미 저장된 세트면 서버 값도 맞춘다.
     if (row.savedId !== null && session) {
       try {
         await workoutApi.updateSet(session.id, row.savedId, { isWarmup: next })
@@ -394,7 +387,7 @@ export function SessionScreen() {
     }
   }
 
-  /** 값 하나를 고친다. 이미 저장된 세트면 서버 값까지 맞춘다(명세 6.11) */
+  /** 값 하나를 고친다. 이미 저장된 세트면 서버 값까지 맞춘다 */
   const patchValue = async (
     cardIndex: number,
     rowIndex: number,
@@ -418,7 +411,7 @@ export function SessionScreen() {
     setCards((prev) =>
       prev.map((card, ci) => {
         if (ci !== cardIndex) return card
-        // 직전 세트를 복사해 채운다(기록 방식 3.4 ②). 보통 같은 무게로 이어간다.
+        // 직전 세트를 복사해 채운다. 보통 같은 무게로 이어간다.
         const last = card.rows[card.rows.length - 1]
         const next = last
           ? { ...last, clientSetId: crypto.randomUUID(), savedId: null, fromPrev: false }
@@ -447,11 +440,8 @@ export function SessionScreen() {
   }
 
   /**
-   * 종목 빼기.
-   *
-   * <p>아직 체크한 세트가 없으면 잃을 것이 없어 바로 뺀다. 기록이 있으면
-   * 되돌릴 수 없는 삭제라 한 번 물어본다 — 이 버튼이 카드를 여는 자리
-   * 바로 옆에 있어서 잘못 누르기 쉽다.
+   * 종목 빼기. 체크한 세트가 없으면 바로 빼고, 있으면 되돌릴 수 없는 삭제라 한 번 묻는다 —
+   * 카드를 여는 자리 바로 옆이라 잘못 누르기 쉽다.
    */
   const askRemoveCard = (cardIndex: number) => {
     if (cards[cardIndex].rows.some((row) => row.savedId !== null)) {
@@ -464,7 +454,7 @@ export function SessionScreen() {
   const removeCard = async (cardIndex: number) => {
     const card = cards[cardIndex]
     if (session) {
-      // 세트를 하나씩 지우면 중간에 끊겼을 때 일부만 남는다(LOG-22).
+      // 세트를 하나씩 지우면 중간에 끊겼을 때 일부만 남는다.
       try {
         await workoutApi.deleteExercise(session.id, card.exerciseId)
         bumpStats()
@@ -647,7 +637,7 @@ export function SessionScreen() {
       .filter((weight): weight is number => weight != null)
     const savedMaxWeight = savedWeights.length > 0 ? Math.max(...savedWeights) : null
     const savedWorkingSets = savedRows.filter((row) => !row.isWarmup).length
-    // 중량 딥스 같은 종목의 무게는 몸무게가 아니라 매단 무게라 1RM을 내지 않는다(명세 7.1)
+    // 중량 딥스 같은 종목의 무게는 몸무게가 아니라 매단 무게라 1RM을 내지 않는다
     const isAddedWeight = opened.measureType === 'WEIGHTED_BODYWEIGHT'
     // 다른 세션의 응답이 남아 있을 수 있어 세션 번호까지 맞춰 본다
     const openedOneRm =
@@ -707,7 +697,7 @@ export function SessionScreen() {
 
           {/*
             지표 3종. 저장된 세트만 센다 — 아직 체크하지 않은 줄은 한 것이 아니다.
-            볼륨은 톤(무게×횟수)이 아니라 본세트 수다(분석 설계서 1.1).
+            볼륨은 톤(무게×횟수)이 아니라 본세트 수다.
           */}
           {showStats && (
             <div className={styles.stats}>
@@ -1149,7 +1139,7 @@ export function SessionScreen() {
             ←
           </button>
 
-          {/* 끝내는 버튼이 없다. 체크한 세트가 곧 기록이고, 마지막 세트가 곧 끝이다(LOG-39) */}
+          {/* 끝내는 버튼이 없다. 체크한 세트가 곧 기록이고, 마지막 세트가 곧 끝이다 */}
           <div className={styles.headerNav}>
             <button type="button" className={styles.navArrow} onClick={() => goToDay(-1)} aria-label="하루 전">
               ‹

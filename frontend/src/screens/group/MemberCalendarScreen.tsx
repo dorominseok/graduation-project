@@ -9,7 +9,7 @@ import { isId, useGroupFail } from './useGroupFail'
 import styles from './group.module.css'
 
 /**
- * 그룹 멤버의 기록 — 월간 달력 (LOG-38). 내 기록 탭과 같은 달력을 읽기 전용으로 쓴다.
+ * 그룹 멤버의 기록 — 월간 달력. 내 기록 탭과 같은 달력을 읽기 전용으로 쓴다.
  *
  * <p>기록이 있는 날만 누를 수 있다. 내 기록 탭은 빈 날을 누르면 사후 입력을 시작하지만,
  * 남의 기록에는 채울 것이 없다.

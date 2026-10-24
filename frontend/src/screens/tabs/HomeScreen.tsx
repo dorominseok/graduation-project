@@ -17,7 +17,7 @@ function toDateString(date: Date): string {
   return date.toLocaleDateString('sv-SE')
 }
 
-/** 이번 주 월요일. 주는 월요일에 시작한다(명세 1.2) */
+/** 이번 주 월요일. 주는 월요일에 시작한다 */
 function mondayOf(date: Date): Date {
   const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate())
   monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
@@ -73,11 +73,10 @@ interface Counts {
 /**
  * 홈.
  *
- * <p>맨 위 "오늘 운동" 카드가 루틴 카드다(LOG-40). 루틴을 받기 전에는 "오늘 루틴 추천받기"가
- * 주 버튼이고, 받은 뒤에는 요약과 "이 루틴으로 기록"이 온다. 직접 기록하는 길은 늘 남긴다.
+ * <p>맨 위 "오늘 운동" 카드가 루틴 카드다. 받기 전에는 "오늘 루틴 추천받기", 받은 뒤에는 요약과
+ * "이 루틴으로 기록"이 주 버튼이다. 직접 기록하는 길은 늘 남긴다.
  *
- * <p>횟수는 운동한 날을 센다. 하루에 두 번 운동해도 한 번이다 — 기록이 하루에 하나다(LOG-39).
- * 체크한 세트는 바로 저장되므로 종료를 기다리지 않고 바로 센다.
+ * <p>횟수는 운동한 날을 센다(기록이 하루에 하나다). 체크한 세트는 바로 저장되므로 종료 없이 센다.
  */
 export function HomeScreen() {
   const navigate = useNavigate()
@@ -89,7 +88,7 @@ export function HomeScreen() {
   // undefined는 아직 읽는 중, null은 오늘 루틴을 받지 않음
   const [routine, setRoutine] = useState<Routine | null | undefined>(undefined)
   const [creating, setCreating] = useState(false)
-  // 다음 방문에 한 번 묻는 지난 루틴(설계서 11.4)
+  // 다음 방문에 한 번 묻는 지난 루틴
   const [pending, setPending] = useState<Routine | null>(null)
   const [answering, setAnswering] = useState(false)
 
@@ -214,7 +213,7 @@ export function HomeScreen() {
         <div className={styles.greetingStats}>{counts ? greetingStats(today, counts) : ' '}</div>
       </div>
 
-      {/* 시작·종료가 없어서 오늘 이미 운동했으면 같은 기록에 이어서 쌓는다(LOG-39) */}
+      {/* 시작·종료가 없어서 오늘 이미 운동했으면 같은 기록에 이어서 쌓는다 */}
       {counts && routine !== undefined && (
         <div className={styles.hero}>
           {routine === null ? (
@@ -351,7 +350,7 @@ interface TodayRoutineProps {
 }
 
 /**
- * 오늘 루틴 요약 (설계서 14장). 무엇을 할지는 루틴 화면이 말하고, 여기는 부위 · 종목 수 · 세트 수와
+ * 오늘 루틴 요약. 무엇을 할지는 루틴 화면이 말하고, 여기는 부위 · 종목 수 · 세트 수와
  * 얼마나 했는지만 둔다. 루틴 부위를 체크한 날은 카드 아래에서 바로 만족도를 묻는다.
  */
 function TodayRoutine({ routine, answering, onRecord, onOpen, onAnswer }: TodayRoutineProps) {
@@ -410,15 +409,11 @@ function TodayRoutine({ routine, answering, onRecord, onOpen, onAnswer }: TodayR
 /**
  * 약점.
  *
- * <p>얼마나 부족한지(주당 세트 + 막대)와, 그래서 뭘 할 수 있는지를 한 줄에 둔다.
- * 행을 누르면 오늘 기록 화면이 그 부위 종목 시트를 연 채로 열린다 — 종목 목록을
- * 구경시키면 거기서 기록 화면으로 돌아와 같은 종목을 다시 골라야 한다.
+ * <p>얼마나 부족한지(주당 세트 + 막대)와 할 수 있는 일을 한 줄에 둔다. 행을 누르면 오늘 기록
+ * 화면이 그 부위 종목 시트를 연 채로 열린다. 막대는 판정 단위인 <b>하위 부위</b>에만 그린다 —
+ * 상위 6종에 칠하면 "팔 · 최적"이 삼두 0세트를 가린다.
  *
- * <p>막대는 <b>하위 부위</b>에만 그린다. 하위가 판정 단위라 판정색을 칠해도 되고,
- * 상위 6종에 칠하면 "팔 · 최적"이 삼두 0세트를 가린다(LOG-09).
- *
- * <p>종목으로 이어주되 "보완하세요"라고 적지는 않는다. 판정은 부족하다는 데까지만
- * 알린다(분석 설계서 2.4) — 무엇을 할지는 루틴 추천의 몫이다.
+ * <p>"보완하세요"라고 적지는 않는다. 판정은 부족하다는 데까지만 알리고, 무엇을 할지는 루틴의 몫이다.
  */
 /** 접힌 상태에서 보일 막대 수. 아홉 곳이 다 나오면 홈의 나머지 카드가 한참 밀린다 */
 const WEAK_ROWS = 3
@@ -568,7 +563,7 @@ function pairLine(pair: Pair): string {
 }
 
 /**
- * 균형 — 밀기/당기기, 상체/하체 (명세 8.3).
+ * 균형 — 밀기/당기기, 상체/하체.
  *
  * <p>약점 카드와 나눈 것은 "어느 부위가 부족한가"와 "양쪽이 맞는가"가 다른 질문이라서다.
  * 정상일 때도 균형을 봤다는 것이 보이게 두 쌍을 늘 같이 보여준다.

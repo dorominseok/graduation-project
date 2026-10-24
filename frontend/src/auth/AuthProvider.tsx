@@ -16,12 +16,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<MeResponse | null>(null)
 
   /**
-   * 앱이 뜰 때 세션을 복구한다.
-   *
-   * 액세스 토큰은 메모리에만 있어서 새로고침하면 없다. 리프레시 쿠키가 살아 있으면
-   * 재발급으로 되살아나고, 없으면 그냥 비로그인이다(명세 4.3).
-   *
-   * StrictMode가 개발 중 이 효과를 두 번 실행하지만, 재발급은 single-flight라
+   * 앱이 뜰 때 세션을 복구한다. 리프레시 쿠키가 살아 있으면 재발급으로 되살아나고,
+   * 없으면 비로그인이다. StrictMode가 개발 중 두 번 실행해도 재발급은 single-flight라
    * 요청은 한 번만 나간다.
    */
   useEffect(() => {
@@ -63,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   /**
-   * 로그인·가입 응답은 축약 사용자 정보만 담는다(명세 4.1). 프로필까지 필요하므로
+   * 로그인·가입 응답은 축약 사용자 정보만 담는다. 프로필까지 필요하므로
    * 토큰을 넣고 곧바로 `GET /users/me`를 부른다. 사용자 모양을 한 가지로 유지하려는 것.
    */
   const completeSignIn = useCallback(async (accessToken: string) => {

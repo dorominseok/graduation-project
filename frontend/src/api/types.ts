@@ -1,20 +1,14 @@
 /**
- * 백엔드 응답 타입. API 명세서 4장의 DTO를 그대로 옮긴다.
+ * 백엔드 응답 타입. 서버 DTO를 그대로 옮긴다.
  *
  * 서버가 계약이므로 여기서 모양을 바꾸지 않는다 — 화면에 맞는 형태가 필요하면
  * 화면 쪽에서 가공한다.
  */
 
-/**
- * 훈련 목표. 부록 A `user.goal`.
- *
- * 화면에서는 쓰지 않는다(2026-09-20). 계획서에 없던 항목이고 루틴 추천 입력에도
- * 없어서 표시·수정 화면을 뺐다. 타입만 남긴 이유는 서버 응답(4.5)에 아직 이 필드가
- * 있어서다 — 서버에서 컬럼을 걷어내면 함께 지운다.
- */
+/** 훈련 목표. 화면에서는 쓰지 않고, 서버 응답에 아직 이 필드가 있어 타입만 남겼다. */
 export type TrainingGoal = 'STRENGTH' | 'HYPERTROPHY' | 'ENDURANCE' | 'GENERAL_FITNESS'
 
-/** 가입·로그인 응답에 딸려오는 축약 사용자 정보 (명세 4.1). */
+/** 가입·로그인 응답에 딸려오는 축약 사용자 정보. */
 export interface UserSummary {
   userId: number
   email: string
@@ -22,9 +16,9 @@ export interface UserSummary {
 }
 
 /**
- * 가입·로그인 응답 (명세 4.1·4.2).
+ * 가입·로그인 응답.
  *
- * 리프레시 토큰은 여기 없다 — `Set-Cookie`로만 내려간다(명세 2.3).
+ * 리프레시 토큰은 여기 없다 — `Set-Cookie`로만 내려간다.
  */
 export interface TokenResponse {
   tokenType: string
@@ -34,20 +28,20 @@ export interface TokenResponse {
   user: UserSummary
 }
 
-/** 재발급 응답 (명세 4.3). 사용자 정보는 담기지 않는다. */
+/** 재발급 응답. 사용자 정보는 담기지 않는다. */
 export interface RefreshResponse {
   tokenType: string
   accessToken: string
   expiresIn: number
 }
 
-/** 프로필. 항목이 하나여도 객체로 감싼 형태를 유지한다(명세 4.5). */
+/** 프로필. 항목이 하나여도 객체로 감싼 형태를 유지한다. */
 export interface Profile {
   goal: TrainingGoal | null
 }
 
 /**
- * 이 계정의 로그인 방법 (LOG-37).
+ * 이 계정의 로그인 방법.
  *
  * 구글로만 가입한 계정은 비밀번호가 없다 — 비밀번호 변경을 숨기고, 탈퇴 확인을 구글로 받는다.
  */
@@ -56,7 +50,7 @@ export interface LoginMethods {
   google: boolean
 }
 
-/** 프로필 조회·수정 응답 (명세 4.5·4.6). */
+/** 프로필 조회·수정 응답. */
 export interface MeResponse {
   userId: number
   email: string
@@ -67,7 +61,7 @@ export interface MeResponse {
 }
 
 /**
- * 프로필 부분 수정 요청 (명세 4.6).
+ * 프로필 부분 수정 요청.
  *
  * `profile`은 보내지 않는다 — 키를 빼면 서버가 프로필을 건드리지 않는다.
  * 화면이 다루는 항목은 닉네임뿐이다.
@@ -77,7 +71,7 @@ export interface UpdateMeRequest {
 }
 
 /**
- * 비밀번호 변경 요청 (명세 4.8).
+ * 비밀번호 변경 요청.
  *
  * 성공하면 서버가 리프레시 토큰을 전부 폐기하고 쿠키를 만료시킨다 — 바꾼 본인도
  * 다시 로그인해야 한다.
@@ -87,20 +81,20 @@ export interface ChangePasswordRequest {
   newPassword: string
 }
 
-// ── 운동 종목 (명세 5장)
+// ── 운동 종목
 
-/** 표시 부위 6종 (명세 5.1). 판정 부위 9종과는 다른 축이다. */
+/** 표시 부위 6종. 판정 부위 9종과는 다른 축이다. */
 export type BodyPart = 'CHEST' | 'BACK' | 'LEGS' | 'SHOULDERS' | 'ARMS' | 'CORE'
 
 export type Equipment = 'BARBELL' | 'DUMBBELL' | 'MACHINE' | 'CABLE' | 'BODYWEIGHT' | 'PULLUP_BAR'
 
-/** 세트에 무엇을 입력받을지 정한다 (명세 5.1 표). */
+/** 세트에 무엇을 입력받을지 정한다. */
 export type MeasureType = 'WEIGHT_REPS' | 'BODYWEIGHT_REPS' | 'WEIGHTED_BODYWEIGHT' | 'TIME'
 
 export type PushPull = 'PUSH' | 'PULL' | 'NONE'
 
 /**
- * 종목 탐색 분류 12종 (LOG-24).
+ * 종목 탐색 분류 12종.
  *
  * 표시 부위 6종(`BodyPart`)이나 판정 부위 9종과 다른 축이다 — 저쪽 둘은 집계·판정
  * 기준이고 이쪽은 사용자가 종목을 찾을 때 떠올리는 묶음이다.
@@ -120,23 +114,23 @@ export type BrowseCategory =
   | 'LEGS'
   | 'CALVES'
 
-/** 부위 그리드의 한 칸 (LOG-24). 종목이 0개인 분류도 내려온다. */
+/** 부위 그리드의 한 칸. 종목이 0개인 분류도 내려온다. */
 export interface CategoryCount {
   category: BrowseCategory
   label: string
   count: number
 }
 
-/** 계열 목록의 한 칸 (LOG-24). `representativeId`는 카드 이미지에 쓸 대표 종목이다. */
+/** 계열 목록의 한 칸. `representativeId`는 카드 이미지에 쓸 대표 종목이다. */
 export interface GroupCount {
   groupName: string
   count: number
   representativeId: number | null
-  /** 계열 카드 그림의 파일명을 만드는 데 쓴다 (LOG-24) */
+  /** 계열 카드 그림의 파일명을 만드는 데 쓴다 */
   representativeNameEn: string | null
 }
 
-/** 종목 한 건 (명세 5.2·5.3). `isFavorite`는 인증된 요청에만 담긴다. */
+/** 종목 한 건. `isFavorite`는 인증된 요청에만 담긴다. */
 export interface Exercise {
   id: number
   nameKo: string
@@ -147,12 +141,12 @@ export interface Exercise {
   measureType: MeasureType
   equipment: Equipment
   deltRegion: 'FRONT' | 'REAR' | null
-  /** 같은 동작의 변형 묶음 (V6, LOG-24) */
+  /** 같은 동작의 변형 묶음 */
   groupName: string | null
   isFavorite?: boolean
 }
 
-/** 페이지 envelope (명세 1.4). */
+/** 페이지 envelope. */
 export interface Page<T> {
   content: T[]
   page: {
@@ -165,9 +159,9 @@ export interface Page<T> {
   }
 }
 
-// ── 운동 기록 (명세 6장)
+// ── 운동 기록
 
-/** 기록 상세 안의 세트 (명세 6.5). */
+/** 기록 상세 안의 세트. */
 export interface SetInGroup {
   id: number
   clientSetId: string
@@ -179,7 +173,7 @@ export interface SetInGroup {
   recordedAt: string
 }
 
-/** 종목별로 묶은 세트. 수행 순서대로 온다 (명세 6.5). */
+/** 종목별로 묶은 세트. 수행 순서대로 온다. */
 export interface ExerciseGroup {
   exerciseId: number
   exerciseName: string
@@ -188,7 +182,7 @@ export interface ExerciseGroup {
 }
 
 /**
- * 하루 기록 (명세 6.5, LOG-39). 사용자의 하루에 하나이고 시작·종료가 없다.
+ * 하루 기록. 사용자의 하루에 하나이고 시작·종료가 없다.
  * 시각과 시간은 서버가 세트 저장 시각으로 계산한다.
  */
 export interface WorkoutSession {
@@ -209,7 +203,7 @@ export interface WorkoutSession {
   exercises: ExerciseGroup[]
 }
 
-/** 세트 저장 응답 (명세 6.4). */
+/** 세트 저장 응답. */
 export interface WorkoutSet {
   id: number
   sessionId: number
@@ -224,13 +218,13 @@ export interface WorkoutSet {
   recordedAt: string
 }
 
-/** 그날 기록 열기 (명세 6.2). 날짜를 생략하면 오늘이다 — 자정을 넘긴 운동이면 서버가 어제로 잇는다 */
+/** 그날 기록 열기. 날짜를 생략하면 오늘이다 — 자정을 넘긴 운동이면 서버가 어제로 잇는다 */
 export interface OpenDayRequest {
   performedOn?: string
 }
 
 /**
- * 세트 저장 요청 (명세 6.4).
+ * 세트 저장 요청.
  *
  * `clientSetId`는 완료 체크 시점에 만드는 멱등 키다. 재전송돼도 세트가 두 번
  * 쌓이지 않게 하려면 화면이 만들어 보내야 한다 — 서버가 만들 수 없다.
@@ -245,7 +239,7 @@ export interface CreateSetRequest {
   setNo?: number | null
 }
 
-/** 세트 수정 요청 (명세 6.11). 보내지 않은 항목은 그대로 둔다. */
+/** 세트 수정 요청. 보내지 않은 항목은 그대로 둔다. */
 export interface UpdateSetRequest {
   weightKg?: number
   reps?: number
@@ -254,9 +248,9 @@ export interface UpdateSetRequest {
 }
 
 /**
- * 하루 기록 수정 요청 (명세 6.9). 기록이 이미 있는 날짜로는 옮길 수 없다(409).
+ * 하루 기록 수정 요청. 기록이 이미 있는 날짜로는 옮길 수 없다(409).
  *
- * 값을 비울 때는 `null`이 아니라 빈 문자열과 `0`을 보낸다(LOG-23) — JSON에서
+ * 값을 비울 때는 `null`이 아니라 빈 문자열과 `0`을 보낸다 — JSON에서
  * "안 보냄"과 "null"이 서버에서 구분되지 않기 때문이다.
  */
 export interface UpdateSessionRequest {
@@ -265,7 +259,7 @@ export interface UpdateSessionRequest {
   durationOverrideSec?: number
 }
 
-/** 히스토리 한 건 (명세 6.6). 운동한 날 하나다. 세트는 담기지 않는다. */
+/** 히스토리 한 건. 운동한 날 하나다. 세트는 담기지 않는다. */
 export interface SessionSummary {
   id: number
   performedOn: string
@@ -275,14 +269,14 @@ export interface SessionSummary {
   exercises: { id: number; nameKo: string }[]
 }
 
-/** 캘린더 월별 요약 (명세 6.8). 운동한 날만 온다. */
+/** 캘린더 월별 요약. 운동한 날만 온다. */
 export interface CalendarResponse {
   year: number
   month: number
   days: { date: string }[]
 }
 
-/** 직전 수행 기록 (명세 5.5). 종목을 고르는 순간 세트 행을 채우는 데 쓴다. */
+/** 직전 수행 기록. 종목을 고르는 순간 세트 행을 채우는 데 쓴다. */
 export interface LastPerformance {
   exerciseId: number
   exerciseName: string
@@ -298,9 +292,9 @@ export interface LastPerformance {
   }[]
 }
 
-// ── 통계 (명세 7장)
+// ── 통계
 
-/** 종목 하나의 추정 1RM 추이 (명세 7.1). 기록이 없는 날은 점이 없다 */
+/** 종목 하나의 추정 1RM 추이. 기록이 없는 날은 점이 없다 */
 export interface OneRmTrend {
   exerciseId: number
   exerciseName: string
@@ -315,7 +309,7 @@ export interface OneRmTrend {
   }[]
 }
 
-/** 세션 하나의 세트별 강도 (명세 7.2). */
+/** 세션 하나의 세트별 강도. */
 export interface SessionIntensity {
   sessionId: number
   performedOn: string
@@ -336,7 +330,7 @@ export interface SessionIntensity {
   }[]
 }
 
-// ── 분석 (명세 8장)
+// ── 분석
 
 export type VolumeVerdict = 'INSUFFICIENT' | 'BELOW_RECOMMENDED' | 'OPTIMAL' | 'EXCESSIVE'
 export type SummaryBadge =
@@ -360,7 +354,7 @@ export type MuscleGroupKey =
   | 'FOREARMS'
 
 /**
- * 부위별 볼륨·부족 판정 (명세 8.2).
+ * 부위별 볼륨·부족 판정.
  *
  * 화면은 합산·구간 분류·배지·신뢰도를 계산하지 않는다. 받은 값을 그리기만 한다.
  */
@@ -370,7 +364,7 @@ export interface MuscleVolume {
   periodFrom: string
   periodTo: string
   /**
-   * 주당 평균을 낼 때 나눈 일수 (LOG-31). 기록이 4주 미만이면 첫 기록일부터 센
+   * 주당 평균을 낼 때 나눈 일수. 기록이 4주 미만이면 첫 기록일부터 센
    * 일수(최소 7), 아니면 28. 기록이 짧은 사람을 28일로 나누면 판정이 희석된다
    */
   basisDays: number
@@ -422,7 +416,7 @@ export interface BalanceSide {
   components: MuscleGroupKey[]
 }
 
-/** 밀기/당기기 · 상체/하체 균형 (명세 8.3). */
+/** 밀기/당기기 · 상체/하체 균형. */
 export interface Balance {
   referenceDate: string
   periodWeeks: number
@@ -445,7 +439,7 @@ export interface Balance {
   }[]
 }
 
-// ── 친구 그룹 (명세 10장, LOG-38)
+// ── 친구 그룹
 
 /** 내 그룹 목록 한 줄. */
 export interface GroupSummary {
@@ -460,8 +454,8 @@ export interface GroupSummary {
 }
 
 /**
- * 오늘 운동했나. 손으로 체크하지 않고 기록에서 정한다(LOG-38) — 오늘 세트가 하나라도 있으면 DONE.
- * 종료가 없으므로 "운동 중"이라는 상태도 없다(LOG-39).
+ * 오늘 운동했나. 손으로 체크하지 않고 기록에서 정한다 — 오늘 세트가 하나라도 있으면 DONE.
+ * 종료가 없으므로 "운동 중"이라는 상태도 없다.
  */
 export type TodayStatus = 'DONE' | 'NONE'
 
@@ -522,7 +516,7 @@ export interface CheerState {
   cheeredByMe: boolean
 }
 
-/** 멤버의 하루 기록. 기록 상세(명세 6.5)에서 메모·세트 id를 뺀 것이다. */
+/** 멤버의 하루 기록. 기록 상세에서 메모·세트 id를 뺀 것이다. */
 export interface MemberSession extends CheerState {
   id: number
   startedAt: string | null
@@ -553,7 +547,7 @@ export interface MemberDay {
   session: MemberSession | null
 }
 
-// ── 오늘의 루틴 (명세 11장, LOG-40)
+// ── 오늘의 루틴
 
 export type RoutineAuthor = 'LLM' | 'RULE'
 export type FeedbackRating = 'GOOD' | 'OKAY' | 'BAD'
@@ -609,7 +603,7 @@ export interface Routine {
   askFeedback: boolean
 }
 
-/** 교체 후보. 같은 부위에서 기구가 다른 종목이 먼저 온다(LOG-08) */
+/** 교체 후보. 같은 부위에서 기구가 다른 종목이 먼저 온다 */
 export interface RoutineAlternative {
   exerciseId: number
   exerciseName: string

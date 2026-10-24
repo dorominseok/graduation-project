@@ -3,7 +3,7 @@ import styles from './Stepper.module.css'
 interface StepperProps {
   value: number
   onChange: (next: number) => void
-  /** 1회 증감 폭. 중량 2.5 / 횟수 1 / 시간 5 (운동기록_방식_설계서 3.4) */
+  /** 1회 증감 폭. 중량 2.5 / 횟수 1 / 시간 5 */
   step?: number
   min?: number
   max?: number
