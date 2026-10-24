@@ -19,7 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
-/** LLM 출력 검증 L1~L6. 설계서 6.1. */
+/** LLM 출력 검증 L1~L6. */
 class LlmRoutineValidatorTest {
 
     private static final JsonMapper JSON = JsonMapper.shared();

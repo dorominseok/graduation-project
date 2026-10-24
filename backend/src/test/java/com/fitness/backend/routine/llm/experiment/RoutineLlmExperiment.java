@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * 루틴 조합 LLM 오프라인 실험. 「루틴생성_로직_설계서」 11.5.
+ * 루틴 조합 LLM 오프라인 실험.
  *
  * <pre>
  *   ./gradlew llmExperiment                                  # 8케이스 × 10회
@@ -55,7 +55,7 @@ import tools.jackson.databind.json.JsonMapper;
  * 운영 코드다. 결과는 {@code scripts/llm-experiment/runs/routine_*}(git 미추적)에 남긴다.
  *
  * <p>키는 리포 루트 {@code .env}의 {@code GEMINI_API_KEY}에서 읽고 어디에도 출력하지 않는다.
- * 실제 Gemini 무료 쿼터를 쓰므로 CI·{@code test}에서는 돌지 않는다(LLM 실험기록 6.2).
+ * 실제 Gemini 무료 쿼터를 쓰므로 CI·{@code test}에서는 돌지 않는다.
  */
 public final class RoutineLlmExperiment {
 

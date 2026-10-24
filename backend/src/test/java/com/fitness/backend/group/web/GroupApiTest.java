@@ -31,7 +31,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * 친구 그룹 — 만들기·참여·권한·나가기. 명세 10장, UC-05 (LOG-38).
+ * 친구 그룹 — 만들기·참여·권한·나가기.
  *
  * <p>오늘·이번 주 집계와 응원·기록 열람은 {@link GroupActivityTest}가 본다.
  */

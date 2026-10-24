@@ -17,7 +17,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * 부록 B의 비인증 목록과 토큰 오류 구분을 확인한다. 명세 1.3 / 1.5 / 2.3.
+ * 비인증 경로 목록과 토큰 오류 구분을 확인한다.
  *
  * <p>인증 실패의 종류를 구분하는 것이 핵심이다. 클라이언트는 {@code TOKEN_EXPIRED}면
  * {@code /auth/refresh}를 시도하고 {@code TOKEN_INVALID}면 로그인 화면으로 가야 하는데,

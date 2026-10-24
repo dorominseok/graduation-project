@@ -36,7 +36,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 오늘의 루틴 API. 「루틴생성_로직_설계서」 12장 (LOG-40).
+ * 오늘의 루틴 API.
  *
  * <p>부위·세트·후보를 고르는 규칙은 {@code routine.domain} 단위 테스트가 덮는다. 여기서 보는 것은
  * <b>배선</b>이다 — 분석 결과와 기록이 규칙에 제대로 들어가는지, 하루 하나·후보정·만족도의

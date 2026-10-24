@@ -11,7 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 /**
- * {@code application.yaml}의 값이 실제로 바인딩되고, 그 값으로 판정이 명세대로
+ * {@code application.yaml}의 값이 실제로 바인딩되고, 그 값으로 판정이 기대대로
  * 동작하는지 확인한다. 설정과 계산이 분리돼 있으므로 이어지는 지점을 검증한다.
  */
 @SpringBootTest

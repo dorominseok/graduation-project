@@ -37,7 +37,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * 루틴 서비스에 LLM을 꽂았을 때(설계서 5장, LOG-41). 실제 Gemini 대신 받은 입력으로 답을 지어 내는
+ * 루틴 서비스에 LLM을 꽂았을 때. 실제 Gemini 대신 받은 입력으로 답을 지어 내는
  * 가짜를 쓴다 — 여기서 보는 것은 LLM의 판단이 아니라 <b>배선</b>이다: LLM이 고른 순서·설명이 그대로
  * 저장되는지, 실패하면 규칙 루틴이 나가고 사유가 남는지.
  */

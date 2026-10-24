@@ -10,7 +10,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 /**
- * 주당 평균의 분모 (LOG-31).
+ * 주당 평균의 분모.
  *
  * <p>기록이 4주 미만인 사람을 28일로 나누면 아직 오지 않은 날이 "안 한 날"로 섞여
  * 판정이 실제보다 낮게 나온다. 분모를 첫 기록일부터 센 일수로 줄이되 7일 아래로는

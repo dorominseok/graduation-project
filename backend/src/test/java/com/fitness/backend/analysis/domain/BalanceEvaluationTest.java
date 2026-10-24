@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-/** 균형 판정 — 2배 임계와 0 나눗셈 경계. 명세 8.3 / 분석 4.2. */
+/** 균형 판정 — 2배 임계와 0 나눗셈 경계. */
 class BalanceEvaluationTest {
 
     private static final BigDecimal TH = BalanceEvaluation.DEFAULT_RATIO_THRESHOLD;

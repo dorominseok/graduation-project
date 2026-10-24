@@ -28,7 +28,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 운동 기록 — 그날 기록 열기·세트 저장·조회. 명세 6.2~6.5, LOG-39.
+ * 운동 기록 — 그날 기록 열기·세트 저장·조회.
  *
  * <p>종목은 시드에서 이름으로 찾는다. ID를 못박으면 시드 순서가 바뀔 때 깨진다.
  */
@@ -56,7 +56,7 @@ class WorkoutRecordApiTest {
         plank = exerciseIdOf("플랭크");
     }
 
-    // ── 그날 기록 열기 (6.2)
+    // ── 그날 기록 열기
 
     @Test
     @DisplayName("그날 첫 기록은 201로 만들어지고 세트는 비어 있다")
@@ -73,7 +73,7 @@ class WorkoutRecordApiTest {
                 // 종료가 없어 상태 필드도 없다
                 .andExpect(jsonPath("$.status").doesNotExist())
                 .andExpect(jsonPath("$.source").doesNotExist())
-                // 루틴을 받지 않은 날은 비어 있다. 루틴을 받으면 서버가 잇는다(명세 6.2·11.2)
+                // 루틴을 받지 않은 날은 비어 있다. 루틴을 받으면 서버가 잇는다
                 .andExpect(jsonPath("$.routineId").doesNotExist());
     }
 
@@ -154,7 +154,7 @@ class WorkoutRecordApiTest {
                 .andExpect(jsonPath("$.performedOn").value(LocalDate.now().minusDays(3).toString()));
     }
 
-    // ── 세트 저장 (6.4)
+    // ── 세트 저장
 
     @Test
     @DisplayName("세트를 저장하면 같은 종목 안에서 순번이 자동으로 붙는다")
@@ -264,7 +264,7 @@ class WorkoutRecordApiTest {
                 .andExpect(jsonPath("$.effectiveDurationSec").doesNotExist());
     }
 
-    // ── 수정 (6.9)
+    // ── 수정
 
     @Test
     @DisplayName("기록이 있는 날짜로는 옮길 수 없다 — 하루에 기록은 하나다")
@@ -288,7 +288,7 @@ class WorkoutRecordApiTest {
                 .andExpect(jsonPath("$.performedOn").value(LocalDate.now().minusDays(5).toString()));
     }
 
-    // ── 조회 (6.5)
+    // ── 조회
 
     @Test
     @DisplayName("기록 상세는 종목별로 묶고 수행 순서대로 준다")

@@ -11,7 +11,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** 부위별 후보. 「루틴생성_로직_설계서」 4.1. */
+/** 부위별 후보. */
 class CandidatePickerTest {
 
     private static ExerciseOption ex(long id, String group, Equipment eq, boolean favorite, int recent) {

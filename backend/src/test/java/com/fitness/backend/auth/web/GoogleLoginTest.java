@@ -38,7 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * 구글 로그인(LOG-37). 구글 서명 검증은 가짜로 바꾸고, 검증을 통과한 뒤의 계정 처리 —
+ * 구글 로그인. 구글 서명 검증은 가짜로 바꾸고, 검증을 통과한 뒤의 계정 처리 —
  * 가입·로그인·기존 계정 연결·탈퇴 확인 — 를 본다.
  */
 @SpringBootTest

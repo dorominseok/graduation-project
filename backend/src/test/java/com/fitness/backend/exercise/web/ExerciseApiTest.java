@@ -26,7 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 운동 종목 조회·즐겨찾기. 명세 5.2~5.4.
+ * 운동 종목 조회·즐겨찾기.
  *
  * <p>종목 데이터는 {@code R__seed_exercises.sql}로 들어간 109종을 그대로 쓴다.
  * 시드가 바뀌어도 깨지지 않도록, 개수를 못박는 대신 관계와 형태를 검사한다.
@@ -50,7 +50,7 @@ class ExerciseApiTest {
         bearer = "Bearer " + authService.signUp(email, "hunter2hunter2", "민석").tokens().accessToken();
     }
 
-    // ── 목록 (5.2)
+    // ── 목록
 
     @Test
     @DisplayName("토큰 없이도 종목 목록을 볼 수 있다 — 대신 isFavorite 키가 없다")
@@ -126,7 +126,7 @@ class ExerciseApiTest {
                         .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is("WEIGHT_REPS"))));
     }
 
-    // ── 단건 (5.3)
+    // ── 단건
 
     @Test
     @DisplayName("단건 조회는 판정 근거 필드까지 함께 준다")
@@ -135,7 +135,7 @@ class ExerciseApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(BENCH_PRESS))
                 .andExpect(jsonPath("$.bodyPart").value("CHEST"))
-                // 판정 부위 9종 산출의 근거다(명세 8.1). bodyPart 6종과 다른 축이다.
+                // 판정 부위 9종 산출의 근거다. bodyPart 6종과 다른 축이다.
                 .andExpect(jsonPath("$.primaryMuscle").value("chest"))
                 .andExpect(jsonPath("$.pushPull").value("PUSH"))
                 .andExpect(jsonPath("$.measureType").value("WEIGHT_REPS"));
@@ -149,7 +149,7 @@ class ExerciseApiTest {
                 .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
     }
 
-    // ── 즐겨찾기 (5.4)
+    // ── 즐겨찾기
 
     @Test
     @DisplayName("별표를 누르면 isFavorite가 true가 되고, 해제하면 돌아온다")
@@ -230,7 +230,7 @@ class ExerciseApiTest {
                 .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
     }
 
-    // ── 3단 탐색 (5.6·5.7, LOG-24)
+    // ── 3단 탐색
 
     /** 응답 본문에서 {@code "이름":숫자} 꼴의 값을 모두 더한다. */
     private static long sumOf(String field, String body) {
@@ -340,7 +340,7 @@ class ExerciseApiTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
-    // ── 판정 부위로 조회 (LOG-29) — 홈의 약점에서 그 부위 종목으로 바로 간다
+    // ── 판정 부위로 조회 — 홈의 약점에서 그 부위 종목으로 바로 간다
 
     @Test
     @DisplayName("판정 부위로 거르면 어깨 뒤쪽만 나온다 — 탐색 분류의 어깨는 앞뒤가 섞여 있다")

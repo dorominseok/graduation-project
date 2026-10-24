@@ -30,7 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 /**
- * 동시에 들어온 요청(LOG-38). 연타·동시 참여·동시 나가기가 규칙을 깨지 않는지 본다.
+ * 동시에 들어온 요청. 연타·동시 참여·동시 나가기가 규칙을 깨지 않는지 본다.
  *
  * <p>다른 테스트와 달리 {@code @Transactional}을 걸지 않는다 — 요청마다 따로 커밋돼야 실제로
  * 경합이 생긴다. 대신 만든 데이터를 끝나고 지운다.

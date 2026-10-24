@@ -25,14 +25,13 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 분석 API — 부위별 볼륨 판정·균형 판정. 명세 8.2·8.3.
+ * 분석 API — 부위별 볼륨 판정·균형 판정.
  *
- * <p>구간 분류·배지 결정 자체는 {@code analysis.domain} 단위 테스트가 이미 덮는다.
- * 여기서 보는 것은 <b>배선</b>이다 — 어떤 세트가 집계에 들어가고 빠지는지, 상위·하위
- * 2계층이 명세대로 조립되는지. 판정이 틀리는 실제 경로는 공식이 아니라 집계 조건이다.
+ * <p>구간 분류·배지 결정은 {@code analysis.domain} 단위 테스트가 덮고, 여기서는 <b>배선</b>을 본다 —
+ * 어떤 세트가 집계에 들어가고 빠지는지, 상위·하위 2계층이 제대로 조립되는지.
  *
- * <p>{@code weeks = 1}을 자주 쓰는 것은 경계값 때문이다. 기본 4주에서 주당 10세트를
- * 만들려면 세트 40개를 넣어야 하는데, 1주로 두면 10개로 같은 경계를 밟는다.
+ * <p>{@code weeks = 1}을 자주 쓰는 것은 경계값 때문이다. 기본 4주면 주당 10세트에 세트 40개가
+ * 들지만, 1주로 두면 10개로 같은 경계를 밟는다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -60,7 +59,7 @@ class AnalysisApiTest {
         calfRaise = exerciseIdOf("스탠딩 카프레이즈");
     }
 
-    // ── 부위별 볼륨 (8.2)
+    // ── 부위별 볼륨
 
     @Test
     @DisplayName("기록이 없어도 상위 6개 부위가 모두 0세트로 내려온다")
@@ -174,7 +173,7 @@ class AnalysisApiTest {
                 .andExpect(jsonPath("$.displayOnly[0].key").value("CALVES"))
                 .andExpect(jsonPath("$.displayOnly[0].totalSets").value(3))
                 .andExpect(jsonPath("$.displayOnly[0].verdict").doesNotExist())
-                // 하체 판정에는 들어가지 않는다 (8.1 — 판정 9종 밖)
+                // 하체 판정에는 들어가지 않는다 (판정 9종 밖)
                 .andExpect(jsonPath("$.tiers[4].key").value("LEGS"))
                 .andExpect(jsonPath("$.tiers[4].totalSets").value(0));
     }
@@ -202,7 +201,7 @@ class AnalysisApiTest {
         volume(53, null).andExpect(status().isBadRequest());
     }
 
-    // ── 기록이 4주 미만일 때의 분모 (LOG-31)
+    // ── 기록이 4주 미만일 때의 분모
 
     @Test
     @DisplayName("첫 주에 12세트면 주 12세트다 — 28일로 나눠 '3세트 · 부족'이 되지 않는다")
@@ -253,7 +252,7 @@ class AnalysisApiTest {
                 .andExpect(jsonPath("$.tiers[0].verdict").value("INSUFFICIENT"));
     }
 
-    // ── 균형 (8.3)
+    // ── 균형
 
     @Test
     @DisplayName("한쪽만 기록하면 비율을 낼 수 없지만 불균형인 것은 분명하다")

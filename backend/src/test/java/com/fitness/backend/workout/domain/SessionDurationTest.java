@@ -14,10 +14,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/**
- * 하루 운동 시간 산출 — 30분 넘는 공백에서 구간을 나누고, 구간마다 +90초, 하루 4시간 상한.
- * 「운동기록_방식_설계서」 4.2 / LOG-03 / LOG-39.
- */
+/** 하루 운동 시간 산출 — 30분 넘는 공백에서 구간을 나누고, 구간마다 +90초, 하루 4시간 상한. */
 class SessionDurationTest {
 
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");

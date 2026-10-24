@@ -25,9 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * 운동 기록 — 히스토리·캘린더·수정·삭제. 명세 6.6·6.8~6.12 + LOG-22.
- */
+/** 운동 기록 — 히스토리·캘린더·수정·삭제. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -48,7 +46,7 @@ class WorkoutHistoryApiTest {
         plank = exerciseIdOf("플랭크");
     }
 
-    // ── 히스토리 (6.6)
+    // ── 히스토리
 
     @Test
     @DisplayName("히스토리는 세트를 담지 않고 개수와 종목 목록만 준다")
@@ -60,7 +58,7 @@ class WorkoutHistoryApiTest {
                 .andExpect(jsonPath("$.content[0].id").value(sessionId))
                 .andExpect(jsonPath("$.content[0].setCount").value(2))
                 .andExpect(jsonPath("$.content[0].exerciseCount").value(2))
-                // 이름만 주면 목록에서 종목 상세로 이어갈 수 없다(명세 6.6).
+                // 이름만 주면 목록에서 종목 상세로 이어갈 수 없다.
                 .andExpect(jsonPath("$.content[0].exercises[0].id").isNumber())
                 .andExpect(jsonPath("$.content[0].exercises[0].nameKo").value("바벨 벤치프레스"))
                 .andExpect(jsonPath("$.content[0].sets").doesNotExist());
@@ -98,7 +96,7 @@ class WorkoutHistoryApiTest {
                 .andExpect(jsonPath("$.page.totalElements").value(0));
     }
 
-    // ── 캘린더 (6.8)
+    // ── 캘린더
 
     @Test
     @DisplayName("캘린더는 운동한 날짜만 준다 — 세트 없이 열기만 한 날은 빠진다")
@@ -129,7 +127,7 @@ class WorkoutHistoryApiTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
-    // ── 기록 수정 (6.9)
+    // ── 기록 수정
 
     @Test
     @DisplayName("메모만 바꾸면 다른 값은 그대로 둔다")
@@ -180,7 +178,7 @@ class WorkoutHistoryApiTest {
                 .andExpect(jsonPath("$.performedOn").value(corrected.toString()));
     }
 
-    // ── 세트 수정 (6.11)
+    // ── 세트 수정
 
     @Test
     @DisplayName("세트 값을 고칠 수 있고, 측정 유형이 쓰지 않는 값은 무시한다")
@@ -199,7 +197,7 @@ class WorkoutHistoryApiTest {
                 .andExpect(jsonPath("$.durationSec").doesNotExist());
     }
 
-    // ── 삭제 (6.10, 6.12, LOG-22)
+    // ── 삭제
 
     @Test
     @DisplayName("기록을 지우면 세트도 함께 사라진다")

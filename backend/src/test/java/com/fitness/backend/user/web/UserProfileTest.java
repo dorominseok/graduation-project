@@ -25,7 +25,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 프로필 조회·수정·탈퇴. 명세 4.5~4.7 / LOG-14. */
+/** 프로필 조회·수정·탈퇴. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -164,7 +164,7 @@ class UserProfileTest {
                 });
     }
 
-    // ── 비밀번호 변경 (명세 4.8 / LOG-21)
+    // ── 비밀번호 변경
 
     @Test
     @DisplayName("비밀번호를 바꾸면 새 값으로 로그인되고 옛 값은 막힌다")

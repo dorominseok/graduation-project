@@ -31,7 +31,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * 친구 그룹 — 오늘·이번 주 집계, 멤버 기록 열람, 응원. 명세 10장 (LOG-38).
+ * 친구 그룹 — 오늘·이번 주 집계, 멤버 기록 열람, 응원.
  *
  * <p>멤버 셋(방장·영희·철수)이 한 그룹에 있고, 각자의 기록을 만들어 방장 눈으로 본다.
  */

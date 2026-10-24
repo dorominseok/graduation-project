@@ -18,7 +18,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 
-/** 프롬프트·스키마와 Gemini 응답 해석. 실제 호출은 하지 않는다(LLM 실험기록 6.2 — CI에서 실호출 금지). */
+/** 프롬프트·스키마와 Gemini 응답 해석. 실제 호출은 하지 않는다(CI에서 실호출 금지). */
 class RoutinePromptAndGeminiTest {
 
     private static final JsonMapper JSON = JsonMapper.shared();
@@ -35,7 +35,7 @@ class RoutinePromptAndGeminiTest {
 
         assertTrue(schema.contains("\"enum\":[\"BACK\",\"BICEPS\"]"), schema);
         assertTrue(schema.contains("\"enum\":[\"20\",\"23\",\"83\"]"), schema);
-        // 실험 ①의 숫자 직렬화 결함을 구조로 피한다(LLM 실험기록 7.4)
+        // 실험 ①의 숫자 직렬화 결함을 구조로 피한다
         assertFalse(schema.contains("\"number\"") || schema.contains("\"integer\""), schema);
     }
 

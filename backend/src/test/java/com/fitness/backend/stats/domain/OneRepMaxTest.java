@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-/** 추정 1RM — Epley 공식과 reps ≤ 12 제한. 명세 7.1 / LOG-07. */
+/** 추정 1RM — Epley 공식과 reps ≤ 12 제한. */
 class OneRepMaxTest {
 
     @ParameterizedTest(name = "{0}kg × {1}회 → {2}kg")

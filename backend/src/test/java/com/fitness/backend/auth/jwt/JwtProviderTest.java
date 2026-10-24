@@ -9,7 +9,7 @@ import java.time.Instant;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** 액세스 토큰 발급·검증. 명세 2.3 / 1.5의 TOKEN_EXPIRED · TOKEN_INVALID 구분. */
+/** 액세스 토큰 발급·검증과 TOKEN_EXPIRED · TOKEN_INVALID 구분. */
 class JwtProviderTest {
 
     private static final String SECRET = "test-secret-key-with-at-least-32-bytes!!";

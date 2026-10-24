@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/** 실험 결과 표(summary.md). 「LLM 연동 실험기록」에 그대로 옮길 수 있게 마크다운으로 쓴다. */
+/** 실험 결과 표(summary.md). 실험 기록 문서에 그대로 옮길 수 있게 마크다운으로 쓴다. */
 final class Summary {
 
     private static final List<String> CODES = List.of("L1", "L2", "L3", "L4", "L5", "L6");

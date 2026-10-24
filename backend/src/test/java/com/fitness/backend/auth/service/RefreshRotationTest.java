@@ -21,7 +21,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 리프레시 회전과 재사용 감지. 명세 2.3 / LOG-16.
+ * 리프레시 회전과 재사용 감지.
  *
  * <p>유예 창 안팎의 동작이 갈리는 것이 핵심이다. 창 안이면 동시 재발급으로 보아
  * 그 요청만 거부하고, 창 밖이면 탈취로 보아 그 사용자의 토큰을 전부 폐기한다.

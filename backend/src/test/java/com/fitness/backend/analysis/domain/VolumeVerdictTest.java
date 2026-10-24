@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-/** 부족 판정 4구간 — 경계값을 고정한다. API 명세서 8.2 / LOG-13. */
+/** 부족 판정 4구간 — 경계값을 고정한다. */
 class VolumeVerdictTest {
 
     private static final VolumeThresholds T = VolumeThresholds.ACSM_DEFAULT;
@@ -25,7 +25,7 @@ class VolumeVerdictTest {
                 "3.9,  INSUFFICIENT",
                 "4.0,  BELOW_RECOMMENDED",   // 4는 부족이 아니다 (< 4 만 부족)
                 "9.9,  BELOW_RECOMMENDED",
-                "10.0, OPTIMAL",             // 경계는 최적 쪽 (LOG-13)
+                "10.0, OPTIMAL",             // 경계는 최적 쪽
                 "15.0, OPTIMAL",
                 "20.0, OPTIMAL",             // 20도 최적에 포함
                 "20.1, EXCESSIVE",
@@ -74,7 +74,7 @@ class VolumeVerdictTest {
 
         @ParameterizedTest(name = "{0}세트 / {1}일 → {2}")
         @CsvSource({
-                "12, 7,  12.0",  // 첫 주에 12세트 — 28일로 나누면 3.0 · 부족이 된다(LOG-31)
+                "12, 7,  12.0",  // 첫 주에 12세트 — 28일로 나누면 3.0 · 부족이 된다
                 "12, 17, 4.9",   // 84 / 17 = 4.94
                 "40, 28, 10.0",  // 28일은 ÷ 4와 같다
                 "0,  9,  0.0",

@@ -11,7 +11,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** 요약 배지 우선순위 — 상위 항목이 하위의 나쁜 상태를 가리지 않는지 확인한다. 명세 8.2 / LOG-09·LOG-10. */
+/** 요약 배지 우선순위 — 상위 항목이 하위의 나쁜 상태를 가리지 않는지 확인한다. */
 class SummaryBadgeTest {
 
     @Test

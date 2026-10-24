@@ -19,7 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 /**
- * V9 — 같은 날 기록을 하나로 합친다(LOG-39).
+ * V9 — 같은 날 기록을 하나로 합친다.
  *
  * <p>운영 DB에 이미 쌓인 기록이 있어서, 합치기 전후로 세트가 하나도 사라지지 않는지를 본다.
  * 따로 만든 스키마에 V8까지 올리고 옛 모양의 데이터를 넣은 뒤 V9를 적용한다.

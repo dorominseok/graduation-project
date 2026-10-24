@@ -27,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-/** 가입 → 로그인 → 재발급(회전) → 로그아웃 전체 흐름. 명세 4.1~4.4 / 2.3. */
+/** 가입 → 로그인 → 재발급(회전) → 로그아웃 전체 흐름. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional

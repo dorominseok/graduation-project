@@ -22,7 +22,7 @@ import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** 규칙 선택(7장)과 최종 검증 R1~R5(6.2). */
+/** 규칙 선택과 최종 검증 R1~R5. */
 class RuleComposerAndCheckTest {
 
     private static RoutineSlot slot(MuscleGroup m, int sets, String weekly) {

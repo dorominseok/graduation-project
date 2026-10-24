@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 종목 프리필 — 직전 수행 기록. 명세 5.5.
+ * 종목 프리필 — 직전 수행 기록.
  */
 @SpringBootTest
 @AutoConfigureMockMvc

@@ -24,11 +24,10 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 통계 API — 추정 1RM 추이·세션 강도. 명세 7.1·7.2.
+ * 통계 API — 추정 1RM 추이·세션 강도.
  *
- * <p>기대값은 명세의 검산 예시를 그대로 쓴다. {@code 70kg × 10}의 Epley 추정이
- * {@code 93.3}이고 {@code 60kg}이 그 64%라는 숫자는 명세 7.2에 적혀 있으므로,
- * 여기서 다른 값이 나오면 코드와 문서 중 한쪽이 틀린 것이다.
+ * <p>기대값은 손으로 검산한 숫자다. {@code 70kg × 10}의 Epley 추정이 {@code 93.3}이고
+ * {@code 60kg}이 그 64%다 — 다른 값이 나오면 공식이나 집계가 바뀐 것이다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -50,7 +49,7 @@ class StatsApiTest {
         plank = exerciseIdOf("플랭크");
     }
 
-    // ── 추정 1RM 추이 (7.1)
+    // ── 추정 1RM 추이
 
     @Test
     @DisplayName("하루에 여러 세트를 해도 점은 하나다 — 그날 추정값 중 최댓값")
@@ -127,7 +126,7 @@ class StatsApiTest {
                 .andExpect(jsonPath("$.code").value("INVALID_DATE_RANGE"));
     }
 
-    // ── 세션 강도 (7.2)
+    // ── 세션 강도
 
     @Test
     @DisplayName("강도는 그날 추정 1RM 대비 비율이다 — 명세 7.2의 검산 예시 그대로")

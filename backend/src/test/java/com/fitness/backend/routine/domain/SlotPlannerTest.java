@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** 오늘 할 부위와 세트. 「루틴생성_로직_설계서」 2·3장의 예시를 그대로 고정한다. */
+/** 오늘 할 부위와 세트 — 대표 상황의 결과를 그대로 고정한다. */
 class SlotPlannerTest {
 
     private static final LocalDate TODAY = LocalDate.of(2026, 10, 24);

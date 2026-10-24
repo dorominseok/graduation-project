@@ -9,7 +9,7 @@ import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** 리프레시 토큰 생성·해시. 명세 2.3. */
+/** 리프레시 토큰 생성·해시. */
 class OpaqueTokenFactoryTest {
 
     private final OpaqueTokenFactory factory = new OpaqueTokenFactory();
