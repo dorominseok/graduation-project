@@ -45,7 +45,7 @@ public class WorkoutSession extends BaseTimeEntity {
     @Column(name = "performed_on", nullable = false)
     private LocalDate performedOn;
 
-    /** 추천 루틴에서 진입한 경우의 연결. 10월 {@code routines} 전까지는 항상 null (명세 6.2) */
+    /** 그날 루틴. 루틴을 받은 날만 채워진다(V10, 「루틴생성_로직_설계서」 9.3) */
     @Column(name = "routine_id")
     private Long routineId;
 
@@ -55,6 +55,11 @@ public class WorkoutSession extends BaseTimeEntity {
 
     @Column(columnDefinition = "TEXT")
     private String memo;
+
+    /** 그날 루틴을 잇는다. 루틴과 하루 기록은 날짜로 1:1이다(「루틴생성_로직_설계서」 9.3) */
+    public void linkRoutine(Long routineId) {
+        this.routineId = routineId;
+    }
 
     public void changeMemo(String memo) {
         this.memo = memo;

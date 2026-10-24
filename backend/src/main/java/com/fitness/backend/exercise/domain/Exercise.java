@@ -75,4 +75,12 @@ public class Exercise extends BaseCreatedEntity {
      */
     @Column(name = "group_name", length = 40)
     private String groupName;
+
+    /**
+     * 입문 대표 종목 순위(V11). 부위마다 1~2개, 1이 먼저. 나머지는 null.
+     *
+     * <p>기록·즐겨찾기가 없는 사람에게 루틴 후보를 줄 때 시드 순서보다 앞에 둔다.
+     */
+    @Column(name = "starter_rank")
+    private Short starterRank;
 }

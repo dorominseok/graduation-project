@@ -26,4 +26,8 @@ public interface UserFavoriteExerciseRepository extends JpaRepository<UserFavori
             """)
     List<Long> findFavoriteExerciseIds(@Param("userId") Long userId,
                                        @Param("exerciseIds") Collection<Long> exerciseIds);
+
+    /** 이 사용자의 즐겨찾기 전부. 루틴 후보의 1순위다(「루틴생성_로직_설계서」 4.1) */
+    @Query("select f.exerciseId from UserFavoriteExercise f where f.userId = :userId")
+    List<Long> findExerciseIdsByUserId(@Param("userId") Long userId);
 }
