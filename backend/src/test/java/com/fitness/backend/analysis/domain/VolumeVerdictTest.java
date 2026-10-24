@@ -25,9 +25,9 @@ class VolumeVerdictTest {
                 "3.9,  INSUFFICIENT",
                 "4.0,  BELOW_RECOMMENDED",   // 4는 부족이 아니다 (< 4 만 부족)
                 "9.9,  BELOW_RECOMMENDED",
-                "10.0, OPTIMAL",             // LOG-13이 확정한 경계 — 이전엔 두 구간에 걸쳐 있었다
+                "10.0, OPTIMAL",             // 경계는 최적 쪽 (LOG-13)
                 "15.0, OPTIMAL",
-                "20.0, OPTIMAL",             // 20은 최적에 포함 (대조 평가 C-29: 목업은 과다로 처리)
+                "20.0, OPTIMAL",             // 20도 최적에 포함
                 "20.1, EXCESSIVE",
                 "40.0, EXCESSIVE",
         })

@@ -103,7 +103,7 @@ class ExerciseApiTest {
     }
 
     @Test
-    @DisplayName("부위별 종목 수는 페이지 envelope의 totalElements로 얻는다 (목업 부위 그리드)")
+    @DisplayName("부위별 종목 수는 페이지 envelope의 totalElements로 얻는다 (부위 그리드)")
     void filtersByBodyPart() throws Exception {
         mvc.perform(get("/api/v1/exercises").param("bodyPart", "CHEST").param("size", "100"))
                 .andExpect(status().isOk())

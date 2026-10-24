@@ -84,10 +84,9 @@ function balanceSentence(pair: Pair, threshold: number): string {
 /**
  * 약점 서브탭 (명세 8.2·8.3).
  *
- * <p>목업과 가장 다른 곳은 부위 목록이다. 목업은 상위 6종에 판정을 바로 붙였는데
- * ("팔 12세트 · 최적"), 그러면 이두 12세트가 삼두 0세트를 가린다(LOG-09). 서버도
- * 하위가 둘인 부위의 판정을 비워서 준다. 그래서 상위에는 세트 수와 요약 배지만,
- * 판정은 펼친 하위에 둔다.
+ * <p>상위 6종에는 세트 수와 요약 배지만, 판정은 펼친 하위에 둔다. 상위에 판정을 붙이면
+ * "팔 12세트 · 최적"처럼 이두 12세트가 삼두 0세트를 가린다(LOG-09). 서버도 하위가 둘인
+ * 부위의 판정을 비워서 준다.
  */
 export function WeaknessView({ volume, balance }: WeaknessViewProps) {
   const navigate = useNavigate()

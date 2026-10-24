@@ -12,7 +12,7 @@ import styles from './TabBar.module.css'
 const LENS_BEZEL = 16
 const LENS_SCALE = 12
 
-/** 목업의 탭 아이콘. 색은 currentColor로 받아 활성 상태를 CSS가 정한다. */
+/** 탭 아이콘. 색은 currentColor로 받아 활성 상태를 CSS가 정한다. */
 const icons = {
   home: (
     <>

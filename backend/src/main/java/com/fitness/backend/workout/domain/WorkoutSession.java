@@ -19,8 +19,8 @@ import lombok.NoArgsConstructor;
  * 그 자리에서 저장되고, 마지막으로 체크한 세트가 곧 끝이다. 아침·저녁에 두 번 운동해도 같은
  * 기록에 쌓이고, 운동 시간은 공백에서 구간을 나눠 합한다({@link SessionDuration}).
  *
- * <p>테이블 이름이 {@code workout_sessions}인 것은 운동 한 번을 뜻하던 시절의 이름이다. 세트와
- * 응원이 {@code session_id}로 가리키고 있어 이름은 두고 뜻만 바꿨다.
+ * <p>테이블 이름은 {@code workout_sessions}이지만 뜻은 하루 기록이다. 세트와 응원이
+ * {@code session_id}로 가리키고 있어 이름을 그대로 두었다(LOG-39).
  *
  * <p>세트를 {@code @OneToMany}로 달지 않고 {@link WorkoutSet}이 {@code sessionId}를
  * 값으로 갖는다. 이 저장소의 다른 엔티티와 같은 방식이며, 세트가 필요한 곳은

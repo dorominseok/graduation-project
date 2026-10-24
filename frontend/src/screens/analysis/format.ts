@@ -33,8 +33,8 @@ export const BALANCE_TONE: Record<BalanceVerdict, Tone> = {
 /**
  * 막대의 오른쪽 끝이 뜻하는 주당 세트.
  *
- * <p>28로 두면 기준선 4·10·20이 각각 14%·36%·71% 자리에 온다 — 목업의 눈금 위치
- * 그대로다. 20을 넘는 과다 구간도 막대 안에서 보이도록 여유를 남긴 값이다.
+ * <p>28로 두면 기준선 4·10·20이 각각 14%·36%·71% 자리에 오고, 20을 넘는 과다 구간도
+ * 막대 안에서 보인다.
  */
 export const BAR_SCALE = 28
 export const BAR_TICKS = [4, 10, 20] as const
