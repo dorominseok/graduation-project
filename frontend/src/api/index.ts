@@ -12,6 +12,7 @@ export type { HistoryQuery } from './workout'
 export * as statsApi from './stats'
 export * as analysisApi from './analysis'
 export * as groupApi from './groups'
+export * as routineApi from './routines'
 export type {
   Balance,
   BalanceSide,
@@ -46,6 +47,12 @@ export type {
   Profile,
   PushPull,
   RefreshResponse,
+  Routine,
+  RoutineAlternative,
+  RoutineAuthor,
+  RoutineItem,
+  FeedbackRating,
+  FeedbackReason,
   SessionIntensity,
   SessionSummary,
   SummaryBadge,

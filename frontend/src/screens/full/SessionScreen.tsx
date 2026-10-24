@@ -1,45 +1,30 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { BottomSheet, useToast } from '../../components'
-import { exerciseApi, isApiError, statsApi, workoutApi } from '../../api'
-import type { Exercise, MeasureType, MuscleGroupKey, SessionIntensity, WorkoutSession } from '../../api'
+import { exerciseApi, isApiError, routineApi, statsApi, workoutApi } from '../../api'
+import type { Exercise, MeasureType, MuscleGroupKey, Routine, SessionIntensity, WorkoutSession } from '../../api'
+import { useAuth } from '../../auth'
 import { formatDuration } from '../../app/dates'
 import { paths } from '../../app/paths'
+import { lastPerformanceLine } from '../routine/format'
 import { ExercisePicker } from './ExercisePicker'
 import type { PickerStep } from './ExercisePicker'
 import { BODY_PART_LABEL, EQUIPMENT_LABEL, MEASURE_CHIP_LABEL } from './exerciseLabels'
 import { NumberField } from './NumberField'
 import { RestField } from './RestField'
 import { describeSet, trimNumber } from './setFormat'
+import {
+  buildCards,
+  emptyRow,
+  lastPerformanceOf,
+  loadDraft,
+  routineKeyOf,
+  rowsFromLast,
+  saveDraft,
+  savedCards,
+} from './sessionPlan'
+import type { ExerciseCard, SetRow } from './sessionPlan'
 import styles from './session.module.css'
-
-/** 화면에만 있는 세트 행. 완료 체크를 해야 서버로 간다(LOG-05). */
-interface SetRow {
-  /** 멱등 키이자 React key. 완료 체크 시점이 아니라 행을 만들 때 미리 만든다 */
-  clientSetId: string
-  weightKg: number | null
-  reps: number | null
-  durationSec: number | null
-  isWarmup: boolean
-  /**
-   * 세트 사이 쉬는 시간. 서버에는 보내지 않는다 — 기록이 아니라 운동 중에만
-   * 쓰는 타이머 값이고, workout_sets에 그 칸이 없다(명세 6.10).
-   */
-  restSec: number
-  /** 저장된 세트의 서버 id. null이면 아직 계획 행이다 */
-  savedId: number | null
-  /** 직전 기록에서 채운 행인지. 값의 출처를 줄 아래에 적어준다 */
-  fromPrev: boolean
-}
-
-interface ExerciseCard {
-  exerciseId: number
-  name: string
-  measureType: MeasureType
-  rows: SetRow[]
-  /** "9월 24일 (수) · 60kg×10" 같은 직전 기록 한 줄. 없으면 처음 하는 종목이다 */
-  prevLabel: string | null
-}
 
 /** 세트에서 숫자로 입력하는 값 */
 type Field = 'weightKg' | 'reps' | 'durationSec'
@@ -52,24 +37,10 @@ const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 /** 원판 한 쌍이 보통 2.5kg다. 헬스장에서 실제로 올릴 수 있는 단위로 움직인다 */
 const STEP_WEIGHT = 2.5
 const STEP_REST = 30
-const DEFAULT_REST_SEC = 90
 /** 저장된 줄이 초록으로 물들어 있는 시간 */
 const FLASH_MS = 600
 /** "휴식 끝" 띠를 띄워두는 시간 */
 const REST_DONE_MS = 3000
-
-function emptyRow(): SetRow {
-  return {
-    clientSetId: crypto.randomUUID(),
-    weightKg: null,
-    reps: null,
-    durationSec: null,
-    isWarmup: false,
-    restSec: DEFAULT_REST_SEC,
-    savedId: null,
-    fromPrev: false,
-  }
-}
 
 /** 측정 유형이 실제로 쓰는 입력 칸만 고른다(명세 5.1 표). */
 function fieldsOf(measureType: MeasureType): Field[] {
@@ -111,6 +82,9 @@ function formatRest(seconds: number): string {
  * 만든다), 체크한 세트가 그 자리에서 쌓인다. 하루에 두 번 운동하러 와도 같은 기록이 열려
  * 아침에 한 운동이 그대로 보인다. 세트 없이 나가면 빈 기록이 남지만 목록·달력·횟수에는
  * 나오지 않는다.
+ *
+ * <p>오늘 루틴이 있으면 열 때마다 "체크한 세트 + 루틴의 남은 계획"으로 카드를 다시 만든다.
+ * 체크하지 않은 행(루틴 밖 종목, 고친 값)은 브라우저에 그날까지 둔다(설계서 9.2, LOG-40).
  */
 export function SessionScreen() {
   const navigate = useNavigate()
@@ -118,6 +92,8 @@ export function SessionScreen() {
   // 경로에 id가 있으면 지난 기록을 여는 것이고, 없으면 오늘 운동이다.
   const { sessionId: sessionIdParam } = useParams()
   const { showToast } = useToast()
+  const { user } = useAuth()
+  const userId = user?.userId ?? null
 
   // 어느 종목을 펼쳐 보고 있는지. 화면을 갈아끼우지 않고 URL만 바꾸므로
   // 입력 중이던 미저장 행이 그대로 남는다.
@@ -129,6 +105,8 @@ export function SessionScreen() {
   const [session, setSession] = useState<WorkoutSession | null>(null)
   const [cards, setCards] = useState<ExerciseCard[]>([])
   const [loading, setLoading] = useState(true)
+  // 카드를 만든 루틴의 모양. 임시 저장에 같이 적어 두고, 루틴이 바뀌었는지 다음에 열 때 본다
+  const [routineKey, setRoutineKey] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   // 펼친 세트와 방금 저장된 세트. 둘 다 clientSetId로 가리킨다.
@@ -194,25 +172,19 @@ export function SessionScreen() {
           ? await workoutApi.getSession(Number(sessionIdParam))
           : await workoutApi.openDay(dateParam ? { performedOn: dateParam } : {})
         if (!alive) return
+        // 루틴 계획은 오늘 것만 펼친다. 지난 날은 한 것만 보인다
+        let routine: Routine | null = null
+        if (current.routineId !== null && current.performedOn === toDateString(new Date())) {
+          routine = await routineApi.get(current.routineId).catch(() => null)
+        }
+        const draft = userId === null ? null : loadDraft(userId, current.performedOn)
+        const built = await buildCards(current, routine, draft).catch(() => savedCards(current))
+        if (!alive) return
+        // 기록·카드를 한 번에 바꾼다. 날짜를 옮길 때 기록만 먼저 바뀌면 앞 날짜의 카드가
+        // 새 날짜의 임시 저장으로 써진다
         setSession(current)
-        setCards(
-          current.exercises.map((group) => ({
-            exerciseId: group.exerciseId,
-            name: group.exerciseName,
-            measureType: group.measureType,
-            prevLabel: null,
-            rows: group.sets.map((set) => ({
-              clientSetId: set.clientSetId,
-              weightKg: set.weightKg,
-              reps: set.reps,
-              durationSec: set.durationSec,
-              isWarmup: set.isWarmup,
-              restSec: DEFAULT_REST_SEC,
-              savedId: set.id,
-              fromPrev: false,
-            })),
-          })),
-        )
+        setRoutineKey(routineKeyOf(routine))
+        setCards(built)
       } catch (err) {
         if (isApiError(err)) showToast({ message: err.message, tone: 'danger' })
       } finally {
@@ -222,7 +194,14 @@ export function SessionScreen() {
     return () => {
       alive = false
     }
-  }, [sessionIdParam, dateParam, showToast])
+  }, [sessionIdParam, dateParam, userId, showToast])
+
+  // 카드가 바뀔 때마다 체크하지 않은 행을 임시 저장한다. 다 만들기 전에 쓰면 빈 목록이 덮어쓴다
+  const performedOn = session?.performedOn ?? null
+  useEffect(() => {
+    if (loading || userId === null || performedOn === null) return
+    saveDraft(userId, performedOn, routineKey, cards)
+  }, [cards, loading, userId, performedOn, routineKey])
 
   // 종목을 펼쳤을 때만 읽는다. 목록 화면에서는 지표를 보여주지 않는다.
   const sessionId = session?.id ?? null
@@ -291,31 +270,10 @@ export function SessionScreen() {
 
   const addExercise = useCallback(async (exercise: Exercise) => {
     // 직전 기록으로 행을 채운다(명세 5.5). 없으면 빈 행 하나로 시작한다.
-    let rows: SetRow[] = [emptyRow()]
-    let prevLabel: string | null = null
-    try {
-      const last = await exerciseApi.getLastPerformance(exercise.id)
-      if (last && last.sets.length > 0) {
-        rows = last.sets.map((set) => ({
-          clientSetId: crypto.randomUUID(),
-          weightKg: set.weightKg,
-          reps: set.reps,
-          durationSec: set.durationSec,
-          isWarmup: set.isWarmup,
-          restSec: DEFAULT_REST_SEC,
-          savedId: null,
-          fromPrev: true,
-        }))
-        const working = last.sets.filter((set) => !set.isWarmup)
-        const shown = working.length > 0 ? working : last.sets
-        prevLabel = `${formatDayLabel(last.performedOn)} · ${shown
-          .map((set) => describeSet(last.measureType, set))
-          .join(', ')}`
-      }
-    } catch (err) {
-      // 프리필은 편의 기능이라 실패해도 기록은 계속할 수 있어야 한다.
-      if (!isApiError(err)) throw err
-    }
+    const last = await lastPerformanceOf(exercise.id)
+    const hasLast = last !== null && last.sets.length > 0
+    const rows: SetRow[] = hasLast ? rowsFromLast(last.sets) : [emptyRow()]
+    const prevLabel = hasLast ? lastPerformanceLine(last) : null
 
     setCards((prev) => [
       ...prev,
@@ -325,6 +283,7 @@ export function SessionScreen() {
         measureType: exercise.measureType,
         rows,
         prevLabel,
+        routineTarget: null,
       },
     ])
   }, [])
@@ -788,6 +747,7 @@ export function SessionScreen() {
             </div>
           )}
 
+          {opened.routineTarget && <div className={styles.routineBar}>오늘 루틴 · {opened.routineTarget}</div>}
           {opened.prevLabel && <div className={styles.prevBar}>지난 기록 {opened.prevLabel}</div>}
 
           <div className={`${styles.setScroll} ${restShowing ? styles.scrollWithRest : ''}`}>
@@ -1238,15 +1198,20 @@ export function SessionScreen() {
                   >
                     <span className={styles.exCardHead}>
                       <span className={styles.exName}>{card.name}</span>
-                      <span className={styles.typeTag}>
-                        {card.measureType === 'BODYWEIGHT_REPS'
-                          ? '체중'
-                          : card.measureType === 'TIME'
-                            ? '시간'
-                            : '웨이트'}
-                      </span>
+                      {card.routineTarget ? (
+                        <span className={`${styles.typeTag} ${styles.routineTag}`}>루틴</span>
+                      ) : (
+                        <span className={styles.typeTag}>
+                          {card.measureType === 'BODYWEIGHT_REPS'
+                            ? '체중'
+                            : card.measureType === 'TIME'
+                              ? '시간'
+                              : '웨이트'}
+                        </span>
+                      )}
                     </span>
                     <span className={styles.exSummary}>{summary}</span>
+                    {card.routineTarget && <span className={styles.exTarget}>목표 {card.routineTarget}</span>}
                   </button>
                   <button
                     type="button"

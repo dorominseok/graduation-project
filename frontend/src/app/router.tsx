@@ -14,8 +14,7 @@ import { GroupScreen } from '../screens/tabs/GroupScreen'
 import { ProfileScreen } from '../screens/tabs/ProfileScreen'
 
 import { SessionScreen } from '../screens/full/SessionScreen'
-import { RoutineDetailScreen } from '../screens/full/RoutineDetailScreen'
-import { RoutineFallbackScreen } from '../screens/full/RoutineFallbackScreen'
+import { RoutineScreen } from '../screens/routine/RoutineScreen'
 import { ExerciseListScreen } from '../screens/full/ExerciseListScreen'
 import { ExerciseDetailScreen } from '../screens/full/ExerciseDetailScreen'
 import { SettingsScreen } from '../screens/full/SettingsScreen'
@@ -75,15 +74,13 @@ export const router = createBrowserRouter([
       // 기록 화면은 아직 체크하지 않은 세트를 화면 안에만 들고 있다. 하단바가 있으면
       // 탭 하나 잘못 눌러 적어둔 세트가 통째로 사라진다. 나가는 길은 ← 하나로 둔다.
       //
-      // react-router는 순서가 아니라 구체성으로 매칭하므로 '/routines/fallback'이
-      // '/routines/:routineId'보다 항상 우선한다. 정적 경로를 위에 둔 건 읽기 편하라고.
+      // 루틴 화면도 여기다. 후보정(교체·세트·빼기)을 그 화면에서 하므로 따로 화면을 두지 않는다(LOG-40)
       {
         element: <FullScreenLayout />,
         children: [
           { path: paths.session, element: <SessionScreen /> },
           { path: paths.sessionDetail(), element: <SessionScreen /> },
-          { path: paths.routineFallback, element: <RoutineFallbackScreen /> },
-          { path: paths.routineDetail(), element: <RoutineDetailScreen /> },
+          { path: paths.routineDetail(), element: <RoutineScreen /> },
           { path: paths.feedback, element: <FeedbackScreen /> },
         ],
       },
