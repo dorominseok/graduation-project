@@ -44,7 +44,8 @@ class DailyRecordMigrationTest {
         flyway("8").migrate();
 
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("SET search_path TO " + SCHEMA);
+            // 풀이 돌려받을 때 되돌린다. SET search_path로 바꾸면 그 연결이 지운 스키마를 가리킨 채 다음 테스트로 간다
+            c.setSchema(SCHEMA);
             st.execute("INSERT INTO users (email, password_hash, nickname) VALUES "
                     + "('me@example.com', 'x', '민석'), ('friend@example.com', 'x', '영희')");
             st.execute("INSERT INTO exercises (name_ko, body_part, measure_type, equipment) "
@@ -69,7 +70,7 @@ class DailyRecordMigrationTest {
         flyway(null).migrate();
 
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("SET search_path TO " + SCHEMA);
+            c.setSchema(SCHEMA);
             assertEquals(2, single(st, "SELECT count(*) FROM workout_sessions"));
             long day = single(st, "SELECT id FROM workout_sessions WHERE performed_on = '2026-10-10'");
             assertEquals(3, single(st, "SELECT count(*) FROM workout_sets WHERE session_id = " + day));
@@ -99,7 +100,7 @@ class DailyRecordMigrationTest {
         flyway("8").migrate();
 
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("SET search_path TO " + SCHEMA);
+            c.setSchema(SCHEMA);
             st.execute("INSERT INTO users (email, password_hash, nickname) VALUES ('me@example.com', 'x', '민석')");
             long me = single(st, "SELECT id FROM users");
             long first = insertSession(st, me, "2026-10-10", "DONE", null, 3000);
@@ -110,7 +111,7 @@ class DailyRecordMigrationTest {
         flyway(null).migrate();
 
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("SET search_path TO " + SCHEMA);
+            c.setSchema(SCHEMA);
             // 사용자가 고친 3600 + 고치지 않은 기록의 산출값 1200
             assertEquals(4800, single(st, "SELECT duration_override_sec FROM workout_sessions"));
         }
@@ -126,7 +127,9 @@ class DailyRecordMigrationTest {
                 .createSchemas(true)
                 .locations("classpath:db/migration");
         if (target != null) {
-            config.target(target);
+            // 옛 버전까지만 올릴 때는 반복 마이그레이션(종목 시드)을 돌리지 않는다. 시드는 늘 최신 스키마를
+            // 전제한다 — V11의 starter_rank가 없는 V8 스키마에서는 실패한다. 이 테스트는 종목을 직접 넣는다
+            config.target(target).repeatableSqlMigrationPrefix("NOT_REPEATABLE_");
         }
         return config.load();
     }

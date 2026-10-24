@@ -75,6 +75,21 @@ app:
     bout-gap: 30m               # 이보다 긴 공백에서 구간을 나눈다 — 아침·저녁 사이 공백이 시간에 섞이지 않게
     last-set-bonus: 90s         # 구간마다 마지막 세트 수행 시간 보정
     day-cap: 4h                 # 하루 상한 — 최종 방어선
+  # 오늘의 루틴 (「루틴생성_로직_설계서」 13장). 초기값 — 실험과 실사용으로 조정한다
+  routine:
+    target-weekly-sets: 10        # 부위당 주 목표 = 최적 하한
+    per-muscle-min-sets: 2        # 부위당 한 번에 최소·최대
+    per-muscle-max-sets: 6
+    fill-max-sets: 3              # 총량을 채우는 최적 부위의 최대 세트
+    daily-min-sets: 12            # 하루 총량 (약 40~60분)
+    daily-max-sets: 18
+    recovery-days: 2              # 오늘·어제 한 부위는 뺀다 (48시간)
+    default-days-per-week: 3      # 주당 운동 일수를 모를 때
+    min-known-days: 3             # 운동한 날이 이보다 적으면 모른다고 본다
+    candidates-per-muscle: 5      # LLM에 넘길 후보를 작게 유지
+    history-weeks: 8              # "해 본 종목"을 보는 기간
+    history-max-candidates: 3     # 후보 중 해 본 종목 최대
+    feedback-lookback-days: 7     # 만족도를 물을 지난 루틴 범위
 
 management:
   endpoints:
