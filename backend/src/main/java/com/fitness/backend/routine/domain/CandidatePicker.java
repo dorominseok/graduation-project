@@ -15,8 +15,8 @@ import java.util.Set;
  * <pre>
  *   1. 즐겨찾기
  *   2. 해 본 종목 — 최근에 자주 한 순, 최대 {@code historyMax}개
- *   3. 안 해 본 종목 — 같은 계열은 하나만, 이미 들어간 후보와 기구가 다른 것 먼저.
- *      그 안에서는 입문 대표 종목이 먼저, 나머지는 시드 순서
+ *   3. 안 해 본 종목 — 계열이 겹치지 않는 것 먼저, 그 안에서 이미 들어간 후보와 기구가 다른 것 먼저.
+ *      자리가 남으면 계열이 겹쳐도 채운다. 같은 조건이면 입문 대표 종목, 나머지는 시드 순서
  *   모두 합쳐 최대 {@code limit}개
  * </pre>
  *
@@ -72,10 +72,13 @@ public final class CandidatePicker {
                     .filter(o -> o.groupName() == null || !usedGroups.contains(o.groupName()))
                     .filter(o -> !usedEquipment.contains(o.equipment()))
                     .findFirst()
-                    .orElseGet(() -> fresh.stream()
+                    .or(() -> fresh.stream()
                             .filter(o -> o.groupName() == null || !usedGroups.contains(o.groupName()))
-                            .findFirst()
-                            .orElse(null));
+                            .findFirst())
+                    // 어깨 후면은 세 종목이 모두 한 계열이라, 계열당 하나로 끊으면 후보가 하나뿐이다.
+                    // 겹치는 계열을 막는 건 큰 부위에서 한 동작의 변형이 후보를 다 차지하지 않게 하려는 것이다
+                    .or(() -> fresh.stream().findFirst())
+                    .orElse(null);
             if (next == null) {
                 break;
             }

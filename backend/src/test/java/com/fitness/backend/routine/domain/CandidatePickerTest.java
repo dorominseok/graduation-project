@@ -46,16 +46,28 @@ class CandidatePickerTest {
     }
 
     @Test
-    @DisplayName("새 종목은 같은 계열을 하나만 넣고, 기구가 다른 것을 먼저 넣는다")
+    @DisplayName("새 종목은 계열이 겹치지 않는 것 먼저, 그 안에서 기구가 다른 것 먼저 — 겹치는 계열은 맨 뒤")
     void newOnesAreDiverse() {
         List<ExerciseOption> pool = List.of(
                 ex(1, "벤치", BARBELL, false, 0),
-                ex(2, "벤치", DUMBBELL, false, 0),     // 같은 계열 — 빠진다
+                ex(2, "벤치", DUMBBELL, false, 0),     // 같은 계열 — 자리가 남을 때만
                 ex(3, "프레스", BARBELL, false, 0),    // 기구가 겹쳐 뒤로
                 ex(4, "플라이", CABLE, false, 0),
                 ex(5, "머신", MACHINE, false, 0));
 
-        assertEquals(List.of(1L, 4L, 5L, 3L), ids(CandidatePicker.pick(pool, 5, 3)));
+        assertEquals(List.of(1L, 4L, 5L, 3L), ids(CandidatePicker.pick(pool, 4, 3)));
+        assertEquals(List.of(1L, 4L, 5L, 3L, 2L), ids(CandidatePicker.pick(pool, 5, 3)));
+    }
+
+    @Test
+    @DisplayName("한 계열뿐인 부위(어깨 후면)도 후보가 하나로 줄지 않는다")
+    void singleGroupStillFillsUp() {
+        List<ExerciseOption> rearDelt = List.of(
+                ex(67, "리어델트", BARBELL, false, 0),
+                ex(68, "리어델트", CABLE, false, 0),
+                ex(69, "리어델트", DUMBBELL, false, 0));
+
+        assertEquals(3, CandidatePicker.pick(rearDelt, 5, 3).size());
     }
 
     @Test

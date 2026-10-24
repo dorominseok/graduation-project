@@ -56,3 +56,14 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+// 루틴 조합 LLM 오프라인 실험(루틴생성_로직_설계서 11.5). 실제 Gemini를 부르고 무료 쿼터를 쓰므로
+// test에 넣지 않고 손으로만 돌린다. 예: ./gradlew llmExperiment --args="--runs 3 --cases 01"
+tasks.register('llmExperiment', JavaExec) {
+	group = 'verification'
+	description = '루틴 조합 LLM 오프라인 실험 (실제 호출)'
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'com.fitness.backend.routine.llm.experiment.RoutineLlmExperiment'
+	workingDir = rootProject.projectDir
+	jvmArgs '-Dfile.encoding=UTF-8', '-Dstdout.encoding=UTF-8'
+}

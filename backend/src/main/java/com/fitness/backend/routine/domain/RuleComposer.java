@@ -25,8 +25,11 @@ public final class RuleComposer {
     /** 오늘 할 부위가 없을 때 — 전부 회복 중이거나 이미 충분하다 */
     public static final String REST_COMMENT = "최근에 운동한 부위가 회복 중이라 오늘은 쉬어 가도 좋아요.";
 
-    /** 슬롯 세트가 이 값 이상이면 두 종목으로 나눈다 */
-    static final int SPLIT_FROM_SETS = 5;
+    /**
+     * 슬롯 세트가 이 값 이상일 때만 두 종목으로 나눈다. LLM의 L5도 이 값을 쓴다 — 4세트를 2+2로 나누면
+     * 첫날 루틴이 새 동작 여덟 개가 되고 동작마다 연습이 모자란다(오프라인 실험 r1)
+     */
+    public static final int SPLIT_FROM_SETS = 5;
 
     private RuleComposer() {
     }

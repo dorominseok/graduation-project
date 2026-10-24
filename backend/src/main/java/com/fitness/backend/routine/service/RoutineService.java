@@ -30,6 +30,9 @@ import com.fitness.backend.routine.domain.RoutinePolicy;
 import com.fitness.backend.routine.domain.RoutineSlot;
 import com.fitness.backend.routine.domain.RuleComposer;
 import com.fitness.backend.routine.domain.SlotPlanner;
+import com.fitness.backend.routine.llm.LlmRoutineComposer;
+import com.fitness.backend.routine.llm.LlmRoutineComposer.Attempt;
+import com.fitness.backend.routine.llm.LlmRoutineComposer.Composition;
 import com.fitness.backend.routine.repository.ExerciseDaysRow;
 import com.fitness.backend.routine.repository.LastTrainedRow;
 import com.fitness.backend.routine.repository.RoutineItemRepository;
@@ -57,19 +60,25 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 오늘의 루틴. 「루틴생성_로직_설계서」.
  *
  * <p>규칙은 {@code routine.domain}의 순수 계산이 맡고, 여기서는 분석 결과와 기록을 읽어 넘기고
- * 결과를 저장한다. 1단계에서는 규칙이 종목까지 고른다(설계서 15장) — LLM은 3단계에서 붙고,
- * 그때도 규칙 선택이 폴백으로 남는다.
+ * 결과를 저장한다. 부위·세트는 늘 규칙이 정하고, 종목·순서·설명은 LLM이 켜져 있으면 LLM이,
+ * 꺼져 있거나 실패하면 규칙이 고른다(설계서 5·7장, LOG-41).
  */
 @Service
 @Transactional(readOnly = true)
 public class RoutineService {
+
+    private static final Logger log = LoggerFactory.getLogger(RoutineService.class);
 
     /** 교체 후보는 이만큼만 보인다 */
     private static final int MAX_ALTERNATIVES = 10;
@@ -83,6 +92,9 @@ public class RoutineService {
     private final AnalysisService analysisService;
     private final AnalysisProperties analysisProperties;
     private final RoutineProperties properties;
+    /** {@code app.llm.enabled=true}일 때만 있다 */
+    private final Optional<LlmRoutineComposer> llm;
+    private final TransactionTemplate transactions;
     private final Clock clock;
 
     public RoutineService(RoutineRepository routineRepository,
@@ -94,6 +106,8 @@ public class RoutineService {
                           AnalysisService analysisService,
                           AnalysisProperties analysisProperties,
                           RoutineProperties properties,
+                          Optional<LlmRoutineComposer> llm,
+                          TransactionTemplate transactions,
                           Clock clock) {
         this.routineRepository = routineRepository;
         this.itemRepository = itemRepository;
@@ -104,6 +118,8 @@ public class RoutineService {
         this.analysisService = analysisService;
         this.analysisProperties = analysisProperties;
         this.properties = properties;
+        this.llm = llm;
+        this.transactions = transactions;
         this.clock = clock;
     }
 
@@ -114,8 +130,12 @@ public class RoutineService {
      *
      * <p>판정은 기준일 어제로 본다(설계서 1.1). 오늘 체크한 세트가 오늘 루틴의 근거를 흔들지 않게.
      * 회복 제외만 오늘 기록까지 본다 — 오늘 이미 한 부위는 빠져야 한다.
+     *
+     * <p>트랜잭션은 저장할 때만 연다. LLM 호출(재요청까지 하면 수 초)이 DB 연결을 붙잡지 않게 —
+     * 읽기는 각자 짧은 읽기 트랜잭션이고, 저장은 한 트랜잭션이다. SUPPORTS라 이미 열린 트랜잭션이
+     * 있으면(테스트) 거기에 붙는다.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.SUPPORTS)
     public CreateResult createToday(Long userId) {
         LocalDate today = LocalDate.now(clock);
         Optional<Routine> existing = routineRepository.findByUserIdAndRoutineDate(userId, today);
@@ -143,12 +163,47 @@ public class RoutineService {
 
         Map<Long, Exercise> exercises = allExercises();
         Map<MuscleGroup, List<ExerciseOption>> candidates = candidates(userId, today, slots, exercises);
-        List<PlannedItem> items = RuleComposer.compose(slots, candidates);
-        List<String> failures = RoutineCheck.check(slots, items, imbalances, candidateIds(candidates), policy);
+        Composition composition = compose(slots, candidates, exercises);
+        List<String> failures = RoutineCheck.check(slots, composition.items(), imbalances,
+                candidateIds(candidates), policy);
 
+        return transactions.execute(status ->
+                save(userId, today, referenceDate, slots, exercises, composition, failures));
+    }
+
+    /**
+     * 종목·순서·설명. LLM이 켜져 있으면 LLM이 고르고, 검증 실패·호출 실패면 안에서 규칙으로 간다.
+     * 꺼져 있으면 부르지 않는다({@code LLM_DISABLED}).
+     */
+    private Composition compose(List<RoutineSlot> slots, Map<MuscleGroup, List<ExerciseOption>> candidates,
+                                Map<Long, Exercise> exercises) {
+        if (llm.isEmpty()) {
+            List<PlannedItem> items = RuleComposer.compose(slots, candidates);
+            return new Composition(items, RuleComposer.comment(items), Author.RULE, Author.RULE,
+                    FallbackReason.LLM_DISABLED, List.of());
+        }
+        Map<Long, String> names = exercises.values().stream()
+                .collect(Collectors.toMap(Exercise::getId, Exercise::getNameKo));
+        Composition result = llm.get().compose(slots, candidates, names);
+        if (result.fallbackReason() != null) {
+            // 운영에서 폴백이 얼마나 나는지 본다. 사용자 기록은 남기지 않고 사유만
+            log.warn("루틴 LLM 폴백 {} — 시도 {}회, {}", result.fallbackReason(), result.llmAttempts(),
+                    result.attempts().stream().map(RoutineService::describe).toList());
+        }
+        return result;
+    }
+
+    private static String describe(Attempt attempt) {
+        return attempt.error() != null ? attempt.error()
+                : attempt.failures().stream().map(f -> f.code()).distinct().toList() + " " + attempt.latencyMs() + "ms";
+    }
+
+    private CreateResult save(Long userId, LocalDate today, LocalDate referenceDate, List<RoutineSlot> slots,
+                              Map<Long, Exercise> exercises, Composition composition, List<String> failures) {
         int inserted = routineRepository.insertIfAbsent(userId, today, referenceDate,
-                Author.RULE.name(), 0, FallbackReason.LLM_DISABLED.name(),
-                RuleComposer.comment(items), Author.RULE.name(),
+                composition.generatedBy().name(), composition.llmAttempts(),
+                composition.fallbackReason() == null ? null : composition.fallbackReason().name(),
+                composition.comment(), composition.commentBy().name(),
                 failures.isEmpty(), failures.isEmpty() ? null : String.join(",", failures));
         Routine routine = routineRepository.findByUserIdAndRoutineDate(userId, today)
                 .orElseThrow(() -> new IllegalStateException("방금 만든 루틴이 없다"));
@@ -157,6 +212,7 @@ public class RoutineService {
             return new CreateResult(toResponse(routine), false);
         }
 
+        List<PlannedItem> items = composition.items();
         Set<Long> doneBefore = new HashSet<>(historyRepository.exercisesDoneBefore(userId, today));
         Map<MuscleGroup, RoutineSlot> slotByMuscle = slots.stream()
                 .collect(Collectors.toMap(RoutineSlot::muscle, Function.identity()));
