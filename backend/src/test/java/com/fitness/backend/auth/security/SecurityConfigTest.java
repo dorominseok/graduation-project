@@ -36,7 +36,7 @@ class SecurityConfigTest {
     @Test
     @DisplayName("종목 조회는 토큰 없이도 열려 있다 (부록 B)")
     void exercisesArePublic() throws Exception {
-        // 컨트롤러가 아직 없으므로 401이 아닌 것(=시큐리티를 통과했다는 것)만 본다.
+        // 응답 내용은 ExerciseApiTest가 본다. 여기서는 401이 아닌 것(=시큐리티를 통과했다는 것)만 본다.
         mvc.perform(get("/api/v1/exercises"))
                 .andExpect(result -> {
                     int s = result.getResponse().getStatus();

@@ -14,7 +14,7 @@ public final class RoutineEnums {
 
     /** 규칙이 고른 이유 */
     public enum FallbackReason {
-        /** LLM을 켜지 않음 — 1단계 배포와 CI */
+        /** LLM을 켜지 않음({@code app.llm.enabled=false}) — 개발·CI, 키를 넣기 전의 운영 */
         LLM_DISABLED,
         /** 호출 실패(네트워크·한도·타임아웃) */
         LLM_ERROR,

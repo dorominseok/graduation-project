@@ -11,7 +11,7 @@ import {
 
 /**
  * 공용 컴포넌트 확인용 화면. 제품 화면이 아니다.
- * 9월에 실제 화면을 붙이면서 필요 없어지면 지운다.
+ * 개발 서버에서만 열린다(/dev/components) — 배포 번들에서는 빠진다(router.tsx).
  */
 export function DevComponentsScreen() {
   const { showToast } = useToast()

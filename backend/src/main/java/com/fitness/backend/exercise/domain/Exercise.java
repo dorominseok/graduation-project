@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 /**
  * 운동 종목. 부록 A {@code exercises} (V1 + V2 + V3).
  *
- * <p><b>읽기 전용이다.</b> 8월 2주에 정제해 {@code R__seed_exercises.sql}로 넣었고,
+ * <p><b>읽기 전용이다.</b> 종목 CSV에서 만든 {@code R__seed_exercises.sql}로 넣고,
  * 애플리케이션에는 종목을 만들거나 고치는 경로가 없다(명세 5.1). 그래서 변경
  * 메서드를 두지 않는다 — 즐겨찾기만 사용자별로 {@link UserFavoriteExercise}에 쓴다.
  *

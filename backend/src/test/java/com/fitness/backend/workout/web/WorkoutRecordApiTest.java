@@ -73,7 +73,7 @@ class WorkoutRecordApiTest {
                 // 종료가 없어 상태 필드도 없다
                 .andExpect(jsonPath("$.status").doesNotExist())
                 .andExpect(jsonPath("$.source").doesNotExist())
-                // 10월 routines 전까지는 항상 null이고 컬럼만 채워둔다(명세 6.2).
+                // 루틴을 받지 않은 날은 비어 있다. 루틴을 받으면 서버가 잇는다(명세 6.2·11.2)
                 .andExpect(jsonPath("$.routineId").doesNotExist());
     }
 
