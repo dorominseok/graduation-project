@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Chevron, useToast } from '../../components'
-import { analysisApi, isApiError, workoutApi } from '../../api'
-import type { Balance, MuscleVolume, SessionSummary } from '../../api'
+import { BottomSheet, Chevron, useToast } from '../../components'
+import { analysisApi, isApiError, routineApi, workoutApi } from '../../api'
+import type { Balance, FeedbackRating, FeedbackReason, MuscleVolume, Routine, SessionSummary } from '../../api'
 import { BAR_TICKS, barPercent, basisLabel } from '../analysis/format'
+import { FeedbackPicker } from '../routine/FeedbackPicker'
+import { activeItems, formatRoutineDay, muscleLine } from '../routine/format'
 import { useAuth } from '../../auth'
 import { paths } from '../../app/paths'
 import styles from './home.module.css'
@@ -71,9 +73,8 @@ interface Counts {
 /**
  * 홈 (목업 홈 탭).
  *
- * <p>목업의 카드 넷 중 "오늘의 루틴 추천"은 뺐다. 루틴은 10월5주에 들어오는데,
- * 그전에 "준비 중" 카드를 두면 검증 참여자에게 메인 기능이 고장 난 앱으로 보인다.
- * 그동안은 "운동 시작"이 주 버튼이다.
+ * <p>맨 위 "오늘 운동" 카드가 루틴 카드다(LOG-40). 루틴을 받기 전에는 "오늘 루틴 추천받기"가
+ * 주 버튼이고, 받은 뒤에는 요약과 "이 루틴으로 기록"이 온다. 직접 기록하는 길은 늘 남긴다.
  *
  * <p>횟수는 운동한 날을 센다. 하루에 두 번 운동해도 한 번이다 — 기록이 하루에 하나다(LOG-39).
  * 체크한 세트는 바로 저장되므로 종료를 기다리지 않고 바로 센다.
@@ -85,6 +86,12 @@ export function HomeScreen() {
 
   const [counts, setCounts] = useState<Counts | null>(null)
   const [analysis, setAnalysis] = useState<{ volume: MuscleVolume; balance: Balance } | null>(null)
+  // undefined는 아직 읽는 중, null은 오늘 루틴을 받지 않음
+  const [routine, setRoutine] = useState<Routine | null | undefined>(undefined)
+  const [creating, setCreating] = useState(false)
+  // 다음 방문에 한 번 묻는 지난 루틴(설계서 11.4)
+  const [pending, setPending] = useState<Routine | null>(null)
+  const [answering, setAnswering] = useState(false)
 
   const today = new Date()
   const todayKey = toDateString(today)
@@ -130,6 +137,71 @@ export function HomeScreen() {
     }
   }, [fail])
 
+  // 루틴은 따로 읽는다. 못 읽어도 홈의 나머지는 보여야 한다
+  useEffect(() => {
+    let alive = true
+    const load = async () => {
+      try {
+        const [today, past] = await Promise.all([routineApi.getToday(), routineApi.getFeedbackPending()])
+        if (!alive) return
+        setRoutine(today)
+        setPending(past)
+      } catch (err) {
+        if (alive) setRoutine(null)
+        fail(err)
+      }
+    }
+    void load()
+    return () => {
+      alive = false
+    }
+  }, [fail])
+
+  const createRoutine = async () => {
+    if (creating) return
+    setCreating(true)
+    try {
+      const created = await routineApi.createToday()
+      setRoutine(created)
+      navigate(paths.routineDetail(created.id))
+    } catch (err) {
+      fail(err)
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const answerToday = async (rating: FeedbackRating, reason?: FeedbackReason) => {
+    if (!routine || answering) return
+    setAnswering(true)
+    try {
+      setRoutine(await routineApi.sendFeedback(routine.id, { rating, reason }))
+    } catch (err) {
+      fail(err)
+    } finally {
+      setAnswering(false)
+    }
+  }
+
+  /**
+   * 지난 루틴 답하기. 시트를 그냥 닫아도 건너뛴 것으로 남긴다 — 다음 방문에 또 물으면
+   * "한 번만 묻는다"가 깨진다.
+   */
+  const answerPending = async (body: { rating?: FeedbackRating; reason?: FeedbackReason; skipped?: boolean }) => {
+    if (!pending || answering) return
+    const target = pending
+    setPending(null)
+    setAnswering(true)
+    try {
+      await routineApi.sendFeedback(target.id, body)
+      if (!body.skipped) showToast({ message: '답해주셔서 고마워요' })
+    } catch (err) {
+      fail(err)
+    } finally {
+      setAnswering(false)
+    }
+  }
+
   const weekDays = new Set(counts?.week.map((s) => s.performedOn))
   // 오늘 기록. 세트가 있는 날만 히스토리에 오므로, 있으면 오늘 이미 운동한 것이다
   const todayRecord = counts?.week.find((s) => s.performedOn === todayKey)
@@ -142,22 +214,38 @@ export function HomeScreen() {
         <div className={styles.greetingStats}>{counts ? greetingStats(today, counts) : ' '}</div>
       </div>
 
-      {/*
-        목업의 루틴 추천 카드 자리. 루틴이 들어오는 10월5주에는 이 카드가 루틴 카드가 된다 —
-        그전까지는 오늘 한 것(또는 얼마나 쉬었는지)과 기록 버튼을 둔다. 시작·종료가 없어서
-        오늘 이미 운동했으면 같은 기록에 이어서 쌓는다.
-      */}
-      {counts && (
+      {/* 시작·종료가 없어서 오늘 이미 운동했으면 같은 기록에 이어서 쌓는다(LOG-39) */}
+      {counts && routine !== undefined && (
         <div className={styles.hero}>
-          <div className={styles.heroTitle}>오늘 운동</div>
-          <div className={styles.heroSub}>
-            {todayRecord
-              ? `${todayRecord.exerciseCount}종목 · ${todayRecord.setCount}세트 기록했어요`
-              : restLine(counts.recent[0], today)}
-          </div>
-          <button type="button" className={styles.start} onClick={() => navigate(paths.session)}>
-            {todayRecord ? '이어서 기록' : '운동 시작'}
-          </button>
+          {routine === null ? (
+            <>
+              <div className={styles.heroTitle}>오늘 운동</div>
+              <div className={styles.heroSub}>
+                {todayRecord
+                  ? `${todayRecord.exerciseCount}종목 · ${todayRecord.setCount}세트 기록했어요`
+                  : restLine(counts.recent[0], today)}
+              </div>
+              <button
+                type="button"
+                className={styles.start}
+                disabled={creating}
+                onClick={() => void createRoutine()}
+              >
+                {creating ? '루틴 짜는 중…' : '오늘 루틴 추천받기'}
+              </button>
+              <button type="button" className={styles.heroSecondary} onClick={() => navigate(paths.session)}>
+                {todayRecord ? '이어서 기록' : '직접 기록하기'}
+              </button>
+            </>
+          ) : (
+            <TodayRoutine
+              routine={routine}
+              answering={answering}
+              onRecord={() => navigate(paths.session)}
+              onOpen={() => navigate(paths.routineDetail(routine.id))}
+              onAnswer={(rating, reason) => void answerToday(rating, reason)}
+            />
+          )}
         </div>
       )}
 
@@ -225,7 +313,97 @@ export function HomeScreen() {
       <button type="button" className={styles.browse} onClick={() => navigate(paths.exerciseList)}>
         운동 종목 둘러보기 →
       </button>
+
+      <BottomSheet
+        open={pending !== null}
+        onClose={() => void answerPending({ skipped: true })}
+        title={<span className={styles.sheetTitle}>지난 루틴 어땠어요?</span>}
+      >
+        {pending && (
+          <>
+            <div className={styles.sheetNote}>
+              {formatRoutineDay(pending.routineDate)} · {muscleLine(pending)}
+            </div>
+            <FeedbackPicker
+              disabled={answering}
+              onSubmit={(rating, reason) => void answerPending({ rating, reason })}
+            />
+            <button
+              type="button"
+              className={styles.sheetSkip}
+              onClick={() => void answerPending({ skipped: true })}
+            >
+              건너뛰기
+            </button>
+          </>
+        )}
+      </BottomSheet>
     </div>
+  )
+}
+
+interface TodayRoutineProps {
+  routine: Routine
+  answering: boolean
+  onRecord: () => void
+  onOpen: () => void
+  onAnswer: (rating: FeedbackRating, reason?: FeedbackReason) => void
+}
+
+/**
+ * 오늘 루틴 요약 (설계서 14장). 무엇을 할지는 루틴 화면이 말하고, 여기는 부위 · 종목 수 · 세트 수와
+ * 얼마나 했는지만 둔다. 루틴 부위를 체크한 날은 카드 아래에서 바로 만족도를 묻는다.
+ */
+function TodayRoutine({ routine, answering, onRecord, onOpen, onAnswer }: TodayRoutineProps) {
+  const items = activeItems(routine)
+  const answered = routine.feedback.rating !== null
+
+  // 회복할 부위만 남아 쉬어 가는 날. 설명만 두고 직접 기록하는 길을 남긴다
+  if (items.length === 0) {
+    return (
+      <>
+        <div className={styles.heroTitle}>오늘 루틴</div>
+        <div className={styles.heroSub}>{routine.comment}</div>
+        <button type="button" className={styles.start} onClick={onRecord}>
+          직접 기록하기
+        </button>
+      </>
+    )
+  }
+
+  const progress = routine.totalSets > 0 ? Math.min(100, (routine.doneSets / routine.totalSets) * 100) : 0
+
+  return (
+    <>
+      <button type="button" className={styles.heroHead} onClick={onOpen}>
+        <span className={styles.heroTitle}>오늘 루틴</span>
+        <span className={styles.cardMore}>
+          루틴 보기
+          <Chevron />
+        </span>
+      </button>
+      <div className={styles.heroMuscles}>{muscleLine(routine)}</div>
+      <div className={styles.heroMeta}>
+        {items.length}종목 · {routine.totalSets}세트
+        {routine.doneSets > 0 && ` · ${routine.doneSets}세트 했어요`}
+      </div>
+      {routine.doneSets > 0 && (
+        <span className={styles.progressTrack} aria-hidden="true">
+          <span className={styles.progressFill} style={{ width: `${progress}%` }} />
+        </span>
+      )}
+      <button type="button" className={styles.start} onClick={onRecord}>
+        {routine.doneSets > 0 ? '이어서 기록' : '이 루틴으로 기록'}
+      </button>
+
+      {routine.askFeedback && (
+        <div className={styles.heroFeedback}>
+          <div className={styles.heroFeedbackTitle}>오늘 루틴 어땠어요?</div>
+          <FeedbackPicker disabled={answering} onSubmit={onAnswer} />
+        </div>
+      )}
+      {answered && <div className={styles.heroThanks}>오늘 루틴에 답해주셔서 고마워요</div>}
+    </>
   )
 }
 

@@ -22,7 +22,6 @@ export const paths = {
   session: '/session',
   sessionDetail: (sessionId: number | string = ':sessionId') => `/session/${sessionId}`,
   routineDetail: (routineId: number | string = ':routineId') => `/routines/${routineId}`,
-  routineFallback: '/routines/fallback',
   exerciseList: '/exercises',
   exerciseDetail: (exerciseId: number | string = ':exerciseId') => `/exercises/${exerciseId}`,
   settings: '/settings',

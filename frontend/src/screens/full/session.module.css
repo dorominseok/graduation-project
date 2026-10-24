@@ -818,6 +818,31 @@
   font-weight: var(--weight-heavy);
 }
 
+/* ── 오늘 루틴 종목 (LOG-40) */
+
+.routineTag {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: var(--weight-bold);
+}
+
+.exTarget {
+  display: block;
+  margin-top: var(--space-2);
+  font-size: var(--font-2xs);
+  color: var(--text-tertiary);
+}
+
+.routineBar {
+  flex-shrink: 0;
+  padding: var(--space-6);
+  background: var(--accent-soft);
+  text-align: center;
+  font-size: var(--font-2xs);
+  font-weight: var(--weight-bold);
+  color: var(--accent);
+}
+
 /* ── 유리 테마 (재질은 glass.css. 기본 테마에서는 아래 규칙이 하나도 걸리지 않는다) */
 
 .header {

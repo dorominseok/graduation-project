@@ -552,3 +552,82 @@ export interface MemberDay {
   date: string
   session: MemberSession | null
 }
+
+// ── 오늘의 루틴 (명세 11장, LOG-40)
+
+export type RoutineAuthor = 'LLM' | 'RULE'
+export type FeedbackRating = 'GOOD' | 'OKAY' | 'BAD'
+export type FeedbackReason = 'EXERCISE' | 'TOO_MUCH' | 'TOO_LITTLE' | 'OTHER'
+
+/**
+ * 루틴 항목. 부위·세트는 규칙이, 종목·순서는 LLM(없으면 규칙)이 정했다.
+ *
+ * 빼낸 항목도 `removed`로 내려온다 — 원래 계획은 수행률의 분모라 서버가 지우지 않는다.
+ */
+export interface RoutineItem {
+  id: number
+  position: number
+  muscleGroup: MuscleGroupKey
+  muscleLabel: string
+  exerciseId: number
+  exerciseName: string
+  exerciseNameEn: string | null
+  measureType: MeasureType
+  equipment: Equipment
+  plannedSets: number
+  /** 반복 범위. 시간 종목은 초다 */
+  targetMin: number
+  targetMax: number
+  /** 오늘 전에 이 종목 세트가 하나도 없다. 화면이 [처음]과 "동작 보기"를 띄운다 */
+  firstTime: boolean
+  /** 근거 — 만든 날의 최근 4주 주당 평균 세트와 판정 */
+  basisWeeklySets: number
+  basisVerdict: VolumeVerdict
+  basisVerdictLabel: string
+  removed: boolean
+  adjusted: boolean
+  /** 그날 이 종목의 체크한 본세트 수 */
+  doneSets: number
+}
+
+export interface Routine {
+  id: number
+  routineDate: string
+  referenceDate: string
+  generatedBy: RoutineAuthor
+  /** 조합 설명 1~2문장 */
+  comment: string
+  /** 기록이 적어 판정 신뢰도가 낮다 */
+  lowConfidence: boolean
+  /** 빼지 않은 항목의 계획 세트 합 */
+  totalSets: number
+  /** 빼지 않은 항목마다 min(체크한 세트, 계획)의 합 */
+  doneSets: number
+  items: RoutineItem[]
+  feedback: { rating: FeedbackRating | null; reason: FeedbackReason | null; skipped: boolean }
+  /** 오늘 루틴이고, 루틴 부위를 체크했고, 아직 답하지 않았다 */
+  askFeedback: boolean
+}
+
+/** 교체 후보. 같은 부위에서 기구가 다른 종목이 먼저 온다(LOG-08) */
+export interface RoutineAlternative {
+  exerciseId: number
+  exerciseName: string
+  exerciseNameEn: string | null
+  equipment: Equipment
+  measureType: MeasureType
+  firstTime: boolean
+  sameEquipment: boolean
+}
+
+/** 후보정. 보내지 않은 항목은 그대로 둔다 */
+export interface UpdateRoutineItemRequest {
+  exerciseId?: number
+  plannedSets?: number
+}
+
+export interface RoutineFeedbackRequest {
+  rating?: FeedbackRating
+  reason?: FeedbackReason
+  skipped?: boolean
+}
