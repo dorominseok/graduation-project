@@ -26,7 +26,7 @@ import org.springframework.context.annotation.Configuration;
  *
  * <p>그리고 모든 응답에 설명을 채운다. 컨트롤러에 애노테이션이 없으면 springdoc이
  * 응답을 {@code Undocumented}로 표시해, 스웨거만 보고는 어떤 코드가 오는지도
- * 오류 본문이 어떻게 생겼는지도 알 수 없다. 엔드포인트 27개에 같은 애노테이션을
+ * 오류 본문이 어떻게 생겼는지도 알 수 없다. 엔드포인트마다 같은 애노테이션을
  * 반복해 다는 대신, 공통으로 붙는 것은 여기서 한 번에 채운다.
  */
 @Configuration

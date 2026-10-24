@@ -27,9 +27,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 종목 조회와 즐겨찾기. 명세 5.2~5.4.
+ * 종목 조회와 즐겨찾기.
  *
- * <p>종목 자체는 읽기 전용이라 쓰기는 즐겨찾기 두 개뿐이다(5.1).
+ * <p>종목 자체는 읽기 전용이라 쓰기는 즐겨찾기 두 개뿐이다.
  */
 @Service
 @Transactional(readOnly = true)
@@ -45,7 +45,7 @@ public class ExerciseService {
     }
 
     /**
-     * 종목 검색(명세 5.2).
+     * 종목 검색.
      *
      * @param userId       인증된 사용자. 비인증이면 {@code null}이고 {@code isFavorite}를 담지 않는다
      * @param favoriteOnly 즐겨찾기만. 비인증 요청에서는 무시한다 — 기준이 될 사용자가 없다
@@ -80,7 +80,7 @@ public class ExerciseService {
     /**
      * 탐색 분류와 판정 부위를 같이 주면 둘 다 만족하는 근육만 남긴다.
      *
-     * <p>둘은 다른 축이다(LOG-24). 판정 부위 "뒤허벅지·둔근"은 탐색 분류의 하체와
+     * <p>둘은 다른 축이다. 판정 부위 "뒤허벅지·둔근"은 탐색 분류의 하체와
      * 엉덩이에 걸쳐 있어 분류 하나로는 못 고른다 — 홈의 약점에서 종목으로 바로
      * 가려면 판정 부위로 조회할 수 있어야 한다. 겹치는 근육이 없으면 아무것도
      * 안 나오도록 빈 문자열 하나를 넘긴다.
@@ -99,7 +99,7 @@ public class ExerciseService {
     }
 
     /**
-     * 부위 그리드(LOG-24). 12종 분류와 각 종목 수를 준다.
+     * 부위 그리드. 12종 분류와 각 종목 수를 준다.
      *
      * <p>종목이 없는 분류도 담는다 — 그리드에서 칸이 사라지면 자리가 밀려
      * 사용자가 위치로 기억한 것을 다시 찾아야 한다.
@@ -118,7 +118,7 @@ public class ExerciseService {
                 .toList();
     }
 
-    /** 한 분류 안의 계열 목록(LOG-24). 종목이 많은 계열이 앞에 온다. */
+    /** 한 분류 안의 계열 목록. 종목이 많은 계열이 앞에 온다. */
     public List<GroupCount> groups(BrowseCategory category) {
         List<Object[]> rows = exerciseRepository.countByGroup(category.primaryMuscles(), category.deltRegion());
 
@@ -136,7 +136,7 @@ public class ExerciseService {
                 .toList();
     }
 
-    /** 종목 단건(명세 5.3). */
+    /** 종목 단건. */
     public ExerciseResponse get(Long userId, Long exerciseId) {
         Exercise exercise = exerciseRepository.findById(exerciseId)
                 .orElseThrow(() -> ApiException.notFound("종목"));
@@ -145,7 +145,7 @@ public class ExerciseService {
     }
 
     /**
-     * 즐겨찾기 추가(명세 5.4). <b>멱등하다</b> — 이미 등록돼 있으면 아무것도 하지 않는다.
+     * 즐겨찾기 추가. <b>멱등하다</b> — 이미 등록돼 있으면 아무것도 하지 않는다.
      *
      * <p>UNIQUE 제약에 기대 예외를 삼키는 대신 먼저 확인한다. 별표는 연타되기 쉬운
      * 조작이라, 정상 흐름에서 예외가 나는 구조를 두면 로그가 오염된다.
@@ -159,7 +159,7 @@ public class ExerciseService {
         favoriteRepository.save(UserFavoriteExercise.of(userId, exerciseId));
     }
 
-    /** 즐겨찾기 해제(명세 5.4). 등록돼 있지 않아도 성공으로 본다. */
+    /** 즐겨찾기 해제. 등록돼 있지 않아도 성공으로 본다. */
     @Transactional
     public void removeFavorite(Long userId, Long exerciseId) {
         requireExercise(exerciseId);
@@ -167,7 +167,7 @@ public class ExerciseService {
     }
 
     /**
-     * 없는 종목에 별표를 누르면 404다(명세 5.4).
+     * 없는 종목에 별표를 누르면 404다.
      *
      * <p>해제에서도 확인하는 것은, 잘못된 id를 조용히 성공으로 돌려주면 클라이언트가
      * 오타를 알아채지 못하기 때문이다. "이미 해제된 상태"와 "없는 종목"은 다르다.

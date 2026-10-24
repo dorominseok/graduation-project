@@ -17,7 +17,7 @@ import java.util.Map;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * LLM으로 종목·순서·설명을 고른다. 설계서 5·6장.
+ * LLM으로 종목·순서·설명을 고른다.
  *
  * <pre>
  *   부르기 → 검증(L1~L6)
@@ -44,7 +44,7 @@ public final class LlmRoutineComposer {
     }
 
     /**
-     * 한 번 부른 기록. 운영에서는 횟수만 저장하고, 실험(설계서 11.5)은 전부 남긴다.
+     * 한 번 부른 기록. 운영에서는 횟수만 저장하고, 실험은 전부 남긴다.
      *
      * @param error 호출 실패면 그 사유, 아니면 null
      */

@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 /**
- * 오늘의 루틴. 「루틴생성_로직_설계서」 12장 (LOG-40).
+ * 오늘의 루틴.
  *
  * <p>전부 인증이 필요하다. 남의 루틴은 있는지조차 드러내지 않도록 404다.
  */

@@ -9,7 +9,7 @@ import java.util.HexFormat;
 import org.springframework.stereotype.Component;
 
 /**
- * 리프레시 토큰의 생성과 해시. API 명세서 2.3.
+ * 리프레시 토큰의 생성과 해시.
  *
  * <p>리프레시 토큰은 JWT가 아니라 <b>불투명 문자열</b>이다. 담을 정보가 없기
  * 때문이다 — 이 토큰이 하는 일은 "DB에 이 값이 살아 있는가"를 묻는 것뿐이고,
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class OpaqueTokenFactory {
 
-    /** 명세 2.3의 "랜덤 256bit". */
+    /** 256비트 난수. */
     private static final int TOKEN_BYTES = 32;
 
     private final SecureRandom random = new SecureRandom();

@@ -1,7 +1,7 @@
 package com.fitness.backend.analysis.domain;
 
 /**
- * 판정 신뢰도. API 명세서 8.2 {@code confidence} / 「기록 방식」 5.5.
+ * 판정 신뢰도(응답의 {@code confidence}).
  *
  * <p>기록이 적을 때 판정을 <b>숨기지 않고</b> 신뢰도만 낮춰 내려준다. 4주에 두 번
  * 운동한 사람에게 "가슴 부족"은 틀린 말이 아니지만 그 수치로 루틴을 바꾸라고 할

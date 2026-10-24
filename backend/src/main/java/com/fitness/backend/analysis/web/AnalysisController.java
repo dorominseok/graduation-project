@@ -18,10 +18,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
- * 약점 판정. 명세 8장.
+ * 약점 판정.
  *
  * <p>두 엔드포인트 모두 판정을 <b>완성해서</b> 내려준다 — 화면은 합산도 구간 분류도
- * 하지 않는다(8.2). 같은 판정이 서버와 화면 양쪽에 있으면 언젠가 둘이 어긋나고,
+ * 하지 않는다. 같은 판정이 서버와 화면 양쪽에 있으면 언젠가 둘이 어긋나고,
  * 그때 사용자에게 보인 숫자가 맞는지 확인할 방법이 없다.
  *
  * <p>{@code weeks}·{@code referenceDate}는 테스트와 과거 시점 조회용이다. 평소에는

@@ -9,9 +9,9 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * 오늘 할 부위와 세트를 정한다. 「루틴생성_로직_설계서」 2·3장.
+ * 오늘 할 부위와 세트를 정한다.
  *
- * <p>DB·스프링에 의존하지 않는 순수 계산이다. 분석 판정(분석 2장)처럼 경계값을 단위 테스트로
+ * <p>DB·스프링에 의존하지 않는 순수 계산이다. 분석 판정처럼 경계값을 단위 테스트로
  * 고정한다 — 루틴이 무엇을 근거로 나왔는지를 이 클래스 하나로 설명할 수 있어야 한다.
  *
  * <pre>
@@ -25,8 +25,8 @@ import java.util.List;
 public final class SlotPlanner {
 
     /**
-     * 모든 조건이 같을 때의 순서 — 큰 근육부터, 코어가 마지막(설계서 2.3의 4번).
-     * 기록이 없는 사람에게는 이 순서가 첫 루틴을 정한다(2.6).
+     * 모든 조건이 같을 때의 순서 — 큰 근육부터, 코어가 마지막.
+     * 기록이 없는 사람에게는 이 순서가 첫 루틴을 정한다.
      */
     public static final List<MuscleGroup> SIZE_ORDER = List.of(
             MuscleGroup.CHEST, MuscleGroup.BACK, MuscleGroup.QUADS, MuscleGroup.POSTERIOR,

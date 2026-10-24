@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-/** 인증 API. 명세 4.1~4.4. */
+/** 인증 API. */
 @ApiV1Controller
 @RequestMapping("/auth")
 public class AuthController {
@@ -62,7 +62,7 @@ public class AuthController {
                         result.tokens().accessToken(), result.tokens().expiresInSeconds(), result.user()));
     }
 
-    /** 구글 로그인. 처음이면 가입까지 한다 — 응답은 로그인과 같다(LOG-37). */
+    /** 구글 로그인. 처음이면 가입까지 한다 — 응답은 로그인과 같다. */
     @Operation(summary = "구글 로그인")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "로그인(또는 가입) 성공 — 액세스 토큰과 리프레시 쿠키 발급"),
@@ -86,7 +86,7 @@ public class AuthController {
      *
      * <p><b>클라이언트 주의</b>: 이 요청은 <b>한 번에 하나만</b> 보내야 한다. 액세스
      * 토큰이 만료되는 순간 여러 요청이 동시에 401을 받으므로, API 클라이언트가
-     * 재발급을 하나로 묶고 나머지는 그 결과를 기다렸다 재시도하게 한다(명세 4.3).
+     * 재발급을 하나로 묶고 나머지는 그 결과를 기다렸다 재시도하게 한다.
      */
     @Operation(summary = "액세스 토큰 재발급")
     @ApiResponses({

@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * 루틴 생성의 설정값(`app.routine.*`). 「루틴생성_로직_설계서」 13장.
+ * 루틴 생성의 설정값(`app.routine.*`).
  *
  * <p>규칙은 순수 계산({@code routine.domain})에 두고, 조정 가능한 수치만 여기서 넘긴다.
  * 분석 설정({@code app.analysis.*})과 같은 구조다. 값이 어긋나면 기동 시점에 실패한다.

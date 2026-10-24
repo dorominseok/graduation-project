@@ -37,7 +37,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
- * 친구 그룹. 명세 10장(LOG-38).
+ * 친구 그룹.
  *
  * <p>전부 인증이 필요하다. 초대 링크도 로그인한 뒤에 열린다 — 참여하려면 어차피 계정이 있어야 한다.
  */
@@ -169,7 +169,7 @@ public class GroupController {
 
     @Operation(summary = "멤버의 월별 기록 요약 (읽기 전용)")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "내 캘린더(명세 6.8)와 같은 모양"),
+            @ApiResponse(responseCode = "200", description = "내 캘린더와 같은 모양"),
             @ApiResponse(responseCode = "404", description = "그룹 멤버가 아님")
     })
     @GetMapping("/{groupId}/members/{memberId}/calendar")

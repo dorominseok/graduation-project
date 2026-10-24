@@ -1,6 +1,6 @@
 package com.fitness.backend.routine.llm;
 
-/** LLM에게서 쓸 수 있는 답을 받지 못했다. 재요청하지 않고 바로 규칙으로 간다(설계서 6.1) */
+/** LLM에게서 쓸 수 있는 답을 받지 못했다. 재요청하지 않고 바로 규칙으로 간다 */
 public class LlmCallException extends RuntimeException {
 
     public enum Kind {

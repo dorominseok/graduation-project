@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-/** 통계 API 응답. 명세 7장. */
+/** 통계 API 응답. */
 public final class StatsDtos {
 
     private StatsDtos() {

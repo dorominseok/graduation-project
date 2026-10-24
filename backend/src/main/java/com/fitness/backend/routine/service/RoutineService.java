@@ -68,11 +68,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * 오늘의 루틴. 「루틴생성_로직_설계서」.
+ * 오늘의 루틴.
  *
  * <p>규칙은 {@code routine.domain}의 순수 계산이 맡고, 여기서는 분석 결과와 기록을 읽어 넘기고
  * 결과를 저장한다. 부위·세트는 늘 규칙이 정하고, 종목·순서·설명은 LLM이 켜져 있으면 LLM이,
- * 꺼져 있거나 실패하면 규칙이 고른다(설계서 5·7장, LOG-41).
+ * 꺼져 있거나 실패하면 규칙이 고른다.
  */
 @Service
 @Transactional(readOnly = true)
@@ -126,9 +126,9 @@ public class RoutineService {
     // ── 만들기
 
     /**
-     * 오늘 루틴. 이미 있으면 그 루틴을 준다 — 하루에 하나이고 다시 만들기는 없다(LOG-40).
+     * 오늘 루틴. 이미 있으면 그 루틴을 준다 — 하루에 하나이고 다시 만들기는 없다.
      *
-     * <p>판정은 기준일 어제로 본다(설계서 1.1). 오늘 체크한 세트가 오늘 루틴의 근거를 흔들지 않게.
+     * <p>판정은 기준일 어제로 본다. 오늘 체크한 세트가 오늘 루틴의 근거를 흔들지 않게.
      * 회복 제외만 오늘 기록까지 본다 — 오늘 이미 한 부위는 빠져야 한다.
      *
      * <p>트랜잭션은 저장할 때만 연다. LLM 호출(재요청까지 하면 수 초)이 DB 연결을 붙잡지 않게 —
@@ -255,7 +255,7 @@ public class RoutineService {
     }
 
     /**
-     * 주당 운동 일수. 운동한 날이 너무 적으면 모른다고 보고 기본값(3일)을 쓴다(설계서 2.6) —
+     * 주당 운동 일수. 운동한 날이 너무 적으면 모른다고 보고 기본값(3일)을 쓴다 —
      * 하루 기록한 사람을 "주 1회"로 보면 부위마다 6세트가 나온다.
      */
     private static double daysPerWeek(MuscleVolumeResponse volume, RoutinePolicy policy) {
@@ -266,7 +266,7 @@ public class RoutineService {
         return days * 7.0 / volume.basisDays();
     }
 
-    /** 슬롯마다 후보(설계서 4.1). 종목 109개를 한 번 읽어 판정 부위로 나눈다 */
+    /** 슬롯마다 후보. 종목 109개를 한 번 읽어 판정 부위로 나눈다 */
     private Map<MuscleGroup, List<ExerciseOption>> candidates(Long userId, LocalDate today, List<RoutineSlot> slots,
                                                              Map<Long, Exercise> exercises) {
         Set<Long> favorites = new HashSet<>(favoriteRepository.findExerciseIdsByUserId(userId));
@@ -303,7 +303,7 @@ public class RoutineService {
         return result;
     }
 
-    /** 그날 기록을 열어 루틴을 잇는다. 하루 기록은 하루에 하나라 날짜로 찾는다(설계서 9.3) */
+    /** 그날 기록을 열어 루틴을 잇는다. 하루 기록은 하루에 하나라 날짜로 찾는다 */
     private void linkDay(Long userId, LocalDate today, Long routineId) {
         sessionRepository.insertIfAbsent(userId, today);
         WorkoutSession day = sessionRepository.findByUserIdAndPerformedOn(userId, today)
@@ -322,7 +322,7 @@ public class RoutineService {
     }
 
     /**
-     * 만족도를 물을 지난 루틴(설계서 11.4). 오늘 루틴은 홈 카드가 따로 묻는다.
+     * 만족도를 물을 지난 루틴. 오늘 루틴은 홈 카드가 따로 묻는다.
      *
      * <p>최근 며칠 안에서 <b>루틴 부위를 체크한 가장 최근 루틴 하나</b>만 본다. 그 루틴에 이미 답했거나
      * 건너뛰었으면 더 오래된 루틴은 묻지 않는다 — 여러 날을 밀린 숙제처럼 연달아 묻지 않게.
@@ -341,7 +341,7 @@ public class RoutineService {
         return Optional.empty();
     }
 
-    /** 교체 후보 — 같은 부위에서 기구가 다른 종목 먼저, 그다음 자주 한 순, 입문 대표 종목 순(설계서 8장, LOG-08) */
+    /** 교체 후보 — 같은 부위에서 기구가 다른 종목 먼저, 그다음 자주 한 순, 입문 대표 종목 순 */
     public List<AlternativeResponse> alternatives(Long userId, Long routineId, Long itemId) {
         Routine routine = mustFind(userId, routineId);
         RoutineItem item = mustFindItem(routine, itemId);
@@ -372,7 +372,7 @@ public class RoutineService {
 
     // ── 후보정
 
-    /** 종목 교체·세트 조정(설계서 8장). 원래 값은 항목에 남는다 — 수행률의 분모다 */
+    /** 종목 교체·세트 조정. 원래 값은 항목에 남는다 — 수행률의 분모다 */
     @Transactional
     public RoutineResponse updateItem(Long userId, Long routineId, Long itemId, UpdateItemRequest request) {
         Routine routine = mustFindToday(userId, routineId);
@@ -407,7 +407,7 @@ public class RoutineService {
 
     // ── 만족도
 
-    /** 루틴당 한 번. 답했거나 건너뛰었으면 다시 받지 않는다(설계서 11.4) */
+    /** 루틴당 한 번. 답했거나 건너뛰었으면 다시 받지 않는다 */
     @Transactional
     public RoutineResponse feedback(Long userId, Long routineId, FeedbackRequest request) {
         Routine routine = mustFind(userId, routineId);
@@ -453,7 +453,7 @@ public class RoutineService {
                 .orElseThrow(() -> ApiException.notFound("루틴 항목"));
     }
 
-    /** 그날 루틴 부위에 본세트를 하나라도 체크했나 — 만족도를 물을 조건(설계서 11.4) */
+    /** 그날 루틴 부위에 본세트를 하나라도 체크했나 — 만족도를 물을 조건 */
     private boolean trainedRoutineMuscle(Long userId, LocalDate date, List<RoutineItem> items,
                                          Map<Long, Exercise> exercises) {
         Set<MuscleGroup> muscles = items.stream()

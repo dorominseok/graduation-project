@@ -5,7 +5,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
- * 모든 4xx·5xx 응답의 단일 구조. API 명세서 1.5.
+ * 모든 4xx·5xx 응답의 단일 구조.
  *
  * <p>성공 응답에는 이 envelope를 쓰지 않는다 — 리소스를 그대로 반환한다.
  *

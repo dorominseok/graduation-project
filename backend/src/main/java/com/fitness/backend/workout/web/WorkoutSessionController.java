@@ -37,9 +37,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
- * 운동 기록. 명세 6.2~6.13.
+ * 운동 기록.
  *
- * <p>한 기록이 사용자의 하루다(LOG-39). 시작·종료가 없다 — 그날 기록을 열고 세트를 체크하면 끝이다.
+ * <p>한 기록이 사용자의 하루다. 시작·종료가 없다 — 그날 기록을 열고 세트를 체크하면 끝이다.
  *
  * <p>전부 인증이 필요하다 — 기록은 사용자의 것이고, 조회 경로도 {@code userId}로
  * 한정해 남의 기록이 존재하는지조차 드러나지 않게 한다.
@@ -48,7 +48,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RequestMapping("/workout-sessions")
 public class WorkoutSessionController {
 
-    /** 명세 6.6 — from·to를 생략했을 때의 조회 범위 */
+    /** from·to를 생략했을 때의 조회 범위 */
     private static final int DEFAULT_HISTORY_DAYS = 30;
 
     private final WorkoutService workoutService;
@@ -57,7 +57,7 @@ public class WorkoutSessionController {
         this.workoutService = workoutService;
     }
 
-    /** 그날 기록 열기(명세 6.2, LOG-39). */
+    /** 그날 기록 열기. */
     @Operation(summary = "그날 기록 열기")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "그날 첫 기록을 만듦 — 세트는 완료 체크할 때 저장된다"),
@@ -73,7 +73,7 @@ public class WorkoutSessionController {
     }
 
     /**
-     * 세트 저장(명세 6.4).
+     * 세트 저장.
      *
      * <p>새로 저장하면 {@code 201}, 같은 {@code clientSetId}로 이미 있던 것이면 {@code 200}이다.
      */
@@ -95,7 +95,7 @@ public class WorkoutSessionController {
     }
 
     /**
-     * 히스토리 목록(명세 6.6). 세트는 담지 않는 요약이다.
+     * 히스토리 목록. 세트는 담지 않는 요약이다.
      *
      * <p>{@code from}·{@code to}를 생략하면 최근 30일이다. 전체를 훑는 것이 기본이 되면
      * 기록이 쌓일수록 느려지고, 화면도 기본 진입에서 그만큼을 보여주지 않는다.
@@ -118,7 +118,7 @@ public class WorkoutSessionController {
                 workoutService.history(principal.userId(), fromDate, toDate, exerciseId, pageable));
     }
 
-    /** 캘린더 월별 요약(명세 6.8). */
+    /** 캘린더 월별 요약. */
     @Operation(summary = "월별 기록 요약")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "운동한 날짜만. 달력 화면의 데이터")
@@ -131,7 +131,7 @@ public class WorkoutSessionController {
         return workoutService.calendar(principal.userId(), year, month);
     }
 
-    /** 하루 기록 상세(명세 6.5). */
+    /** 하루 기록 상세. */
     @Operation(summary = "하루 기록 상세")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "종목별로 묶고 수행 순서대로 준다"),
@@ -144,7 +144,7 @@ public class WorkoutSessionController {
         return workoutService.getSession(principal.userId(), sessionId);
     }
 
-    /** 하루 기록 수정(명세 6.9). 메모·날짜·시간 보정. */
+    /** 하루 기록 수정. 메모·날짜·시간 보정. */
     @Operation(summary = "하루 기록 수정 (메모·날짜·시간 보정)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "수정된 기록"),
@@ -159,7 +159,7 @@ public class WorkoutSessionController {
         return workoutService.updateSession(principal.userId(), sessionId, request);
     }
 
-    /** 하루 기록 삭제(명세 6.10). 세트도 함께 지워진다. */
+    /** 하루 기록 삭제. 세트도 함께 지워진다. */
     @Operation(summary = "하루 기록 삭제")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "기록과 세트가 함께 삭제됨"),
@@ -173,7 +173,7 @@ public class WorkoutSessionController {
         return ResponseEntity.noContent().build();
     }
 
-    /** 세트 수정(명세 6.11). */
+    /** 세트 수정. */
     @Operation(summary = "세트 값 수정")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "수정된 세트 — 측정 유형이 쓰지 않는 값은 무시한다"),
@@ -188,7 +188,7 @@ public class WorkoutSessionController {
         return workoutService.updateSet(principal.userId(), sessionId, setId, request);
     }
 
-    /** 세트 삭제(명세 6.12). */
+    /** 세트 삭제. */
     @Operation(summary = "세트 하나 삭제")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "삭제됨 — 마지막 세트를 지워도 기록은 남는다"),
@@ -204,7 +204,7 @@ public class WorkoutSessionController {
     }
 
     /**
-     * 종목 단위 삭제(LOG-22). 그 종목의 세트를 한 번에 지운다.
+     * 종목 단위 삭제. 그 종목의 세트를 한 번에 지운다.
      *
      * <p>세트를 하나씩 지우는 것과 결과는 같지만, 요청이 한 번이라 중간에 끊겨
      * 일부만 지워지는 상태가 생기지 않는다.

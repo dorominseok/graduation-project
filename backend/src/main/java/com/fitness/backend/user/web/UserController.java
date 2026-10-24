@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-/** 프로필 API. 명세 4.5~4.7. */
+/** 프로필 API. */
 @ApiV1Controller
 @RequestMapping("/users/me")
 public class UserController {
@@ -51,10 +51,10 @@ public class UserController {
     }
 
     /**
-     * 비밀번호 변경(명세 4.8).
+     * 비밀번호 변경.
      *
      * <p>성공하면 리프레시 토큰이 전부 폐기되므로 쿠키도 함께 만료시킨다 — 죽은
-     * 쿠키를 남겨두면 클라이언트가 그걸로 재발급을 시도하고 실패만 반복한다(4.3).
+     * 쿠키를 남겨두면 클라이언트가 그걸로 재발급을 시도하고 실패만 반복한다.
      */
     @Operation(summary = "비밀번호 변경")
     @ApiResponses({

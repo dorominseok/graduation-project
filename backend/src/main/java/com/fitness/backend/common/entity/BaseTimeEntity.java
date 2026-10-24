@@ -9,7 +9,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 /**
  * 생성·수정 시각을 함께 갖는 엔티티의 공통 상위 타입.
  *
- * <p>V1의 {@code users} / {@code workout_sessions}가 여기에 해당한다.
+ * <p>{@code users} / {@code workout_sessions}가 여기에 해당한다.
  *
  * <p><b>이 클래스를 두는 이유</b>: 두 테이블의 {@code updated_at}은
  * {@code DEFAULT now()}만 갖고 있어 <b>갱신 트리거가 없다.</b> 엔티티마다

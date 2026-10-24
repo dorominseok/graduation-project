@@ -14,7 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 프로필 조회·수정·탈퇴. 명세 4.5~4.7. */
+/** 프로필 조회·수정·탈퇴. */
 @Service
 @Transactional
 public class UserService {
@@ -59,14 +59,14 @@ public class UserService {
 
     /**
      * 회원 탈퇴. {@code users} 행을 지우면 FK {@code ON DELETE CASCADE}로
-     * 리프레시 토큰·즐겨찾기·세션·세트가 함께 지워진다(명세 4.7).
+     * 리프레시 토큰·즐겨찾기·세션·세트가 함께 지워진다.
      *
      * <p>소프트 삭제를 쓰지 않는다 — 탈퇴의 목적이 개인정보를 남기지 않는 것이다.
      *
-     * <p>본인 확인은 비밀번호나 구글 재로그인 중 하나로 받는다(LOG-37). 둘 다 가진 계정은
+     * <p>본인 확인은 비밀번호나 구글 재로그인 중 하나로 받는다. 둘 다 가진 계정은
      * 어느 쪽이든 된다 — 구글을 묶은 뒤 비밀번호를 잊은 사람도 탈퇴할 수 있어야 한다.
      *
-     * <p>방장인 그룹은 지우기 전에 다음 멤버에게 넘긴다(LOG-38). 그룹 멤버십과 응원은
+     * <p>방장인 그룹은 지우기 전에 다음 멤버에게 넘긴다. 그룹 멤버십과 응원은
      * 연쇄 삭제로 함께 지워진다.
      */
     public void delete(Long userId, String rawPassword, String googleCredential) {
@@ -91,14 +91,14 @@ public class UserService {
     }
 
     /**
-     * 비밀번호 변경(명세 4.8).
+     * 비밀번호 변경.
      *
      * <p><b>변경에 성공하면 그 사용자의 리프레시 토큰을 전부 폐기한다.</b> 비밀번호를
      * 바꾸는 동기 중 하나가 "계정이 털린 것 같다"인데, 기존 세션이 살아 있으면 목적을
      * 이루지 못한다. 바꾼 본인도 다시 로그인한다.
      *
      * <p>액세스 토큰은 남은 만료 시간(최대 30분) 동안 유효하다 — 로그아웃과 같은
-     * 한계이며 같은 이유로 감수한다(명세 2.3).
+     * 한계이며 같은 이유로 감수한다.
      */
     public void changePassword(Long userId, String currentPassword, String newPassword) {
         User user = get(userId);

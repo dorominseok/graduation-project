@@ -23,11 +23,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
- * 운동 종목 조회. 명세 5.2~5.3.
+ * 운동 종목 조회.
  *
- * <p><b>인증 없이도 열려 있다</b>(부록 B). 다만 토큰이 있으면 {@code isFavorite}를
+ * <p><b>인증 없이도 열려 있다</b>. 다만 토큰이 있으면 {@code isFavorite}를
  * 채워 내려준다 — 같은 엔드포인트가 두 가지로 동작하는 것이고, 이것이 JWT 필터가
- * "토큰 없음"을 실패로 취급하면 안 되는 이유다(명세 1.3).
+ * "토큰 없음"을 실패로 취급하면 안 되는 이유다.
  */
 @ApiV1Controller
 @RequestMapping("/exercises")
@@ -64,7 +64,7 @@ public class ExerciseController {
     }
 
     /**
-     * 부위 그리드(LOG-24). 종목 선택 1단계.
+     * 부위 그리드. 종목 선택 1단계.
      *
      * <p>109종을 한 목록에 늘어놓으면 검색 말고는 찾을 방법이 없어, 부위에서
      * 계열로, 계열에서 변형으로 좁혀 들어가는 3단 구조를 쓴다.
@@ -78,7 +78,7 @@ public class ExerciseController {
         return exerciseService.categories();
     }
 
-    /** 한 분류의 계열 목록(LOG-24). 종목 선택 2단계. */
+    /** 한 분류의 계열 목록. 종목 선택 2단계. */
     @Operation(summary = "한 분류의 동작 목록")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "동작 목록. 종목 선택 2단계"),

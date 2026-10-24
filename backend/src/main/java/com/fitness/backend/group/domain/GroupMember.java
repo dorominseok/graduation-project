@@ -12,7 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 그룹 멤버십. {@code friend_group_members} (V8).
+ * 그룹 멤버십. {@code friend_group_members}.
  *
  * <p>{@code joinedAt}은 감사(audit) 값이 아니라 <b>방장을 넘길 순서</b>라는 도메인 값이라
  * 공통 상위 타입의 {@code created_at}을 쓰지 않고 서비스가 시계로 채운다.

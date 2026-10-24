@@ -16,7 +16,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Gemini {@code generateContent} 어댑터. LLM 실험기록 2.5·6.3.
+ * Gemini {@code generateContent} 어댑터.
  *
  * <p>키는 헤더({@code x-goog-api-key})로만 보낸다. URL·로그·예외 메시지에 넣지 않는다.
  * thinking이 없는 {@code gemini-3.5-flash-lite} 기준이라 {@code thinkingConfig}를 보내지 않는다.

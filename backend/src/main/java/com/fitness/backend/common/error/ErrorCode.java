@@ -3,7 +3,7 @@ package com.fitness.backend.common.error;
 import org.springframework.http.HttpStatus;
 
 /**
- * 애플리케이션 오류 코드. API 명세서 1.5의 표를 그대로 옮긴 것이다.
+ * 애플리케이션 오류 코드.
  *
  * <p>클라이언트의 분기는 HTTP 상태가 아니라 이 {@code code} 값으로 한다. 같은 상태에
  * 여러 사유가 있기 때문이다 — 예컨대 {@code 401}만으로는 "헤더가 없다"와 "토큰이

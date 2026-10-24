@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
- * 통계. 명세 7장.
+ * 통계.
  *
  * <p>추정값은 전부 서버가 낸다. 화면이 Epley 공식을 들고 있으면 공식을 바꿀 때
  * 배포된 앱마다 다른 1RM을 그리게 되고, 어느 쪽이 맞는지 알 수 없다.

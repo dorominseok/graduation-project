@@ -4,7 +4,7 @@ import java.security.SecureRandom;
 import java.util.Locale;
 
 /**
- * 그룹 초대코드(LOG-38).
+ * 그룹 초대코드.
  *
  * <p>대문자·숫자 6자리이고, 손으로 옮겨 적을 때 헷갈리는 글자(0·O, 1·I·L)를 뺐다.
  * 31자 6자리면 약 8.9억 가지라 지인 그룹 규모에서 맞혀 들어오기는 어렵다.

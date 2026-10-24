@@ -12,7 +12,7 @@ import javax.crypto.SecretKey;
 import org.springframework.stereotype.Component;
 
 /**
- * 액세스 토큰 발급·검증. API 명세서 2.3.
+ * 액세스 토큰 발급·검증.
  *
  * <p>클레임은 {@code sub}(userId) / {@code email} / {@code iat} / {@code exp}만 담는다.
  * 서버는 매 요청에서 서명과 만료만 확인하고 <b>DB를 조회하지 않는다</b> — 그것이
@@ -46,7 +46,7 @@ public class JwtProvider {
                 .compact();
     }
 
-    /** 응답의 {@code expiresIn}(초). 명세 4.1. */
+    /** 응답의 {@code expiresIn}(초). */
     public long accessTokenTtlSeconds() {
         return accessTokenTtl.toSeconds();
     }
@@ -56,7 +56,7 @@ public class JwtProvider {
      *
      * <p>만료와 그 밖의 실패를 구분해 던지는 이유는 클라이언트의 대응이 다르기
      * 때문이다 — {@code TOKEN_EXPIRED}면 {@code /auth/refresh}를 시도하고,
-     * {@code TOKEN_INVALID}면 로그인 화면으로 가야 한다(명세 1.5).
+     * {@code TOKEN_INVALID}면 로그인 화면으로 가야 한다.
      *
      * @throws JwtTokenExpiredException 만료된 토큰
      * @throws JwtTokenInvalidException 서명 불일치·형식 오류 등

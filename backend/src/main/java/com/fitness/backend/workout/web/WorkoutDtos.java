@@ -15,14 +15,14 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
-/** 운동 기록 API의 요청·응답. 명세 6.2~6.7. */
+/** 운동 기록 API의 요청·응답. */
 public final class WorkoutDtos {
 
     private WorkoutDtos() {
     }
 
     /**
-     * 하루 기록 열기(명세 6.2, LOG-39).
+     * 하루 기록 열기.
      *
      * <p>{@code performedOn}을 생략하면 오늘이다. 단 어젯밤 운동이 자정을 넘겨 이어지는 중이면
      * 어제 기록을 연다 — 서버가 정한다.
@@ -35,7 +35,7 @@ public final class WorkoutDtos {
     }
 
     /**
-     * 세트 저장 시각으로 계산한 하루의 시각과 시간. 저장하지 않고 읽을 때 계산한다(LOG-39).
+     * 세트 저장 시각으로 계산한 하루의 시각과 시간. 저장하지 않고 읽을 때 계산한다.
      *
      * @param startedAt 첫 세트 저장 시각. 세트가 없으면 null
      * @param endedAt   마지막 세트 저장 시각. 세트가 없으면 null
@@ -54,7 +54,7 @@ public final class WorkoutDtos {
     }
 
     /**
-     * 세트 저장(명세 6.4).
+     * 세트 저장.
      *
      * <p>{@code weightKg}·{@code reps}·{@code durationSec} 중 무엇이 필수인지는
      * 종목의 {@code measureType}에 달려 있어 애노테이션으로 못 박지 않는다.
@@ -75,7 +75,7 @@ public final class WorkoutDtos {
         }
     }
 
-    /** 세트 한 건. 명세 6.4의 응답 */
+    /** 세트 한 건. 세트 저장의 응답 */
     public record SetResponse(Long id,
                               Long sessionId,
                               UUID clientSetId,
@@ -95,7 +95,7 @@ public final class WorkoutDtos {
         }
     }
 
-    /** 세션 상세 안에서 종목별로 묶은 세트. 명세 6.5 */
+    /** 하루 기록 상세 안에서 종목별로 묶은 세트 */
     public record ExerciseGroup(Long exerciseId,
                                 String exerciseName,
                                 MeasureType measureType,
@@ -119,7 +119,7 @@ public final class WorkoutDtos {
     }
 
     /**
-     * 하루 기록 상세. 명세 6.5.
+     * 하루 기록 상세.
      *
      * <p>{@code exercises}는 <b>수행 순서</b>로 정렬한다 — 각 종목의 가장 이른
      * 저장 시각 오름차순이다. 화면이 운동한 차례대로 그리기 때문이다.
@@ -148,7 +148,7 @@ public final class WorkoutDtos {
     }
 
     /**
-     * 세트 저장 결과. {@code created}가 {@code 201}과 {@code 200}을 가른다(명세 6.4).
+     * 세트 저장 결과. {@code created}가 {@code 201}과 {@code 200}을 가른다.
      *
      * <p>같은 {@code clientSetId}로 이미 저장돼 있으면 {@code 200}이라, 클라이언트가
      * "새로 저장됨 / 이미 있던 것"을 구분할 수 있다.
@@ -157,12 +157,12 @@ public final class WorkoutDtos {
     }
 
     /**
-     * 세션 수정(명세 6.9). 보내지 않은 항목은 건드리지 않는다.
+     * 세션 수정. 보내지 않은 항목은 건드리지 않는다.
      *
      * <p><b>값을 비우는 방법</b>: 메모는 빈 문자열, 시간 보정은 {@code 0}을 보낸다.
      * JSON에서 "필드가 없음"과 "null로 보냄"은 Jackson이 똑같이 {@code null}로 주기
      * 때문에, null을 "지우기"로 쓰면 날짜만 고치려는 요청에 메모가 날아간다.
-     * 두 필드 모두 빈 문자열·0이 실제 값으로 쓰일 일이 없어 비움 신호로 삼았다(LOG-23).
+     * 두 필드 모두 빈 문자열·0이 실제 값으로 쓰일 일이 없어 비움 신호로 삼았다.
      */
     public record UpdateSessionRequest(
             @Size(max = 2000, message = "2000자 이하여야 합니다.") String memo,
@@ -171,7 +171,7 @@ public final class WorkoutDtos {
     }
 
     /**
-     * 세트 수정(명세 6.11).
+     * 세트 수정.
      *
      * <p>여기는 {@link Optional}을 쓰지 않는다 — 중량·횟수·시간은 측정 유형이 요구하면
      * 반드시 있어야 하는 값이라 "지운다"는 선택지가 없다. {@code null}은 그대로
@@ -186,12 +186,12 @@ public final class WorkoutDtos {
             Boolean isWarmup) {
     }
 
-    /** 히스토리 목록의 종목 참조. "최근 사용" 탭과 종목 상세 이동이 {@code id}를 쓴다(명세 6.6) */
+    /** 히스토리 목록의 종목 참조. "최근 사용" 탭과 종목 상세 이동이 {@code id}를 쓴다 */
     public record ExerciseRef(Long id, String nameKo) {
     }
 
     /**
-     * 히스토리 한 건(명세 6.6). 세트는 담지 않는 요약이다.
+     * 히스토리 한 건. 세트는 담지 않는 요약이다.
      *
      * <p>{@code exercises}를 이름 배열이 아니라 {@code id}를 가진 객체로 내리는 것은,
      * 목록에서 종목 상세나 프리필로 이어가려면 ID가 있어야 하기 때문이다.
@@ -205,15 +205,15 @@ public final class WorkoutDtos {
                                  List<ExerciseRef> exercises) {
     }
 
-    /** 캘린더의 하루(명세 6.8). 운동한 날만 담는다. 하루에 기록이 하나라 날짜면 충분하다 */
+    /** 캘린더의 하루. 운동한 날만 담는다. 하루에 기록이 하나라 날짜면 충분하다 */
     public record CalendarDay(LocalDate date) {
     }
 
     /**
-     * 직전 수행 기록(명세 5.5). 종목을 고르는 순간 세트 행을 채우는 데 쓴다.
+     * 직전 수행 기록. 종목을 고르는 순간 세트 행을 채우는 데 쓴다.
      *
      * <p>세트에 {@code id}를 담지 않는다 — 새 기록에 채워 넣을 참조값이지 편집 대상
-     * 행이 아니다. 프리필된 행은 완료 체크 시점에 새로 저장된다(LOG-05).
+     * 행이 아니다. 프리필된 행은 완료 체크 시점에 새로 저장된다.
      */
     public record LastPerformanceResponse(Long exerciseId,
                                           String exerciseName,
@@ -236,7 +236,7 @@ public final class WorkoutDtos {
         }
     }
 
-    /** 캘린더 월별 요약(명세 6.8) */
+    /** 캘린더 월별 요약 */
     public record CalendarResponse(int year, int month, List<CalendarDay> days) {
     }
 }

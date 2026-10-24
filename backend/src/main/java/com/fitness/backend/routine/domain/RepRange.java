@@ -3,7 +3,7 @@ package com.fitness.backend.routine.domain;
 import com.fitness.backend.exercise.domain.MeasureType;
 
 /**
- * 루틴에 표시하는 반복 범위. 「루틴생성_로직_설계서」 9.1.
+ * 루틴에 표시하는 반복 범위.
  *
  * <p>훈련 목표별로 나누지 않고 측정 유형으로 고정한다. 강도(중량)는 처방하지 않는다 —
  * 해 본 종목은 기록 화면이 지난 기록으로 채우고, 처음인 종목은 빈 칸에서 시작한다.

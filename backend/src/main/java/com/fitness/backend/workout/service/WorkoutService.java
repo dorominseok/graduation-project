@@ -49,11 +49,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 운동 기록. 명세 6.2~6.13, LOG-39.
+ * 운동 기록.
  *
  * <p>기록 단위는 <b>사용자의 하루</b>다. 기본 흐름은 <b>그날 기록 열기 → 세트 저장(반복)</b>이고
  * 종료가 없다. 프론트는 기록 화면에 들어올 때 그날 기록을 열고, 완료 체크한 세트만 보낸다 —
- * 계획 행은 서버로 오지 않는다(LOG-05). 세트 없이 나가면 빈 기록이 남지만 운동한 날로 세지 않는다.
+ * 계획 행은 서버로 오지 않는다. 세트 없이 나가면 빈 기록이 남지만 운동한 날로 세지 않는다.
  *
  * <p>시작·끝 시각과 운동 시간은 저장하지 않고 세트 저장 시각으로 읽을 때 계산한다({@link DayTimes}).
  */
@@ -80,7 +80,7 @@ public class WorkoutService {
     }
 
     /**
-     * 그날 기록 열기(명세 6.2). 없으면 만들고, 있으면 그 기록을 준다.
+     * 그날 기록 열기. 없으면 만들고, 있으면 그 기록을 준다.
      *
      * <p>날짜를 생략하면 오늘이다. 단 어제 기록의 마지막 세트가 구간 간격(30분) 안이면 어젯밤
      * 운동이 자정을 넘겨 이어지는 중이므로 어제 기록을 연다.
@@ -92,7 +92,7 @@ public class WorkoutService {
         LocalDate today = LocalDate.now(clock);
         LocalDate performedOn = request.performedOn() != null ? request.performedOn() : dayToContinue(userId, today);
         if (performedOn.isAfter(today)) {
-            // 미리 짜두는 운동은 "계획"이고 이 테이블은 "기록"만 담는다(LOG-05).
+            // 미리 짜두는 운동은 "계획"이고 이 테이블은 "기록"만 담는다.
             throw new ApiException(ErrorCode.INVALID_DATE_RANGE, "미래 날짜로는 기록할 수 없습니다.");
         }
 
@@ -117,7 +117,7 @@ public class WorkoutService {
     }
 
     /**
-     * 세트 저장(명세 6.4).
+     * 세트 저장.
      *
      * <p>같은 {@code clientSetId}가 다시 오면 저장하지 않고 기존 세트를 그대로 돌려준다.
      * 본문이 달라도 기존 값을 유지한다 — 이 키는 "같은 완료 체크 한 번"을 뜻하므로
@@ -162,7 +162,7 @@ public class WorkoutService {
     }
 
     /**
-     * 하루 기록(LOG-38). 그룹 멤버의 기록을 날짜로 열 때 쓴다. 운동하지 않은 날이면 빈 값이다.
+     * 하루 기록. 그룹 멤버의 기록을 날짜로 열 때 쓴다. 운동하지 않은 날이면 빈 값이다.
      *
      * <p>권한은 보지 않는다 — 부르는 쪽(그룹)이 같은 그룹 멤버인지 먼저 확인한다.
      */
@@ -172,14 +172,14 @@ public class WorkoutService {
                 .filter(day -> !day.exercises().isEmpty());
     }
 
-    /** 세션 상세(명세 6.5). */
+    /** 세션 상세. */
     public SessionResponse getSession(Long userId, Long sessionId) {
         WorkoutSession session = mustFindSession(userId, sessionId);
         return toResponse(session, setRepository.findBySessionIdOrderByRecordedAtAsc(sessionId));
     }
 
     /**
-     * 히스토리 목록(명세 6.6). 운동한 날만 준다.
+     * 히스토리 목록. 운동한 날만 준다.
      *
      * <p>날마다 세트를 조회하면 페이지 크기만큼 쿼리가 나간다. 페이지의 기록 ID를
      * 모아 한 번에 읽고 메모리에서 묶는다.
@@ -202,7 +202,7 @@ public class WorkoutService {
     }
 
     /**
-     * 직전 수행 기록(명세 5.5).
+     * 직전 수행 기록.
      *
      * <p>기록이 없으면 빈 값이고 컨트롤러가 204로 바꾼다 — 오류가 아니라
      * "처음 하는 종목"이라는 정상 상태다.
@@ -227,7 +227,7 @@ public class WorkoutService {
                 exercise.getMeasureType(), session.getId(), session.getPerformedOn(), sets));
     }
 
-    /** 캘린더 월별 요약(명세 6.8). 운동한 날만 담는다. */
+    /** 캘린더 월별 요약. 운동한 날만 담는다. */
     public CalendarResponse calendar(Long userId, int year, int month) {
         YearMonth yearMonth = YearMonth.of(year, month);
         List<CalendarDay> days = sessionRepository.findRecorded(
@@ -255,13 +255,13 @@ public class WorkoutService {
                 session -> times(session, bySession.getOrDefault(session.getId(), List.of()))));
     }
 
-    /** 하루 기록 수정(명세 6.9). 보내지 않은 항목은 건드리지 않는다. */
+    /** 하루 기록 수정. 보내지 않은 항목은 건드리지 않는다. */
     @Transactional
     public SessionResponse updateSession(Long userId, Long sessionId, UpdateSessionRequest request) {
         WorkoutSession session = mustFindSession(userId, sessionId);
 
         if (request.memo() != null) {
-            // 빈 문자열이 "메모 지우기"다. 아래 시간 보정의 0과 같은 규칙이다(LOG-23).
+            // 빈 문자열이 "메모 지우기"다. 아래 시간 보정의 0과 같은 규칙이다.
             session.changeMemo(request.memo().isBlank() ? null : request.memo());
         }
 
@@ -286,13 +286,13 @@ public class WorkoutService {
         return toResponse(session, setRepository.findBySessionIdOrderByRecordedAtAsc(sessionId));
     }
 
-    /** 하루 기록 삭제(명세 6.10). 세트는 FK {@code ON DELETE CASCADE}로 함께 지워진다. */
+    /** 하루 기록 삭제. 세트는 FK {@code ON DELETE CASCADE}로 함께 지워진다. */
     @Transactional
     public void deleteSession(Long userId, Long sessionId) {
         sessionRepository.delete(mustFindSession(userId, sessionId));
     }
 
-    /** 세트 수정(명세 6.11). */
+    /** 세트 수정. */
     @Transactional
     public SetResponse updateSet(Long userId, Long sessionId, Long setId, UpdateSetRequest request) {
         mustFindSession(userId, sessionId);
@@ -310,7 +310,7 @@ public class WorkoutService {
     }
 
     /**
-     * 세트 삭제(명세 6.12).
+     * 세트 삭제.
      *
      * <p>마지막 세트를 지워도 기록은 남는다 — 메모가 있을 수 있다. 세트가 없는 날은
      * 목록·캘린더·횟수에 나오지 않는다.
@@ -324,9 +324,9 @@ public class WorkoutService {
     }
 
     /**
-     * 종목 단위 삭제(LOG-22). 그 종목의 세트를 한 번에 지운다.
+     * 종목 단위 삭제. 그 종목의 세트를 한 번에 지운다.
      *
-     * <p>명세 6.12의 세트 삭제만으로도 같은 결과를 낼 수 있지만, 5세트를 지우려면
+     * <p>세트 삭제만으로도 같은 결과를 낼 수 있지만, 5세트를 지우려면
      * 요청이 다섯 번 나가고 중간에 실패하면 일부만 지워진 상태가 남는다.
      * 기록 화면에서 "이 종목 빼기"는 세트 하나를 지우는 것보다 흔한 동작이다.
      */
@@ -374,7 +374,7 @@ public class WorkoutService {
         }
     }
 
-    /** 세트 저장 시각으로 그날의 시작·끝 시각과 운동 시간을 계산한다(LOG-39) */
+    /** 세트 저장 시각으로 그날의 시작·끝 시각과 운동 시간을 계산한다 */
     private DayTimes times(WorkoutSession session, List<WorkoutSet> sets) {
         if (sets.isEmpty()) {
             return new DayTimes(null, null, null);
@@ -393,7 +393,7 @@ public class WorkoutService {
     }
 
     /**
-     * 하루 기록과 세트를 명세 6.5의 형태로 묶는다.
+     * 하루 기록과 세트를 상세 응답의 형태로 묶는다.
      *
      * <p>세트가 저장 시각 오름차순으로 들어오므로 {@link LinkedHashMap}에 쌓으면
      * 종목 순서가 곧 <b>수행 순서</b>가 된다(각 종목의 가장 이른 저장 시각 순).

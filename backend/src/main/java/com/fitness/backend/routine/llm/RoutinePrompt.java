@@ -11,10 +11,10 @@ import java.util.Map;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * 루틴 조합 프롬프트와 출력 스키마. 설계서 5.1·5.2.
+ * 루틴 조합 프롬프트와 출력 스키마.
  *
  * <p>규칙은 프롬프트로, 형식은 스키마로 묶는다. 스키마에 숫자 필드가 하나도 없다 — 실험 ①에서
- * 구조화 출력의 숫자 필드가 지수부를 0 수천 개로 채우는 결함(~7.5%/호출)을 봤다(LLM 실험기록 7.4).
+ * 구조화 출력의 숫자 필드가 지수부를 0 수천 개로 채우는 결함(~7.5%/호출)을 봤다.
  * 종목 id도 문자열 enum으로 받아, 후보 밖 id는 스키마 단계에서 막힌다.
  */
 public final class RoutinePrompt {
@@ -69,7 +69,7 @@ public final class RoutinePrompt {
     }
 
     /**
-     * @param problems 직전 답의 검증 실패. 재요청일 때만 — 무엇을 고칠지 알려 준다(LLM 실험기록 4절)
+     * @param problems 직전 답의 검증 실패. 재요청일 때만 — 무엇을 고칠지 알려 준다
      */
     public static LlmClient.Prompt of(LlmRoutineRequest request, List<Failure> problems, double temperature,
                                       ObjectMapper json) {

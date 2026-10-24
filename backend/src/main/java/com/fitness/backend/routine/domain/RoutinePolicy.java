@@ -3,10 +3,9 @@ package com.fitness.backend.routine.domain;
 import java.math.BigDecimal;
 
 /**
- * 루틴 생성 규칙의 수치. 「루틴생성_로직_설계서」 13장 — 초기값과 근거는 설계서에 있고,
- * 실험(11.5)과 실사용으로 조정한다.
+ * 루틴 생성 규칙의 수치. 초기값이고, 실험과 실사용으로 조정한다.
  *
- * @param targetWeeklySets   부위당 주 목표. 최적 하한(분석 2.2)
+ * @param targetWeeklySets   부위당 주 목표. 최적 하한
  * @param perMuscleMinSets   부위당 한 번에 최소
  * @param perMuscleMaxSets   부위당 한 번에 최대
  * @param fillMaxSets        총량을 채우려고 넣는 최적 부위의 최대 세트

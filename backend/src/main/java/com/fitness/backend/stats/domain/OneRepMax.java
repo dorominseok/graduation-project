@@ -4,14 +4,14 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
- * 추정 1RM 산출. API 명세서 7.1 / 「운동 분석 로직 설계서」 1.3 / LOG-07.
+ * 추정 1RM 산출.
  *
  * <p>사용자에게 1RM을 직접 묻지 않는다. 실제 측정은 부상 위험이 있고 대부분의
  * 사용자가 자신의 1RM을 모르기 때문이다. 대신 [중량 × 횟수] 기록에서 추정한다.
  */
 public final class OneRepMax {
 
-    /** 산출 대상 반복 횟수 상한. 추정 공식은 고반복 구간에서 오차가 커지므로 애초에 계산에 넣지 않는다(LOG-07). */
+    /** 산출 대상 반복 횟수 상한. 추정 공식은 고반복 구간에서 오차가 커지므로 애초에 계산에 넣지 않는다. */
     public static final int DEFAULT_MAX_REPS = 12;
 
     private static final BigDecimal THIRTY = BigDecimal.valueOf(30);
@@ -49,9 +49,9 @@ public final class OneRepMax {
     }
 
     /**
-     * 세트별 중량이 그날 추정 1RM의 몇 %인지(명세 7.2). 반올림한 정수.
+     * 세트별 중량이 그날 추정 1RM의 몇 %인지. 반올림한 정수.
      *
-     * <p>워밍업 세트도 표시 대상이다 — 볼륨 집계에서는 빼지만(8.2) 그날의 강도
+     * <p>워밍업 세트도 표시 대상이다 — 볼륨 집계에서는 빼지만 그날의 강도
      * 스냅샷에는 포함한다.
      */
     public static Integer intensityPercent(BigDecimal weightKg, BigDecimal estimatedOneRm) {

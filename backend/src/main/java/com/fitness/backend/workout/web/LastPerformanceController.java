@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 /**
- * 종목 프리필(명세 5.5).
+ * 종목 프리필.
  *
  * <p>경로는 종목 아래지만 데이터는 운동 기록에서 나오므로 {@code workout} 패키지에 둔다.
  * {@code exercise}가 {@code workout}을 의존하면 방향이 뒤집혀 순환이 된다.

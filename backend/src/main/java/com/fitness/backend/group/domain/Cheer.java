@@ -12,7 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 응원. {@code cheers} (V8). 그룹 멤버의 운동 한 번에 한 사람이 한 번 누른다.
+ * 응원. {@code cheers}. 그룹 멤버의 운동 한 번에 한 사람이 한 번 누른다.
  *
  * <p>그룹이 아니라 세션에 붙는다 — 같은 사람과 그룹 두 개를 함께해도 그 사람의
  * 운동은 하나이고, 어느 그룹에서 눌렀든 같은 응원이다.

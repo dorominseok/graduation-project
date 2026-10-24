@@ -11,11 +11,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * 분석·통계 계산의 설정값. API 명세서 8.5.
+ * 분석·통계 계산의 설정값.
  *
- * <p>명세가 "모든 값은 {@code app.analysis.*} 프로퍼티로 노출해 코드 수정 없이
- * 조정 가능하게 한다"고 정했다. 판정 로직은 순수 함수로 두고 이 클래스가 값 객체를
- * 만들어 넘기는 구조라, 계산 규칙과 조정 가능한 수치가 분리된다.
+ * <p>판정 로직은 순수 함수로 두고 이 클래스가 값 객체를 만들어 넘긴다. 계산 규칙과 조정할 수치가
+ * 나뉘어, 수치는 코드를 고치지 않고 설정({@code app.analysis.*})으로 바꾼다.
  *
  * <p>{@code @Validated}를 붙여 잘못된 설정이면 <b>기동 시점에</b> 실패하게 한다.
  * 임계값이 어긋난 채로 뜨면 판정이 조용히 틀리고, 그 사실은 화면에 드러나지 않는다.
@@ -24,28 +23,28 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "app.analysis")
 public record AnalysisProperties(
 
-        /** 판정 집계 기간(주). 기준일 포함 {@code weeks × 7}일을 집계한다(8.2). */
+        /** 판정 집계 기간(주). 기준일 포함 {@code weeks × 7}일을 집계한다. */
         @Min(1) int weeks,
 
         /** 부족 판정 임계 — 주당 세트. */
         @NotNull Volume volume,
 
-        /** 균형 판정 비율 임계. 큰 쪽 ÷ 작은 쪽이 이 값을 초과하면 불균형(4.2). */
+        /** 균형 판정 비율 임계. 큰 쪽 ÷ 작은 쪽이 이 값을 초과하면 불균형. */
         @NotNull @Positive BigDecimal balanceRatioThreshold,
 
-        /** 최근 {@code weeks}주 운동한 날이 이 값 미만이면 신뢰도 낮음(기록 방식 5.5). */
+        /** 최근 {@code weeks}주 운동한 날이 이 값 미만이면 신뢰도 낮음. */
         @Min(1) int confidenceSessionThreshold,
 
-        /** 추정 1RM 산출 대상 반복 횟수 상한(LOG-07). */
+        /** 추정 1RM 산출 대상 반복 횟수 상한. */
         @Min(1) int oneRmMaxReps,
 
         /**
-         * 주당 평균 분모의 최솟값(일). 기록을 시작한 지 이보다 짧아도 이 일수로 나눈다(LOG-31).
+         * 주당 평균 분모의 최솟값(일). 기록을 시작한 지 이보다 짧아도 이 일수로 나눈다.
          * 첫날 5세트를 하루로 나누면 "주 35세트 · 과다"가 되기 때문이다.
          */
         @Min(1) int minBasisDays,
 
-        /** 운동 시간 산출 규칙(기록 방식 4.2, LOG-39). */
+        /** 운동 시간 산출 규칙. */
         @NotNull Duration boutGap,
         @NotNull Duration lastSetBonus,
         @NotNull Duration dayCap) {
@@ -70,7 +69,7 @@ public record AnalysisProperties(
         return new DurationPolicy(boutGap, lastSetBonus, dayCap);
     }
 
-    /** 집계 구간의 시작일 오프셋. 기준일을 포함하므로 하루를 뺀다(8.2, LOG-13). */
+    /** 집계 구간의 시작일 오프셋. 기준일을 포함하므로 하루를 뺀다. */
     public int periodDaysBack() {
         return weeks * 7 - 1;
     }

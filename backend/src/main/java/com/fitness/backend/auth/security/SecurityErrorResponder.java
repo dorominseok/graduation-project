@@ -12,7 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
 /**
- * 시큐리티 필터 체인에서 발생한 오류를 명세 1.5의 구조로 직접 쓴다.
+ * 시큐리티 필터 체인에서 발생한 오류를 공통 오류 구조({@code ErrorResponse})로 직접 쓴다.
  *
  * <p>필터는 {@code @RestControllerAdvice}보다 앞단이라 {@code GlobalExceptionHandler}가
  * 잡지 못한다. 그대로 두면 인증 실패만 스프링 기본 형식으로 나가 {@code code}가 없고,

@@ -32,10 +32,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 추정 1RM 추이와 세션 강도 스냅샷. 명세 7.1 · 7.2.
+ * 추정 1RM 추이와 세션 강도 스냅샷.
  *
  * <p>사용자에게 1RM을 직접 묻지 않는다 — 실측은 부상 위험이 있고 대부분 자기 1RM을
- * 모른다. 대신 [중량 × 횟수]에서 Epley 공식으로 추정한다(LOG-07). 공식과 {@code reps}
+ * 모른다. 대신 [중량 × 횟수]에서 Epley 공식으로 추정한다. 공식과 {@code reps}
  * 상한은 {@link OneRepMax}에 있고 여기서는 조회와 조립만 한다.
  */
 @Service
@@ -43,10 +43,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class StatsService {
 
     /**
-     * {@code from}·{@code to}를 생략했을 때의 기본 구간(명세 7.1 "생략 시 최근 12주").
+     * {@code from}·{@code to}를 생략했을 때의 기본 구간(최근 12주).
      *
-     * <p>8.5의 설정값 표에 없어 프로퍼티로 빼지 않았다. 판정에 쓰이는 수치가 아니라
-     * 차트의 기본 표시 범위라 조정 근거가 문헌이 아닌 화면이다.
+     * <p>판정에 쓰는 수치가 아니라 차트의 기본 표시 범위라 설정으로 빼지 않았다.
      */
     private static final int DEFAULT_TREND_WEEKS = 12;
 
@@ -71,7 +70,7 @@ public class StatsService {
         this.clock = clock;
     }
 
-    /** 명세 7.1. 그날 세트들의 추정값 중 최댓값 하나를 점으로 찍는다. */
+    /** 1RM 추이. 그날 세트들의 추정값 중 최댓값 하나를 점으로 찍는다. */
     public OneRmTrendResponse oneRmTrend(Long userId, Long exerciseId, LocalDate fromParam, LocalDate toParam) {
         Exercise exercise = exerciseRepository.findById(exerciseId)
                 .orElseThrow(() -> ApiException.notFound("종목"));
@@ -107,7 +106,7 @@ public class StatsService {
                 from, to, List.copyOf(best.values()));
     }
 
-    /** 명세 7.2. 날짜 사이를 잇지 않는 그날 하루의 스냅샷이다. */
+    /** 세트별 강도. 날짜 사이를 잇지 않는 그날 하루의 스냅샷이다. */
     public SessionIntensityResponse sessionIntensity(Long userId, Long sessionId) {
         WorkoutSession session = sessionRepository.findByIdAndUserId(sessionId, userId)
                 .orElseThrow(() -> ApiException.notFound("운동 기록"));
@@ -145,7 +144,7 @@ public class StatsService {
     /**
      * 그날 그 종목의 추정 1RM. 7.1과 같은 규칙이다.
      *
-     * <p>워밍업도 계산에 넣는다(명세 7.2) — 중량이 낮아 최댓값이 될 일이 거의 없고,
+     * <p>워밍업도 계산에 넣는다 — 중량이 낮아 최댓값이 될 일이 거의 없고,
      * 빼면 워밍업으로 잘못 체크된 본세트가 통째로 빠져 강도가 100%를 넘게 나온다.
      */
     private BigDecimal estimateOneRm(Exercise exercise, List<WorkoutSet> sets) {

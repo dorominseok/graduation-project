@@ -15,12 +15,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * {@code Authorization: Bearer} 헤더를 검사해 인증 정보를 채운다. 명세 1.3.
+ * {@code Authorization: Bearer} 헤더를 검사해 인증 정보를 채운다.
  *
  * <p><b>헤더가 없으면 아무것도 하지 않고 통과시킨다.</b> 그 요청이 인증을 요구하는지는
- * {@link SecurityConfig}의 경로 규칙이 판단한다 — 비인증 허용 경로(부록 B)에도 이
+ * {@link SecurityConfig}의 경로 규칙이 판단한다 — 비인증 허용 경로에도 이
  * 필터가 걸리기 때문이다. 예컨대 {@code GET /exercises}는 토큰 없이도 200이어야 하고,
- * 토큰이 있으면 {@code isFavorite}를 채워야 한다(명세 5.2).
+ * 토큰이 있으면 {@code isFavorite}를 채워야 한다.
  *
  * <p>반면 <b>토큰이 있는데 잘못된 경우는 즉시 실패</b>시킨다. 그냥 통과시키면 만료된
  * 토큰으로 보낸 요청이 "비로그인"으로 취급돼, 클라이언트가 재발급 시점을 놓친다.

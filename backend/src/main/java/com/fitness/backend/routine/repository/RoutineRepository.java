@@ -22,7 +22,7 @@ public interface RoutineRepository extends JpaRepository<Routine, Long> {
      *
      * <p>추천 버튼을 두 번 빠르게 눌러도 루틴은 하나다. "있는지 보고 넣기"는 둘 다 "없음"을 보고
      * 넣어 유니크 제약에 걸리고, 그 예외를 잡아도 트랜잭션이 이미 롤백으로 표시돼 500이 된다.
-     * 하루 기록 열기(LOG-39)·응원(LOG-38)과 같은 방식이다.
+     * 하루 기록 열기·응원과 같은 방식이다.
      *
      * @return 새로 만들었으면 1, 이미 있었으면 0
      */

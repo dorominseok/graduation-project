@@ -8,7 +8,7 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * 세트 저장 시각으로부터 하루의 운동 시간을 산출한다. 「운동기록_방식_설계서」 4.2 / LOG-03 / LOG-39.
+ * 세트 저장 시각으로부터 하루의 운동 시간을 산출한다.
  *
  * <pre>
  *   저장 시각을 정렬해, 간격이 boutGap(30분)을 넘는 곳에서 구간을 나눈다

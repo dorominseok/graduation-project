@@ -8,7 +8,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
 /**
- * 리프레시 토큰 쿠키. 명세 2.3 / 4.1.
+ * 리프레시 토큰 쿠키.
  *
  * <pre>
  * Set-Cookie: refreshToken=...; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age=1209600

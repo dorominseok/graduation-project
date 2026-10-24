@@ -3,7 +3,7 @@ package com.fitness.backend.analysis.domain;
 import java.util.List;
 
 /**
- * 균형 판정에서 맞대는 한쪽. API 명세서 8.3 / 「운동 분석 로직 설계서」 4.3.
+ * 균형 판정에서 맞대는 한쪽.
  *
  * <p>구성 부위를 응답에 그대로 실어 보낸다({@code components}). 어느 부위를 더해
  * 이 수치가 나왔는지 화면이 근거로 보여줄 수 있어야 하고, 그래야 "왜 내가 불균형이냐"는

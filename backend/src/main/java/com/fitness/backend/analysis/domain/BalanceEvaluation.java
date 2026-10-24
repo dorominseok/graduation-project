@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
- * 밀기/당기기·상하체 균형 판정 결과. API 명세서 8.3 / 「운동 분석 로직 설계서」 4장.
+ * 밀기/당기기·상하체 균형 판정 결과.
  *
  * @param verdict          판정
  * @param ratio            큰 쪽 ÷ 작은 쪽, 소수 2자리. 작은 쪽이 0이면 {@code null}

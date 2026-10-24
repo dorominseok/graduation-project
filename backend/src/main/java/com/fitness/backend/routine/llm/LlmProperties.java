@@ -9,10 +9,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * 루틴 LLM 설정(`app.llm.*`). 「루틴생성_로직_설계서」 5.3, LLM 실험기록 11절.
+ * 루틴 LLM 설정(`app.llm.*`).
  *
  * <p>기본은 꺼짐이다. 꺼져 있으면 LLM을 부르지 않고 규칙이 고른다({@code LLM_DISABLED}) —
- * 개발·CI와, 키를 넣기 전의 운영이 그렇다. 키는 환경변수로만 받는다(LLM 실험기록 6절).
+ * 개발·CI와, 키를 넣기 전의 운영이 그렇다. 키는 환경변수로만 받는다.
  *
  * @param maxRetries 검증 실패 시 다시 묻는 횟수. 저장 칸(llm_attempts)이 0~3이라 최대 2
  */

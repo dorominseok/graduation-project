@@ -16,10 +16,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 루틴 항목. 「루틴생성_로직_설계서」 10.2 / {@code routine_items} (V10).
+ * 루틴 항목({@code routine_items}).
  *
- * <p>계획이다 — 체크한 세트는 {@code workout_sets}에만 있고 여기에는 오지 않는다(LOG-05).
- * 후보정을 해도 원래 값을 {@code original*}에 남긴다. 수행률의 분모가 원래 계획이고(11.2),
+ * <p>계획이다 — 체크한 세트는 {@code workout_sets}에만 있고 여기에는 오지 않는다.
+ * 후보정을 해도 원래 값을 {@code original*}에 남긴다. 수행률의 분모가 원래 계획이고,
  * 후보정 비율도 여기서 센다.
  */
 @Entity
@@ -126,7 +126,7 @@ public class RoutineItem {
         this.removed = true;
     }
 
-    /** 원래 계획의 세트 — 수행률 분모(설계서 11.2) */
+    /** 원래 계획의 세트 — 수행률 분모 */
     public int originalPlannedSets() {
         return originalSets != null ? originalSets : plannedSets;
     }

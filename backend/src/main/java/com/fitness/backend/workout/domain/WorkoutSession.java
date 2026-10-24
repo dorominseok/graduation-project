@@ -13,14 +13,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 사용자의 하루 운동 기록. 부록 A {@code workout_sessions} (V1, V9 / LOG-39).
+ * 사용자의 하루 운동 기록.
  *
  * <p>하루에 하나다({@code (user_id, performed_on)} 유니크). 시작·종료가 없다 — 체크한 세트는
  * 그 자리에서 저장되고, 마지막으로 체크한 세트가 곧 끝이다. 아침·저녁에 두 번 운동해도 같은
  * 기록에 쌓이고, 운동 시간은 공백에서 구간을 나눠 합한다({@link SessionDuration}).
  *
  * <p>테이블 이름은 {@code workout_sessions}이지만 뜻은 하루 기록이다. 세트와 응원이
- * {@code session_id}로 가리키고 있어 이름을 그대로 두었다(LOG-39).
+ * {@code session_id}로 가리키고 있어 이름을 그대로 두었다.
  *
  * <p>세트를 {@code @OneToMany}로 달지 않고 {@link WorkoutSet}이 {@code sessionId}를
  * 값으로 갖는다. 이 저장소의 다른 엔티티와 같은 방식이며, 세트가 필요한 곳은
@@ -45,18 +45,18 @@ public class WorkoutSession extends BaseTimeEntity {
     @Column(name = "performed_on", nullable = false)
     private LocalDate performedOn;
 
-    /** 그날 루틴. 루틴을 받은 날만 채워진다(V10, 「루틴생성_로직_설계서」 9.3) */
+    /** 그날 루틴. 루틴을 받은 날만 채워진다 */
     @Column(name = "routine_id")
     private Long routineId;
 
-    /** 사용자가 직접 넣은 운동 시간 보정값. 있으면 산출값보다 우선한다 (명세 6.9) */
+    /** 사용자가 직접 넣은 운동 시간 보정값. 있으면 산출값보다 우선한다 */
     @Column(name = "duration_override_sec")
     private Integer durationOverrideSec;
 
     @Column(columnDefinition = "TEXT")
     private String memo;
 
-    /** 그날 루틴을 잇는다. 루틴과 하루 기록은 날짜로 1:1이다(「루틴생성_로직_설계서」 9.3) */
+    /** 그날 루틴을 잇는다. 루틴과 하루 기록은 날짜로 1:1이다 */
     public void linkRoutine(Long routineId) {
         this.routineId = routineId;
     }
@@ -65,7 +65,7 @@ public class WorkoutSession extends BaseTimeEntity {
         this.memo = memo;
     }
 
-    /** 날짜 정정(명세 6.9). 옮길 날짜에 기록이 이미 있는지는 호출 전에 본다 */
+    /** 날짜 정정. 옮길 날짜에 기록이 이미 있는지는 호출 전에 본다 */
     public void changePerformedOn(LocalDate performedOn) {
         this.performedOn = performedOn;
     }

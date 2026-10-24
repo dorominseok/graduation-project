@@ -10,7 +10,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * 부위별 후보 종목. 「루틴생성_로직_설계서」 4.1.
+ * 부위별 후보 종목.
  *
  * <pre>
  *   1. 즐겨찾기
@@ -54,7 +54,7 @@ public final class CandidatePicker {
                 .forEach(chosen::add);
 
         // 기록이 없는 사람의 첫 루틴이 여기서 정해진다. 시드 순서(영문 이름 순)대로 두면
-        // 디클라인 벤치프레스·친업이 먼저 나와, 입문 대표 종목을 앞에 둔다(LOG-40)
+        // 디클라인 벤치프레스·친업이 먼저 나와, 입문 대표 종목을 앞에 둔다
         List<ExerciseOption> fresh = new ArrayList<>(byId.stream()
                 .filter(o -> o.recentDays() == 0 && !o.favorite())
                 .sorted(STARTER_FIRST)

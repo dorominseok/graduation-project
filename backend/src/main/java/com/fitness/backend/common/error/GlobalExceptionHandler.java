@@ -16,7 +16,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
- * 모든 예외를 명세 1.5의 단일 구조로 직렬화하는 단일 핸들러.
+ * 모든 예외를 하나의 오류 구조({@link ErrorResponse})로 직렬화하는 단일 핸들러.
  *
  * <p>핸들러를 한 곳에 모으는 이유는, 예외 종류마다 응답 형태가 달라지면 클라이언트가
  * {@code code}로 분기할 수 없기 때문이다. 스프링이 기본 제공하는 오류 본문
@@ -119,7 +119,7 @@ public class GlobalExceptionHandler {
         return build(ErrorCode.VALIDATION_ERROR, "요청 본문을 읽을 수 없습니다.", request, null);
     }
 
-    /** 존재하지 않는 경로. 명세의 {@code RESOURCE_NOT_FOUND}로 통일한다. */
+    /** 존재하지 않는 경로. {@code RESOURCE_NOT_FOUND}로 통일한다. */
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResource(
             NoResourceFoundException e, HttpServletRequest request) {

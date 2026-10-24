@@ -1,6 +1,6 @@
 package com.fitness.backend.routine.domain;
 
-/** 루틴의 상태 값들. 스키마 CHECK(V10)와 같은 문자열로 저장한다. */
+/** 루틴의 상태 값들. 스키마 CHECK와 같은 문자열로 저장한다. */
 public final class RoutineEnums {
 
     private RoutineEnums() {
@@ -22,7 +22,7 @@ public final class RoutineEnums {
         VALIDATION_FAILED
     }
 
-    /** 만족도 3단계(설계서 11.4) */
+    /** 만족도 3단계 */
     public enum FeedbackRating {
         GOOD,
         OKAY,

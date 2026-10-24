@@ -3,9 +3,9 @@ package com.fitness.backend.analysis.domain;
 import java.util.List;
 
 /**
- * 화면에 보이는 상위 부위 6종. API 명세서 8.2 {@code tiers[]} / LOG-10.
+ * 화면에 보이는 상위 부위 6종(응답의 {@code tiers[]}).
  *
- * <p>선언 순서가 곧 응답 순서다(명세 8.2 — "항상 6개, 고정 순서"). 화면이 정렬을
+ * <p>선언 순서가 곧 응답 순서다("항상 6개, 고정 순서"). 화면이 정렬을
  * 하지 않아도 되게 서버가 순서까지 정해 내려준다.
  *
  * <p>하위가 둘인 항목(어깨·팔·하체)에는 <b>판정을 붙이지 않는다.</b> 합쳐서 최적이어도
@@ -36,7 +36,7 @@ public enum TierGroup {
         return children;
     }
 
-    /** 하위가 둘이면 상위에 판정 대신 배지가 붙는다(명세 8.2). */
+    /** 하위가 둘이면 상위에 판정 대신 배지가 붙는다. */
     public boolean hasChildren() {
         return children.size() > 1;
     }

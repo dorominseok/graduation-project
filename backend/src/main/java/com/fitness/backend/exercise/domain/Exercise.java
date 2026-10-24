@@ -14,10 +14,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 운동 종목. 부록 A {@code exercises} (V1 + V2 + V3).
+ * 운동 종목.
  *
  * <p><b>읽기 전용이다.</b> 종목 CSV에서 만든 {@code R__seed_exercises.sql}로 넣고,
- * 애플리케이션에는 종목을 만들거나 고치는 경로가 없다(명세 5.1). 그래서 변경
+ * 애플리케이션에는 종목을 만들거나 고치는 경로가 없다. 그래서 변경
  * 메서드를 두지 않는다 — 즐겨찾기만 사용자별로 {@link UserFavoriteExercise}에 쓴다.
  *
  * <p>enum은 {@code EnumType.STRING}으로 저장한다. 순서 기반({@code ORDINAL})은
@@ -34,7 +34,7 @@ public class Exercise extends BaseCreatedEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** 한글 명칭. 종목의 자연키이며 UNIQUE (V3). */
+    /** 한글 명칭. 종목의 자연키이며 UNIQUE. */
     @Column(name = "name_ko", nullable = false, length = 100)
     private String nameKo;
 
@@ -45,7 +45,7 @@ public class Exercise extends BaseCreatedEntity {
     @Column(name = "body_part", nullable = false, length = 20)
     private BodyPart bodyPart;
 
-    /** 주동근 원자값({@code chest}, {@code lats} …). 판정 부위 9종의 산출 근거(명세 8.1). */
+    /** 주동근 원자값({@code chest}, {@code lats} …). 판정 부위 9종의 산출 근거. */
     @Column(name = "primary_muscle", length = 50)
     private String primaryMuscle;
 
@@ -67,7 +67,7 @@ public class Exercise extends BaseCreatedEntity {
     private DeltRegion deltRegion;
 
     /**
-     * 종목 계열. 같은 동작의 변형들을 한 묶음으로 본다(V6, LOG-24).
+     * 종목 계열. 같은 동작의 변형들을 한 묶음으로 본다.
      *
      * <p>{@code primaryMuscle}과 다른 축이다 — 저쪽은 "어느 근육을 쓰는가"(판정용),
      * 이쪽은 "어떤 동작인가"(탐색용)다. 벤치프레스와 체스트프레스는 같은 근육을 쓰지만
@@ -77,7 +77,7 @@ public class Exercise extends BaseCreatedEntity {
     private String groupName;
 
     /**
-     * 입문 대표 종목 순위(V11). 부위마다 1~2개, 1이 먼저. 나머지는 null.
+     * 입문 대표 종목 순위. 부위마다 1~2개, 1이 먼저. 나머지는 null.
      *
      * <p>기록·즐겨찾기가 없는 사람에게 루틴 후보를 줄 때 시드 순서보다 앞에 둔다.
      */

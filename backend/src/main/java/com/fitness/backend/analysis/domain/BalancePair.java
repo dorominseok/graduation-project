@@ -1,9 +1,7 @@
 package com.fitness.backend.analysis.domain;
 
 /**
- * 맞대어 보는 두 쪽의 짝. API 명세서 8.3 {@code pairs[]}.
- *
- * <p>선언 순서가 응답 순서다.
+ * 맞대어 보는 두 쪽의 짝. 선언 순서가 응답({@code pairs[]})의 순서다.
  */
 public enum BalancePair {
 

@@ -13,9 +13,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 리프레시 토큰. {@code V3__auth_profile_exercise_meta.sql}.
+ * 리프레시 토큰.
  *
- * <p>액세스 토큰과 달리 <b>불투명 문자열</b>이다(명세 2.3). JWT가 아니므로 서버가
+ * <p>액세스 토큰과 달리 <b>불투명 문자열</b>이다. JWT가 아니므로 서버가
  * DB를 봐야만 유효성을 알 수 있고, 그 대가로 <b>즉시 폐기가 가능해진다</b> — JWT의
  * 약점인 "만료 전까지 무효화 불가"를 이 토큰이 보완하는 구조다.
  *

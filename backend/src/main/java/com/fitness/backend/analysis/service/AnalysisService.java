@@ -35,12 +35,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 부위별 볼륨 판정과 균형 판정. 명세 8.2 · 8.3.
+ * 부위별 볼륨 판정과 균형 판정.
  *
  * <p>여기서 하는 일은 <b>집계와 조립</b>뿐이다. 구간 분류·배지 결정·비율 판정은
- * {@code analysis.domain}의 순수 함수가 맡는다. 판정 규칙이 DB 접근과 섞이면
- * 경계값(10.0·20.0·2.0배)을 테스트로 고정할 수 없고, 이 작품에서 "계산 방법은
- * 직접 설계했다"고 말할 수 있는 근거가 거기에 있다.
+ * {@code analysis.domain}의 순수 함수가 맡는다 — 판정 규칙이 DB 접근과 섞이면
+ * 경계값(10.0·20.0·2.0배)을 테스트로 고정할 수 없다.
  */
 @Service
 @Transactional(readOnly = true)
@@ -61,7 +60,7 @@ public class AnalysisService {
         this.clock = clock;
     }
 
-    /** 명세 8.2. 상위 6종 + 하위 9종 + 표시 전용 2종을 완성해 내려준다. */
+    /** 부위별 볼륨. 상위 6종 + 하위 9종 + 표시 전용 2종을 완성해 내려준다. */
     public MuscleVolumeResponse muscleVolume(Long userId, Integer weeksParam, LocalDate referenceDateParam) {
         Period period = period(userId, weeksParam, referenceDateParam);
         Aggregate aggregate = aggregate(userId, period);
@@ -87,7 +86,7 @@ public class AnalysisService {
                 List.copyOf(tiers), List.copyOf(displayOnly));
     }
 
-    /** 명세 8.3. 계산 재료는 8.2와 같은 주당 평균 세트다. */
+    /** 균형 판정. 계산 재료는 부위별 볼륨과 같은 주당 평균 세트다. */
     public BalanceResponse balance(Long userId, Integer weeksParam, LocalDate referenceDateParam) {
         Period period = period(userId, weeksParam, referenceDateParam);
         Aggregate aggregate = aggregate(userId, period);
@@ -136,7 +135,7 @@ public class AnalysisService {
 
         // 어깨 기록이 아예 없으면 해소할 것도 없으므로 true다. 정제가 밀려 delt_region이
         // NULL뿐일 때만 false가 되고, 그때 그 세트들은 집계에서 빠진다 — 전량 앞쪽으로
-        // 몰아넣는 폴백을 쓰지 않기로 한 대가다(명세 8.1).
+        // 몰아넣는 폴백을 쓰지 않기로 한 대가다.
         boolean resolved = !anyShoulderRow || anyShoulderResolved;
         return new Aggregate(totals, resolved);
     }
@@ -156,8 +155,8 @@ public class AnalysisService {
             total += sets;
         }
 
-        // 하위가 둘이면 상위 판정을 비운다. "팔 12세트 · 최적"이 삼두 0세트를 가리는
-        // 것이 LOG-09를 쓴 이유이므로, 배지로 "일부 부족"만 알리고 판정은 하위에 맡긴다.
+        // 하위가 둘이면 상위 판정을 비운다. "팔 12세트 · 최적"이 삼두 0세트를 가리지 않게
+        // 배지로 "일부 부족"만 알리고 판정은 하위에 맡긴다.
         boolean hasChildren = tier.hasChildren();
         VolumeVerdict verdict = hasChildren ? null : verdicts.get(0);
         SummaryBadge badge = hasChildren ? SummaryBadge.resolve(verdicts) : null;
@@ -204,7 +203,7 @@ public class AnalysisService {
     // ---------- 집계 구간 ----------
 
     /**
-     * 기준일을 <b>포함해</b> 과거로 {@code weeks × 7}일(LOG-13, 명세 8.2).
+     * 기준일을 <b>포함해</b> 과거로 {@code weeks × 7}일.
      *
      * <p>하한에서 하루를 빼야 구간 길이가 분모와 맞는다. 빼지 않으면 4주에 29일을
      * 더해 놓고 4로 나누게 되어 주당 평균이 소리 없이 부풀고, 부족 판정이 한 칸씩
@@ -217,7 +216,7 @@ public class AnalysisService {
         }
         LocalDate to = referenceDateParam == null ? LocalDate.now(clock) : referenceDateParam;
         int windowDays = weeks * 7;
-        // 분모는 구간 길이가 아니라 기록을 시작한 뒤 지난 기간이다(LOG-31). 4주가 넘었으면 같다
+        // 분모는 구간 길이가 아니라 기록을 시작한 뒤 지난 기간이다. 4주가 넘었으면 같다
         int basisDays = AveragingBasis.days(
                 sessionRepository.findFirstRecordedOn(userId, to), to, windowDays, properties.minBasisDays());
         return new Period(weeks, to, to.minusDays(windowDays - 1L), to, basisDays);

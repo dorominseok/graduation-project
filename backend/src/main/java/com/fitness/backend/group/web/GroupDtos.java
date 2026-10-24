@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
-/** 친구 그룹 API의 요청·응답. 명세 10장(LOG-38). */
+/** 친구 그룹 API의 요청·응답. */
 public final class GroupDtos {
 
     private GroupDtos() {
@@ -56,7 +56,7 @@ public final class GroupDtos {
      * <p>초대코드는 멤버 누구에게나 준다. 방장만 초대할 수 있으면 친구가 친구를 부를 때마다
      * 방장을 거쳐야 한다. 코드를 다시 만드는 것만 방장이 한다.
      *
-     * @param weekStart 이번 주 월요일. 주는 월요일에 시작한다(명세 1.2, 홈의 "이번 주"와 같은 기준)
+     * @param weekStart 이번 주 월요일. 주는 월요일에 시작한다(홈의 "이번 주"와 같은 기준)
      */
     public record GroupDetailResponse(Long id,
                                       String name,
@@ -79,7 +79,7 @@ public final class GroupDtos {
 
     /**
      * 오늘의 운동. {@code sessionId}는 응원할 대상인 오늘 기록이고, 운동하지 않았으면 {@code null}이다.
-     * 하루에 기록은 하나라 여러 번 운동해도 응원은 그 하루에 붙는다(LOG-39).
+     * 하루에 기록은 하나라 여러 번 운동해도 응원은 그 하루에 붙는다.
      */
     public record TodayActivity(TodayStatus status,
                                 Long sessionId,
@@ -88,7 +88,7 @@ public final class GroupDtos {
     }
 
     /**
-     * 이번 주(월~일) 활동(기능명세 2.6).
+     * 이번 주(월~일) 활동.
      *
      * @param dayCount         운동한 날 수. 사후 입력도 포함한다
      * @param totalDurationSec 운동 시간 합. 시간이 없는 사후 입력은 빠진다
@@ -132,9 +132,9 @@ public final class GroupDtos {
     }
 
     /**
-     * 멤버의 하루 기록. 명세 6.5의 기록 상세에서 <b>메모를 뺀</b> 것이다(LOG-38).
+     * 멤버의 하루 기록. 내 기록 상세에서 <b>메모를 뺀</b> 것이다.
      *
-     * <p>종료가 없으므로 친구가 운동하는 중이면 그때까지 체크한 세트가 보인다(LOG-39).
+     * <p>종료가 없으므로 친구가 운동하는 중이면 그때까지 체크한 세트가 보인다.
      *
      * <p>메모는 "오늘 컨디션 최악" 같은 혼잣말일 수 있어 그룹에 보이지 않는다. 빈 값으로
      * 내리지 않고 필드 자체를 두지 않는다 — {@code null}이면 "메모가 없다"로 읽힌다.
@@ -150,7 +150,7 @@ public final class GroupDtos {
                                 boolean cheeredByMe) {
     }
 
-    /** 종목별 세트. 수행 순서다(명세 6.5와 같다) */
+    /** 종목별 세트. 수행 순서다 */
     public record MemberExercise(Long exerciseId,
                                  String exerciseName,
                                  /** 동작 그림 파일 이름을 만든다(화면의 exerciseImage). 그림이 없는 종목은 null */

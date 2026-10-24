@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-/** 오늘의 루틴 API의 요청·응답. 「루틴생성_로직_설계서」 12장. */
+/** 오늘의 루틴 API의 요청·응답. */
 public final class RoutineDtos {
 
     private RoutineDtos() {
@@ -22,10 +22,10 @@ public final class RoutineDtos {
     /**
      * 하루 루틴.
      *
-     * @param lowConfidence 기록이 적어 판정 신뢰도가 낮다 — 화면이 "기록이 쌓일수록…" 안내를 띄운다(설계서 2.6)
+     * @param lowConfidence 기록이 적어 판정 신뢰도가 낮다 — 화면이 "기록이 쌓일수록…" 안내를 띄운다
      * @param totalSets     빼지 않은 항목의 계획 세트 합
      * @param doneSets      빼지 않은 항목마다 min(그날 체크한 세트, 계획)의 합 — 진행 표시용
-     * @param askFeedback   오늘 루틴이고, 루틴 부위를 체크했고, 아직 답하지 않았다(설계서 11.4)
+     * @param askFeedback   오늘 루틴이고, 루틴 부위를 체크했고, 아직 답하지 않았다
      */
     public record RoutineResponse(Long id,
                                   LocalDate routineDate,
@@ -83,7 +83,7 @@ public final class RoutineDtos {
     }
 
     /**
-     * 교체 후보. 같은 부위에서 기구가 다른 종목이 먼저 온다(LOG-08, 설계서 8장).
+     * 교체 후보. 같은 부위에서 기구가 다른 종목이 먼저 온다.
      *
      * @param sameEquipment 지금 종목과 기구가 같다 — 화면이 묶어서 뒤에 보인다
      */

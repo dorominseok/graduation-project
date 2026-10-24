@@ -12,7 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 친구 그룹. {@code friend_groups} (V8, LOG-38).
+ * 친구 그룹. {@code friend_groups}.
  *
  * <p>엔티티 이름을 {@code Group}으로 두지 않는다 — JPQL에서 {@code GROUP}은 예약어라
  * {@code select g from Group g}가 파싱되지 않는다.

@@ -3,7 +3,7 @@ package com.fitness.backend.workout.domain;
 import java.time.Duration;
 
 /**
- * 운동 시간 산출 규칙. 「운동기록_방식_설계서」 4.2 / API 명세서 8.5 / LOG-39.
+ * 운동 시간 산출 규칙.
  *
  * @param boutGap      이보다 긴 공백에서 구간을 나눈다. 아침·저녁에 두 번 운동해도 사이 공백은 시간에 들어가지 않는다
  * @param lastSetBonus 구간마다 더하는 마지막 세트 수행 시간. 첫~마지막 세트 시각 차이만 쓰면 마지막 세트가 빠진다

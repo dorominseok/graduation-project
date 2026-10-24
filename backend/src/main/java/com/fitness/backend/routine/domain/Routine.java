@@ -20,9 +20,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 하루 루틴. 「루틴생성_로직_설계서」 10.1 / {@code routines} (V10).
+ * 하루 루틴({@code routines}).
  *
- * <p>하루에 하나다. 다시 만들기는 없고 항목을 후보정한다(LOG-40). 행은 생성 쿼리가 넣고
+ * <p>하루에 하나다. 다시 만들기는 없고 항목을 후보정한다. 행은 생성 쿼리가 넣고
  * ({@link com.fitness.backend.routine.repository.RoutineRepository#insertIfAbsent}),
  * 엔티티는 읽기와 만족도 기록에 쓴다.
  */
@@ -42,7 +42,7 @@ public class Routine extends BaseCreatedEntity {
     @Column(name = "routine_date", nullable = false)
     private LocalDate routineDate;
 
-    /** 분석 기준일 — 어제(설계서 1.1) */
+    /** 분석 기준일 — 어제 */
     @Column(name = "reference_date", nullable = false)
     private LocalDate referenceDate;
 

@@ -16,7 +16,7 @@ import org.springframework.data.repository.query.Param;
 public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
 
     /**
-     * 종목 검색(명세 5.2). 넘기지 않은 조건은 {@code null}로 두면 무시된다.
+     * 종목 검색. 넘기지 않은 조건은 {@code null}로 두면 무시된다.
      *
      * <p>정렬은 {@link Pageable}이 정한다 — 기본은 {@code nameKo,asc}이며 컨트롤러가 채운다.
      *
@@ -49,7 +49,7 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
                           Pageable pageable);
 
     /**
-     * 즐겨찾기만 검색(명세 5.2의 세 번째 탭).
+     * 즐겨찾기만 검색.
      *
      * <p>정렬이 <b>별표를 누른 순</b>이라 {@link Pageable}의 sort를 쓰지 않고 쿼리에
      * 고정한다 — 기준 컬럼이 {@code exercises}가 아니라 {@code user_favorite_exercises}의
@@ -81,7 +81,7 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
                                    Pageable pageable);
 
     /**
-     * 분류별 종목 수(LOG-24). 부위 그리드의 숫자다.
+     * 분류별 종목 수. 부위 그리드의 숫자다.
      *
      * <p>{@code primary_muscle}로 세어 돌려주고 12종으로 묶는 것은 서비스가 한다 —
      * 묶는 규칙이 {@link com.fitness.backend.exercise.domain.BrowseCategory}에 있어서다.
@@ -90,7 +90,7 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
     List<Object[]> countByPrimaryMuscle();
 
     /**
-     * 한 분류 안의 계열별 종목 수(LOG-24).
+     * 한 분류 안의 계열별 종목 수.
      *
      * <p>{@code min(e.id)}는 대표 종목이다 — 계열 카드에 이미지를 붙일 때 어느 종목의
      * 것을 쓸지 정해야 하고, 지금은 이미지가 없으니 자리만 잡아둔다.

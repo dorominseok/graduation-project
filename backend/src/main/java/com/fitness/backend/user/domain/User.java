@@ -14,12 +14,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 사용자. {@code V1__init.sql} + {@code V3}의 {@code goal} + {@code V7}의 {@code google_id}.
+ * 사용자.
  *
  * <p>비밀번호는 <b>해시만</b> 갖는다. 평문을 필드로 두면 로그·직렬화·디버거를 통해
  * 새어 나갈 경로가 생기므로 아예 저장하지 않는다.
  *
- * <p>로그인 방법은 비밀번호와 구글 둘이다(LOG-37). 구글로만 가입한 사람은 비밀번호가 없고,
+ * <p>로그인 방법은 비밀번호와 구글 둘이다. 구글로만 가입한 사람은 비밀번호가 없고,
  * 이메일로 가입한 뒤 같은 이메일의 구글로 들어오면 두 방법을 다 갖는다. 둘 다 없는 계정은
  * DB 제약({@code ck_users_login_method})이 막는다.
  */
@@ -85,7 +85,7 @@ public class User extends BaseTimeEntity {
         return passwordHash != null;
     }
 
-    /** 프로필 부분 수정(명세 4.6). {@code null}은 "바꾸지 않음"이다. */
+    /** 프로필 부분 수정. {@code null}은 "바꾸지 않음"이다. */
     public void updateNickname(String nickname) {
         if (nickname != null) {
             this.nickname = nickname;
@@ -94,13 +94,13 @@ public class User extends BaseTimeEntity {
 
     /**
      * 훈련 목표 변경. {@code null}로 되돌리는 것과 "바꾸지 않음"을 구분해야 하므로
-     * 호출부가 갱신 여부를 판단해 이 메서드를 호출한다(명세 4.6).
+     * 호출부가 갱신 여부를 판단해 이 메서드를 호출한다.
      */
     public void changeGoal(TrainingGoal goal) {
         this.goal = goal;
     }
 
-    /** 비밀번호 변경(명세 4.8). 가입과 마찬가지로 해시는 호출부가 만들어 넘긴다. */
+    /** 비밀번호 변경. 가입과 마찬가지로 해시는 호출부가 만들어 넘긴다. */
     public void changePassword(String passwordHash) {
         this.passwordHash = passwordHash;
     }

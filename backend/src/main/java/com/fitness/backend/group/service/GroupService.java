@@ -54,13 +54,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 친구 그룹. 명세 10장, 기능명세 2.6, UC-05 (LOG-38).
+ * 친구 그룹.
  *
- * <p>성격은 경쟁이 아니라 <b>서로의 운동이 보이는 것</b>이다(기능명세 2.6). 그래서 순위·점수는
+ * <p>성격은 경쟁이 아니라 <b>서로의 운동이 보이는 것</b>이다. 그래서 순위·점수는
  * 없고, 오늘 운동했는지와 이번 주 횟수·시간, 그리고 멤버의 기록을 읽기 전용으로 보여준다.
  *
  * <p><b>권한</b>: 그룹의 모든 조회는 멤버만 한다. 멤버가 아니면 그룹이 있는지조차 드러내지
- * 않으려고 403이 아니라 404를 준다(명세 6.5와 같은 원칙). 멤버인데 방장 기능을 쓰면 그때는
+ * 않으려고 403이 아니라 404를 준다(남의 기록 조회와 같은 원칙). 멤버인데 방장 기능을 쓰면 그때는
  * 그룹이 있다는 걸 이미 아므로 403이다.
  */
 @Service
@@ -102,7 +102,7 @@ public class GroupService {
 
     // ── 그룹
 
-    /** 그룹 만들기(UC-05-01). 만든 사람이 방장이자 첫 멤버다. */
+    /** 그룹 만들기. 만든 사람이 방장이자 첫 멤버다. */
     @Transactional
     public GroupDetailResponse create(Long userId, String name) {
         ensureCanJoinMore(userId);
@@ -164,9 +164,9 @@ public class GroupService {
     private static final CheerTally NO_CHEERS = new CheerTally(Map.of(), Set.of());
 
     /**
-     * 그룹 상세(UC-05-03) — 멤버별 오늘 운동 여부와 이번 주(월~일) 횟수·시간.
+     * 그룹 상세 — 멤버별 오늘 운동 여부와 이번 주(월~일) 횟수·시간.
      *
-     * <p>집계 테이블 없이 그때그때 센다(기능명세 2.6). 멤버 전원의 이번 주 기록과 세트를 한 번에 읽는다.
+     * <p>집계 테이블 없이 그때그때 센다. 멤버 전원의 이번 주 기록과 세트를 한 번에 읽는다.
      */
     public GroupDetailResponse detail(Long userId, Long groupId) {
         FriendGroup group = mustFindMyGroup(userId, groupId);
@@ -233,7 +233,7 @@ public class GroupService {
     }
 
     /**
-     * 코드로 참여(UC-05-02). 이미 멤버면 오류가 아니라 그대로 그룹으로 보낸다(예외 흐름 3b) —
+     * 코드로 참여. 이미 멤버면 오류가 아니라 그대로 그룹으로 보낸다 —
      * 초대 링크를 두 번 누르는 일은 흔하다.
      */
     @Transactional
@@ -256,7 +256,7 @@ public class GroupService {
     // ── 나가기·내보내기
 
     /**
-     * 그룹 나가기(UC-05-04). 방장이 나가면 남은 멤버 중 가장 먼저 들어온 사람에게 방장을 넘긴다.
+     * 그룹 나가기. 방장이 나가면 남은 멤버 중 가장 먼저 들어온 사람에게 방장을 넘긴다.
      * 마지막 한 명이 나가면 그룹을 지운다 — 멤버 없는 그룹은 아무도 볼 수 없다.
      */
     @Transactional
@@ -313,7 +313,7 @@ public class GroupService {
 
     // ── 멤버 기록 (읽기 전용)
 
-    /** 멤버의 월별 기록 요약. 내 캘린더(명세 6.8)와 같은 모양이다. */
+    /** 멤버의 월별 기록 요약. 내 캘린더와 같은 모양이다. */
     public CalendarResponse memberCalendar(Long userId, Long groupId, Long memberId, int year, int month) {
         mustBeMember(groupId, userId, "그룹");
         mustBeMember(groupId, memberId, "멤버");
@@ -466,7 +466,7 @@ public class GroupService {
     }
 
     /**
-     * 이번 주 활동(기능명세 2.6) — 횟수는 운동한 날 수이고 사후 입력도 들어간다. 시간 합에서는
+     * 이번 주 활동 — 횟수는 운동한 날 수이고 사후 입력도 들어간다. 시간 합에서는
      * 시간이 없는 사후 입력이 빠진다(보정값을 넣었으면 들어간다).
      */
     private static WeekActivity weekActivity(List<WorkoutSession> days, Map<Long, DayTimes> times) {

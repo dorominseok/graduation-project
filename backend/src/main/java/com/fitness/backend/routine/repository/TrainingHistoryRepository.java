@@ -8,13 +8,13 @@ import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 루틴을 짤 때 기록에서 직접 읽는 값(「루틴생성_로직_설계서」 1.2). 분석 응답에 없는 것들이다.
+ * 루틴을 짤 때 기록에서 직접 읽는 값. 분석 응답에 없는 것들이다.
  *
  * <p>모두 <b>본세트만</b> 센다 — 분석 판정과 같은 단위다(분석 1.2).
  */
 public interface TrainingHistoryRepository extends Repository<WorkoutSet, Long> {
 
-    /** 근육(주동근)별 마지막 운동일. 오늘 포함 — 회복 제외에 쓴다(설계서 2.2) */
+    /** 근육(주동근)별 마지막 운동일. 오늘 포함 — 회복 제외에 쓴다 */
     @Query("""
             select new com.fitness.backend.routine.repository.LastTrainedRow(
                        e.primaryMuscle, e.deltRegion, max(s.performedOn))
@@ -28,7 +28,7 @@ public interface TrainingHistoryRepository extends Repository<WorkoutSet, Long> 
             """)
     List<LastTrainedRow> lastTrained(@Param("userId") Long userId, @Param("today") LocalDate today);
 
-    /** 종목별로 기간 안에 기록한 날 수. 후보 순서(자주 한 순)에 쓴다(설계서 4.1) */
+    /** 종목별로 기간 안에 기록한 날 수. 후보 순서(자주 한 순)에 쓴다 */
     @Query("""
             select new com.fitness.backend.routine.repository.ExerciseDaysRow(
                        w.exerciseId, count(distinct s.performedOn))
@@ -43,7 +43,7 @@ public interface TrainingHistoryRepository extends Repository<WorkoutSet, Long> 
                                        @Param("from") LocalDate from,
                                        @Param("to") LocalDate to);
 
-    /** 이 날짜 전에 한 번이라도 기록한 종목. 이 밖의 종목이 [처음]이다(설계서 4.2) */
+    /** 이 날짜 전에 한 번이라도 기록한 종목. 이 밖의 종목이 [처음]이다 */
     @Query("""
             select distinct w.exerciseId
               from WorkoutSet w, WorkoutSession s
