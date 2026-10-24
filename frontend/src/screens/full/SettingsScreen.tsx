@@ -1,16 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Chevron, ScreenHeader, SegmentedTabs, useToast } from '../../components'
+import { Chevron, ScreenHeader, useToast } from '../../components'
 import { useAuth } from '../../auth'
 import { paths } from '../../app/paths'
-import { TINTS, getTheme, getTint, setTheme, setTint } from '../../app/theme'
-import type { Theme, Tint } from '../../app/theme'
+import { TINTS, getTint, setTint } from '../../app/theme'
+import type { Tint } from '../../app/theme'
 import styles from './settings.module.css'
-
-const THEMES = [
-  { value: 'default', label: '기본' },
-  { value: 'glass', label: '유리' },
-] as const
 
 const TINT_LABEL: Record<Tint, string> = {
   sky: '하늘',
@@ -21,19 +16,13 @@ const TINT_LABEL: Record<Tint, string> = {
   aurora: '오로라',
 }
 
-/** 설정. 계정 관련 진입, 화면 스타일, 로그아웃을 둔다. */
+/** 설정. 계정 관련 진입, 유리 색감, 로그아웃을 둔다. 화면 스타일은 유리 하나라 고르지 않는다 */
 export function SettingsScreen() {
   const navigate = useNavigate()
   const { logout } = useAuth()
   const { showToast } = useToast()
   const [leaving, setLeaving] = useState(false)
-  const [theme, setThemeState] = useState<Theme>(getTheme)
   const [tint, setTintState] = useState<Tint>(getTint)
-
-  const changeTheme = (next: Theme) => {
-    setTheme(next)
-    setThemeState(next)
-  }
 
   const changeTint = (next: Tint) => {
     setTint(next)
@@ -85,25 +74,22 @@ export function SettingsScreen() {
         <div className={styles.section}>
           <div className={styles.sectionTitle}>화면</div>
           <div className={`${styles.card} ${styles.themePicker}`}>
-            <SegmentedTabs items={THEMES} value={theme} onChange={changeTheme} aria-label="화면 스타일" />
             {/* 유리 배경의 색감. 동그라미가 그 배경의 축소판이다 */}
-            {theme === 'glass' && (
-              <div className={styles.tints} role="radiogroup" aria-label="유리 색감">
-                {TINTS.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    role="radio"
-                    aria-checked={t === tint}
-                    className={`${styles.tint} ${t === tint ? styles.tintOn : ''}`}
-                    onClick={() => changeTint(t)}
-                  >
-                    <span className={styles.tintDot} data-tint={t} aria-hidden="true" />
-                    <span className={styles.tintLabel}>{TINT_LABEL[t]}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className={styles.tints} role="radiogroup" aria-label="배경 색감">
+              {TINTS.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  role="radio"
+                  aria-checked={t === tint}
+                  className={`${styles.tint} ${t === tint ? styles.tintOn : ''}`}
+                  onClick={() => changeTint(t)}
+                >
+                  <span className={styles.tintDot} data-tint={t} aria-hidden="true" />
+                  <span className={styles.tintLabel}>{TINT_LABEL[t]}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

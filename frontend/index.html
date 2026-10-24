@@ -1,18 +1,15 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-theme="glass">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#f3f7fd" />
     <title>밸런스핏</title>
     <script>
-      // 화면 스타일과 색감을 첫 그림 전에 붙인다. 키와 색감 이름은 src/app/theme.ts와 같다
+      // 유리 색감을 첫 그림 전에 붙인다. 키와 색감 이름은 src/app/theme.ts와 같다
       try {
-        if (localStorage.getItem('balancefit.theme') === 'glass') {
-          document.documentElement.dataset.theme = 'glass'
-        }
         var tint = localStorage.getItem('balancefit.tint')
         if (['white', 'lavender', 'mint', 'peach', 'aurora'].indexOf(tint) >= 0) {
           document.documentElement.dataset.tint = tint
