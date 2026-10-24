@@ -1,3 +1,30 @@
+# LLM 통제 실험 하네스
+
+두 실험이 있다.
+
+| 실험 | 대상 | 하네스 |
+|---|---|---|
+| ① 분석 해설 (2026-08) | 판정 결과 → 자연어 설명 | 이 폴더의 Python 스크립트 (버릴 코드) |
+| ② 루틴 조합 (2026-10) | 부위·후보 → 종목·순서·설명 | **백엔드 운영 코드 그대로** + Gradle `llmExperiment` |
+
+## ② 루틴 조합 — `./gradlew llmExperiment`
+
+```bash
+cd backend
+./gradlew llmExperiment                                   # 8케이스 × 10회
+./gradlew llmExperiment --args="--runs 3 --cases 01,02"   # 일부만
+./gradlew llmExperiment --args="--dry-run"                # 호출 없이 입력만
+# 옵션: --model gemini-3.5-flash-lite  --temperature 0.4  --retries 2  --interval-ms 4500
+```
+
+- 실험 실행기: `backend/src/test/java/.../routine/llm/experiment/` (케이스 `ExperimentCases`, 실행 `RoutineLlmExperiment`, 표 `Summary`)
+- 부위·세트·후보는 운영 규칙(`SlotPlanner`·`CandidatePicker`)이 만들고, 호출·검증·재요청·폴백은 운영 부품
+  (`GeminiClient`·`RoutinePrompt`·`LlmRoutineValidator`·`LlmRoutineComposer`)을 그대로 쓴다. 실험한 코드가 운영 코드다.
+- 결과: `runs/routine_{일시}_{모델}_{프롬프트버전}/` — `summary.md`(표), `raw.jsonl`(시도별 원본 응답), `prompt.txt`
+- `test`에 들어가지 않는다. 실제 호출이라 CI에서 돌리지 않는다.
+
+---
+
 # ① 분석 해설 LLM 통제 실험 하네스
 
 `docs/LLM_연동_실험기록.md` 7절의 실험을 자동으로 돌린다. Gemini 무료 티어 사용.

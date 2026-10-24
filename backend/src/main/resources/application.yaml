@@ -90,6 +90,15 @@ app:
     history-weeks: 8              # "해 본 종목"을 보는 기간
     history-max-candidates: 3     # 후보 중 해 본 종목 최대
     feedback-lookback-days: 7     # 만족도를 물을 지난 루틴 범위
+  # 루틴 LLM — 종목·순서·설명만 고른다(설계서 5장, LLM 실험기록 11절). 꺼져 있으면 규칙이 고른다
+  llm:
+    enabled: ${LLM_ENABLED:false}
+    model: gemini-3.5-flash-lite
+    timeout-ms: 10000             # 실험 r2 관측 최대 7초. 넘기면 규칙 루틴
+    temperature: 0.4
+    max-retries: 2                # 검증 실패 시 다시 묻기. 호출 실패는 다시 묻지 않는다
+    max-output-tokens: 1024       # 실측 출력 ~130 토큰
+    api-key: ${GEMINI_API_KEY:}   # 환경변수로만. 여기에 키를 적지 않는다
 
 management:
   endpoints:

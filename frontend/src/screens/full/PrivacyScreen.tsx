@@ -44,6 +44,10 @@ export function PrivacyScreen() {
               무게·횟수·시간, 메모)과 즐겨찾기한 종목.
             </li>
             <li>
+              <b>루틴을 받을 때</b>: 받은 루틴(부위, 종목, 세트)과 그 루틴에서 바꾸거나 뺀 내역, 루틴에
+              대한 만족도와 이유.
+            </li>
+            <li>
               <b>그룹을 쓸 때</b>: 들어간 그룹과 들어간 시각, 친구의 운동에 보낸 응원.
             </li>
             <li>
@@ -68,7 +72,7 @@ export function PrivacyScreen() {
         <section>
           <h2>3. 보관과 삭제</h2>
           <ul>
-            <li>탈퇴하면 계정과 모든 운동 기록, 그룹 참여와 응원을 바로 지웁니다.</li>
+            <li>탈퇴하면 계정과 모든 운동 기록, 루틴, 그룹 참여와 응원을 바로 지웁니다.</li>
             <li>그룹에서 나가거나 내보내지면 그 그룹 멤버는 더 이상 내 기록을 볼 수 없습니다.</li>
             <li>장애에 대비한 백업은 7일 동안만 보관하고 지우므로, 탈퇴 후 7일이 지나면 백업에도 남지 않습니다.</li>
             <li>졸업작품이 끝나 서비스를 닫으면 남은 정보를 모두 지웁니다.</li>
@@ -86,6 +90,12 @@ export function PrivacyScreen() {
           <ul>
             <li>Amazon Web Services(AWS) 서울 리전 — 서버와 데이터 저장</li>
             <li>Google — 구글 로그인을 쓸 때 본인 확인</li>
+            <li>
+              Google Gemini — 오늘 루틴의 종목과 순서를 고를 때. 보내는 것은 오늘 할 부위와 세트 수,
+              부위별 후보 종목과 그 종목을 해 본 적이 있는지·즐겨찾기했는지뿐이고, 이름·이메일·운동
+              날짜·무게는 보내지 않습니다. 무료 이용 조건이라 Google이 보낸 내용을 자사 서비스 개선에 쓸
+              수 있습니다.
+            </li>
           </ul>
         </section>
 
@@ -106,7 +116,7 @@ export function PrivacyScreen() {
           </p>
         </section>
 
-        <p className={styles.date}>시행일: 2026년 10월 11일</p>
+        <p className={styles.date}>시행일: 2026년 10월 25일</p>
       </article>
     </>
   )

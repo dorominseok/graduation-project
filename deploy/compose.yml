@@ -34,6 +34,9 @@ services:
       DB_USERNAME: ${POSTGRES_USER:-fitness}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET: ${JWT_SECRET:?.env에 JWT_SECRET을 넣어야 한다}
+      # 루틴 LLM(LOG-41). 꺼 두면 규칙이 루틴을 고른다. 켜려면 .env에 둘 다 넣는다
+      LLM_ENABLED: ${LLM_ENABLED:-false}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       TZ: Asia/Seoul
       # 메모리 2GB 서버에 DB·웹서버와 같이 산다. 힙은 512MB면 지인 10명에 충분하다
       JAVA_OPTS: -Xms256m -Xmx512m -XX:+UseSerialGC
