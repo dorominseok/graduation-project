@@ -327,7 +327,10 @@ export function SessionScreen() {
 
       // 본세트를 하나 끝냈으면 쉴 차례다. 워밍업은 쉬지 않고 이어간다.
       if (!row.isWarmup && row.restSec > 0) {
-        restTimer.start(row.restSec)
+        restTimer.start(row.restSec, {
+          path: `${location.pathname}?${new URLSearchParams(cardParams(card.exerciseId))}`,
+          exerciseName: card.name,
+        })
       }
     } catch (err) {
       fail(err)
@@ -576,7 +579,9 @@ export function SessionScreen() {
             <button
               type="button"
               className={styles.headerBack}
-              onClick={() => navigate(paths.exerciseDetail(opened.exerciseId))}
+              onClick={() =>
+                navigate(paths.exerciseDetail(opened.exerciseId), { state: { fromSession: true } })
+              }
               aria-label="종목 정보"
             >
               ⓘ
