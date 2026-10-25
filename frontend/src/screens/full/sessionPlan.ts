@@ -1,6 +1,6 @@
 import { exerciseApi, isApiError } from '../../api'
 import type { LastPerformance, MeasureType, Routine, RoutineItem, WorkoutSession } from '../../api'
-import { activeItems, lastPerformanceLine, repRangeLabel } from '../routine/format'
+import { activeItems, repRangeLabel } from '../routine/format'
 
 /**
  * 기록 화면의 카드 만들기 — 체크한 세트 + 오늘 루틴의 남은 계획 + 브라우저 임시 저장.
@@ -25,8 +25,6 @@ export interface SetRow {
   restSec: number
   /** 저장된 세트의 서버 id. null이면 아직 계획 행이다 */
   savedId: number | null
-  /** 직전 기록에서 채운 행인지. 값의 출처를 줄 아래에 적어준다 */
-  fromPrev: boolean
 }
 
 export interface ExerciseCard {
@@ -34,8 +32,6 @@ export interface ExerciseCard {
   name: string
   measureType: MeasureType
   rows: SetRow[]
-  /** "9월 24일 (수) · 60kg×10" 같은 직전 기록 한 줄. 없으면 처음 하는 종목이다 */
-  prevLabel: string | null
   /** 오늘 루틴의 종목이면 "4세트 × 8~12회". 루틴 밖 종목은 null */
   routineTarget: string | null
 }
@@ -51,7 +47,6 @@ export function emptyRow(): SetRow {
     isWarmup: false,
     restSec: DEFAULT_REST_SEC,
     savedId: null,
-    fromPrev: false,
   }
 }
 
@@ -65,7 +60,6 @@ export function rowsFromLast(sets: LastPerformance['sets']): SetRow[] {
     isWarmup: set.isWarmup,
     restSec: DEFAULT_REST_SEC,
     savedId: null,
-    fromPrev: true,
   }))
 }
 
@@ -85,7 +79,6 @@ export function savedCards(session: WorkoutSession): ExerciseCard[] {
     exerciseId: group.exerciseId,
     name: group.exerciseName,
     measureType: group.measureType,
-    prevLabel: null,
     routineTarget: null,
     rows: group.sets.map((set) => ({
       clientSetId: set.clientSetId,
@@ -95,7 +88,6 @@ export function savedCards(session: WorkoutSession): ExerciseCard[] {
       isWarmup: set.isWarmup,
       restSec: DEFAULT_REST_SEC,
       savedId: set.id,
-      fromPrev: false,
     })),
   }))
 }
@@ -136,7 +128,6 @@ async function routineCard(item: RoutineItem, saved: ExerciseCard | undefined): 
     exerciseId: item.exerciseId,
     name: item.exerciseName,
     measureType: item.measureType,
-    prevLabel: last && last.sets.length > 0 ? lastPerformanceLine(last) : null,
     routineTarget: routineTargetOf(item),
     rows: [...savedRows, ...planRows],
   }

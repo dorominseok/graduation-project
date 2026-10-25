@@ -6,7 +6,6 @@ import type { Exercise, MeasureType, MuscleGroupKey, Routine, SessionIntensity, 
 import { useAuth } from '../../auth'
 import { formatDuration } from '../../app/dates'
 import { paths } from '../../app/paths'
-import { lastPerformanceLine } from '../routine/format'
 import { ExercisePicker } from './ExercisePicker'
 import type { PickerStep } from './ExercisePicker'
 import { BODY_PART_LABEL, EQUIPMENT_LABEL, MEASURE_CHIP_LABEL } from './exerciseLabels'
@@ -275,7 +274,6 @@ export function SessionScreen() {
     const last = await lastPerformanceOf(exercise.id)
     const hasLast = last !== null && last.sets.length > 0
     const rows: SetRow[] = hasLast ? rowsFromLast(last.sets) : [emptyRow()]
-    const prevLabel = hasLast ? lastPerformanceLine(last) : null
 
     setCards((prev) => [
       ...prev,
@@ -284,7 +282,6 @@ export function SessionScreen() {
         name: exercise.nameKo,
         measureType: exercise.measureType,
         rows,
-        prevLabel,
         routineTarget: null,
       },
     ])
@@ -374,7 +371,7 @@ export function SessionScreen() {
   }
 
   /**
-   * 워밍업 표시. 워밍업 세트는 볼륨 집계에서 빠진다 — 준비 세트까지 세면 부족한 부위가
+   * 워밍업 표시. 워밍업 세트는 분석의 세트 집계에서 빠진다 — 준비 세트까지 세면 부족한 부위가
    * 충분한 것으로 보인다.
    */
   const toggleWarmup = async (cardIndex: number, rowIndex: number) => {
@@ -420,7 +417,7 @@ export function SessionScreen() {
         // 직전 세트를 복사해 채운다. 보통 같은 무게로 이어간다.
         const last = card.rows[card.rows.length - 1]
         const next = last
-          ? { ...last, clientSetId: crypto.randomUUID(), savedId: null, fromPrev: false }
+          ? { ...last, clientSetId: crypto.randomUUID(), savedId: null }
           : emptyRow()
         return { ...card, rows: [...card.rows, next] }
       }),
@@ -642,7 +639,11 @@ export function SessionScreen() {
       .map((row) => row.weightKg)
       .filter((weight): weight is number => weight != null)
     const savedMaxWeight = savedWeights.length > 0 ? Math.max(...savedWeights) : null
-    const savedWorkingSets = savedRows.filter((row) => !row.isWarmup).length
+    const savedWorking = savedRows.filter((row) => !row.isWarmup)
+    const savedVolume =
+      savedWorking.length > 0
+        ? savedWorking.reduce((sum, row) => sum + (row.weightKg ?? 0) * (row.reps ?? 0), 0)
+        : null
     // 중량 딥스 같은 종목의 무게는 몸무게가 아니라 매단 무게라 1RM을 내지 않는다
     const isAddedWeight = opened.measureType === 'WEIGHTED_BODYWEIGHT'
     // 다른 세션의 응답이 남아 있을 수 있어 세션 번호까지 맞춰 본다
@@ -703,7 +704,7 @@ export function SessionScreen() {
 
           {/*
             지표 3종. 저장된 세트만 센다 — 아직 체크하지 않은 줄은 한 것이 아니다.
-            볼륨은 톤(무게×횟수)이 아니라 본세트 수다.
+            볼륨은 본세트의 무게×횟수 합이다. 종목 하나 안이라 무게를 그대로 더해도 비교가 된다.
           */}
           {showStats && (
             <div className={styles.stats}>
@@ -725,8 +726,11 @@ export function SessionScreen() {
                 },
                 {
                   label: '볼륨',
-                  value: String(savedWorkingSets),
-                  unit: '세트',
+                  value:
+                    savedVolume == null
+                      ? '—'
+                      : `${isAddedWeight ? '+' : ''}${savedVolume.toLocaleString('ko-KR')}`,
+                  unit: savedVolume == null ? '' : 'kg',
                   note: '워밍업 제외',
                 },
               ].map((stat) => (
@@ -743,7 +747,6 @@ export function SessionScreen() {
           )}
 
           {opened.routineTarget && <div className={styles.routineBar}>오늘 루틴 · {opened.routineTarget}</div>}
-          {opened.prevLabel && <div className={styles.prevBar}>지난 기록 {opened.prevLabel}</div>}
 
           <div className={`${styles.setScroll} ${restShowing ? styles.scrollWithRest : ''}`}>
             <div className={styles.setList}>
@@ -868,7 +871,6 @@ export function SessionScreen() {
                       <div className={styles.subLine}>
                         <span>휴식 {formatRest(row.restSec)}</span>
                         {row.isWarmup && <span className={styles.subWarmup}>워밍업 · 분석 제외</span>}
-                        {row.fromPrev && !done && <span>이전 기록에서 채움</span>}
                       </div>
                     </div>
 
@@ -1176,13 +1178,12 @@ export function SessionScreen() {
             {cards.map((card, cardIndex) => {
               const saved = card.rows.filter((row) => row.savedId !== null)
               const planned = card.rows.length - saved.length
+              // 수행률은 이 카드의 줄 기준이다. 세트를 더하거나 빼면 분모도 따라간다
+              const done = Math.round((saved.length / card.rows.length) * 100)
               const summary =
                 saved.length === 0
                   ? `예정 ${planned}세트 · 아직 기록 없음`
-                  : `${saved.length}세트 기록${planned > 0 ? ` · ${planned}세트 예정` : ''} · 최근 ${describeSet(
-                      card.measureType,
-                      saved[saved.length - 1],
-                    )}`
+                  : `${saved.length}세트 기록${planned > 0 ? ` · ${planned}세트 예정` : ''} · ${done}%`
               return (
                 <div key={`${card.exerciseId}-${cardIndex}`} className={styles.exRow}>
                   {/* 카드 전체가 세부 기록으로 가는 문이라 따로 화살표를 두지 않는다 */}
@@ -1206,7 +1207,6 @@ export function SessionScreen() {
                       )}
                     </span>
                     <span className={styles.exSummary}>{summary}</span>
-                    {card.routineTarget && <span className={styles.exTarget}>목표 {card.routineTarget}</span>}
                   </button>
                   <button
                     type="button"

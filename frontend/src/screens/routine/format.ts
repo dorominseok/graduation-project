@@ -1,5 +1,4 @@
-import type { FeedbackRating, FeedbackReason, LastPerformance, Routine, RoutineItem } from '../../api'
-import { describeSet } from '../full/setFormat'
+import type { FeedbackRating, FeedbackReason, Routine, RoutineItem } from '../../api'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -28,13 +27,6 @@ export function activeItems(routine: Routine): RoutineItem[] {
 /** "가슴 · 등 · 앞허벅지" — 같은 부위가 두 종목으로 나뉘어도 한 번만 */
 export function muscleLine(routine: Routine): string {
   return [...new Set(activeItems(routine).map((item) => item.muscleLabel))].join(' · ')
-}
-
-/** 지난 기록 한 줄 — 기록 화면의 "지난 기록"과 같은 말투. 본세트가 없으면 워밍업이라도 */
-export function lastPerformanceLine(last: LastPerformance): string {
-  const working = last.sets.filter((set) => !set.isWarmup)
-  const shown = working.length > 0 ? working : last.sets
-  return `${formatRoutineDay(last.performedOn)} · ${shown.map((set) => describeSet(last.measureType, set)).join(', ')}`
 }
 
 export const RATING_LABEL: Record<FeedbackRating, string> = {
