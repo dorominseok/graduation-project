@@ -230,7 +230,11 @@ export function RoutineScreen() {
 
         {editable && active.length > 0 && (
           <div className={styles.actionBar}>
-            <button type="button" className={styles.primary} onClick={() => navigate(paths.session)}>
+            <button
+              type="button"
+              className={styles.primary}
+              onClick={() => navigate(paths.session, { state: { fromRoutine: true } })}
+            >
               이 루틴으로 기록
             </button>
           </div>
