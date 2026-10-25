@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { BottomSheet, ScreenHeader, Stepper, useToast } from '../../components'
-import { exerciseApi, isApiError, routineApi } from '../../api'
+import { isApiError, routineApi } from '../../api'
 import type { Routine, RoutineAlternative, RoutineItem } from '../../api'
 import { paths } from '../../app/paths'
 import { EQUIPMENT_LABEL } from '../full/exerciseLabels'
-import { activeItems, basisLine, formatRoutineDay, lastPerformanceLine, repRangeLabel } from './format'
+import { activeItems, basisLine, formatRoutineDay, repRangeLabel } from './format'
 import styles from './routine.module.css'
 
 /** 세트 조정 범위. 서버가 같은 범위를 검증한다 */
@@ -33,8 +33,6 @@ export function RoutineScreen() {
 
   const [routine, setRoutine] = useState<Routine | null>(null)
   const [missing, setMissing] = useState(false)
-  /** 종목별 지난 기록 한 줄. 처음 하는 종목은 없다 */
-  const [lastLines, setLastLines] = useState<Record<number, string>>({})
   const [busy, setBusy] = useState(false)
 
   const [swapItem, setSwapItem] = useState<RoutineItem | null>(null)
@@ -68,40 +66,6 @@ export function RoutineScreen() {
       alive = false
     }
   }, [routineId, fail])
-
-  // 해 본 종목만 지난 기록을 읽는다. 처음인 종목은 그 자리에 "동작 보기"가 온다
-  const knownIds = routine
-    ? activeItems(routine)
-        .filter((item) => !item.firstTime)
-        .map((item) => item.exerciseId)
-        .join(',')
-    : ''
-  useEffect(() => {
-    if (!knownIds) return
-    let alive = true
-    const ids = knownIds.split(',').map(Number)
-    void Promise.all(
-      ids.map(async (id) => {
-        try {
-          const last = await exerciseApi.getLastPerformance(id)
-          return [id, last ? lastPerformanceLine(last) : null] as const
-        } catch {
-          // 지난 기록은 보조 정보다. 못 읽어도 루틴은 볼 수 있다
-          return [id, null] as const
-        }
-      }),
-    ).then((pairs) => {
-      if (!alive) return
-      setLastLines((prev) => {
-        const next = { ...prev }
-        for (const [id, line] of pairs) if (line) next[id] = line
-        return next
-      })
-    })
-    return () => {
-      alive = false
-    }
-  }, [knownIds])
 
   if (missing) {
     return (
@@ -223,7 +187,7 @@ export function RoutineScreen() {
                 </div>
                 <div className={styles.itemBasis}>{basisLine(item)}</div>
 
-                {item.firstTime ? (
+                {item.firstTime && (
                   <button
                     type="button"
                     className={styles.motionLink}
@@ -231,10 +195,6 @@ export function RoutineScreen() {
                   >
                     동작 보기 →
                   </button>
-                ) : (
-                  lastLines[item.exerciseId] && (
-                    <div className={styles.itemLast}>지난 기록 {lastLines[item.exerciseId]}</div>
-                  )
                 )}
 
                 {editable && (

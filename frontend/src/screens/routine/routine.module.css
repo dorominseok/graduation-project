@@ -135,15 +135,10 @@
   color: var(--accent);
 }
 
-.itemBasis,
-.itemLast {
+.itemBasis {
   margin-top: var(--space-3);
   font-size: var(--font-xs);
   color: var(--text-secondary);
-}
-
-.itemLast {
-  color: var(--text-tertiary);
 }
 
 .motionLink {
