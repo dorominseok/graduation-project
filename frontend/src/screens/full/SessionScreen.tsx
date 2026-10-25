@@ -988,7 +988,7 @@ export function SessionScreen() {
                         <div className={styles.fieldRow}>
                           <span className={styles.fieldLabel}>분석</span>
                           <span className={styles.warmupHint}>
-                            {row.isWarmup ? '분석 집계에서 제외됨' : '분석 집계에 포함'}
+                            {row.isWarmup ? '볼륨 집계에서 제외됨' : '볼륨 집계에 포함'}
                           </span>
                           <button
                             type="button"
