@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ScreenHeader, useToast } from '../../components'
 import { exerciseApi, isApiError } from '../../api'
-import type { Exercise, LastPerformance, MeasureType } from '../../api'
+import type { Exercise, LastPerformance } from '../../api'
 import {
   BODY_PART_LABEL,
   EQUIPMENT_LABEL,
@@ -11,17 +11,10 @@ import {
   PUSH_PULL_LABEL,
 } from './exerciseLabels'
 import { exerciseImage, hideOnError } from './exerciseImage'
+import { describeSet } from './setFormat'
 import { OneRmTrendPanel } from '../analysis/OneRmTrendPanel'
 import { formatDayLabel } from '../../app/dates'
 import styles from './exerciseDetail.module.css'
-
-/** "60kg × 8회". 맨몸은 횟수만, 중량 추가 맨몸은 매단 무게에 +를 붙인다 */
-function describeLastSet(measureType: MeasureType, set: LastPerformance['sets'][number]): string {
-  if (set.durationSec != null) return `${set.durationSec}초`
-  if (measureType === 'BODYWEIGHT_REPS') return `${set.reps ?? '-'}회`
-  const sign = measureType === 'WEIGHTED_BODYWEIGHT' ? '+' : ''
-  return `${sign}${set.weightKg ?? '-'}kg × ${set.reps ?? '-'}회`
-}
 
 /**
  * 종목 상세 — 종목 정보, 직전 수행 기록, 중량·횟수 종목이면 추정 1RM 추이.
@@ -161,7 +154,7 @@ export function ExerciseDetailScreen() {
               <div key={set.setNo} className={styles.lastSet}>
                 <span>{set.setNo}세트</span>
                 <span>
-                  {describeLastSet(exercise.measureType, set)}
+                  {describeSet(exercise.measureType, set)}
                   {set.isWarmup && ' (워밍업)'}
                 </span>
               </div>

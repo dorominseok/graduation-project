@@ -6,6 +6,8 @@ interface Running {
   /** 끝나는 시각(ms). 남은 시간은 볼 때마다 지금과의 차로 계산한다 */
   endsAt: number
   total: number
+  /** 시작한 사용자. 로그아웃하고 다른 계정이 들어오면 보이지 않는다 */
+  userId: number | null
 }
 
 const STORAGE_KEY = 'rest-timer'
@@ -39,7 +41,7 @@ function save(running: Running | null) {
  * 다른 앱으로 가면 1초 반복을 멈추는데, 돌아와서 시각으로 다시 계산하니 어긋나지 않는다.
  * 새로고침에도 이어지게 이 탭에만 끝나는 시각을 남긴다.
  */
-export function RestTimerProvider({ children }: { children: ReactNode }) {
+export function RestTimerProvider({ userId, children }: { userId: number | null; children: ReactNode }) {
   const [running, setRunning] = useState<Running | null>(load)
   const [now, setNow] = useState(() => Date.now())
   const [done, setDone] = useState(false)
@@ -51,7 +53,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
       const current = Date.now()
       if (current >= running.endsAt) {
         setRunning(null)
-        setDone(true)
+        setDone(running.userId === userId)
       } else {
         setNow(current)
       }
@@ -63,7 +65,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
       window.clearInterval(timer)
       document.removeEventListener('visibilitychange', tick)
     }
-  }, [running])
+  }, [running, userId])
 
   useEffect(() => {
     if (!done) return
@@ -75,8 +77,8 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     const current = Date.now()
     setNow(current)
     setDone(false)
-    setRunning({ endsAt: current + seconds * 1000, total: seconds })
-  }, [])
+    setRunning({ endsAt: current + seconds * 1000, total: seconds, userId })
+  }, [userId])
 
   const adjust = useCallback((deltaSeconds: number) => {
     const current = Date.now()
@@ -84,16 +86,17 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     setRunning((prev) => {
       if (!prev) return prev
       const left = Math.max(1000, prev.endsAt - current + deltaSeconds * 1000)
-      return { endsAt: current + left, total: Math.max(prev.total, Math.ceil(left / 1000)) }
+      return { ...prev, endsAt: current + left, total: Math.max(prev.total, Math.ceil(left / 1000)) }
     })
   }, [])
 
   const skip = useCallback(() => setRunning(null), [])
 
-  const left = running ? Math.max(1, Math.ceil((running.endsAt - now) / 1000)) : 0
+  const mine = running !== null && running.userId === userId ? running : null
+  const left = mine ? Math.max(1, Math.ceil((mine.endsAt - now) / 1000)) : 0
   const value = useMemo(
-    () => ({ rest: running ? { left, total: running.total } : null, done, start, adjust, skip }),
-    [running, left, done, start, adjust, skip],
+    () => ({ rest: mine ? { left, total: mine.total } : null, done, start, adjust, skip }),
+    [mine, left, done, start, adjust, skip],
   )
 
   return <RestTimerContext value={value}>{children}</RestTimerContext>
