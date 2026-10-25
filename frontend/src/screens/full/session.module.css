@@ -277,15 +277,6 @@
   text-overflow: ellipsis;
 }
 
-.prevBar {
-  flex-shrink: 0;
-  padding: var(--space-6);
-  background: var(--chip-bg);
-  text-align: center;
-  font-size: var(--font-2xs);
-  color: var(--text-tertiary);
-}
-
 .setScroll {
   flex: 1;
   overflow-y: auto;
@@ -949,12 +940,6 @@
 }
 
 /* 지난 기록은 세트가 많으면 두 줄이 된다. 지표 카드와 같은 폭의 둥근 판으로 둔다 */
-:global(:root[data-theme='glass']) .prevBar {
-  margin: var(--space-10) var(--space-14) 0;
-  padding: var(--space-6) var(--space-12);
-  border-radius: var(--radius-md);
-}
-
 /* 세트 줄을 유리 판 하나에 담는다 */
 :global(:root[data-theme='glass']) .setList {
   padding: var(--space-4) var(--space-8);

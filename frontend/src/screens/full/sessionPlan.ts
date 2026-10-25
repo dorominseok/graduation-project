@@ -1,6 +1,6 @@
 import { exerciseApi, isApiError } from '../../api'
 import type { LastPerformance, MeasureType, Routine, RoutineItem, WorkoutSession } from '../../api'
-import { activeItems, lastPerformanceLine, repRangeLabel } from '../routine/format'
+import { activeItems, repRangeLabel } from '../routine/format'
 
 /**
  * 기록 화면의 카드 만들기 — 체크한 세트 + 오늘 루틴의 남은 계획 + 브라우저 임시 저장.
@@ -34,8 +34,6 @@ export interface ExerciseCard {
   name: string
   measureType: MeasureType
   rows: SetRow[]
-  /** "9월 24일 (수) · 60kg×10" 같은 직전 기록 한 줄. 없으면 처음 하는 종목이다 */
-  prevLabel: string | null
   /** 오늘 루틴의 종목이면 "4세트 × 8~12회". 루틴 밖 종목은 null */
   routineTarget: string | null
 }
@@ -85,7 +83,6 @@ export function savedCards(session: WorkoutSession): ExerciseCard[] {
     exerciseId: group.exerciseId,
     name: group.exerciseName,
     measureType: group.measureType,
-    prevLabel: null,
     routineTarget: null,
     rows: group.sets.map((set) => ({
       clientSetId: set.clientSetId,
@@ -136,7 +133,6 @@ async function routineCard(item: RoutineItem, saved: ExerciseCard | undefined): 
     exerciseId: item.exerciseId,
     name: item.exerciseName,
     measureType: item.measureType,
-    prevLabel: last && last.sets.length > 0 ? lastPerformanceLine(last) : null,
     routineTarget: routineTargetOf(item),
     rows: [...savedRows, ...planRows],
   }

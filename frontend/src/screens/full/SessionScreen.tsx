@@ -6,7 +6,6 @@ import type { Exercise, MeasureType, MuscleGroupKey, Routine, SessionIntensity, 
 import { useAuth } from '../../auth'
 import { formatDuration } from '../../app/dates'
 import { paths } from '../../app/paths'
-import { lastPerformanceLine } from '../routine/format'
 import { ExercisePicker } from './ExercisePicker'
 import type { PickerStep } from './ExercisePicker'
 import { BODY_PART_LABEL, EQUIPMENT_LABEL, MEASURE_CHIP_LABEL } from './exerciseLabels'
@@ -275,7 +274,6 @@ export function SessionScreen() {
     const last = await lastPerformanceOf(exercise.id)
     const hasLast = last !== null && last.sets.length > 0
     const rows: SetRow[] = hasLast ? rowsFromLast(last.sets) : [emptyRow()]
-    const prevLabel = hasLast ? lastPerformanceLine(last) : null
 
     setCards((prev) => [
       ...prev,
@@ -284,7 +282,6 @@ export function SessionScreen() {
         name: exercise.nameKo,
         measureType: exercise.measureType,
         rows,
-        prevLabel,
         routineTarget: null,
       },
     ])
@@ -743,7 +740,6 @@ export function SessionScreen() {
           )}
 
           {opened.routineTarget && <div className={styles.routineBar}>오늘 루틴 · {opened.routineTarget}</div>}
-          {opened.prevLabel && <div className={styles.prevBar}>지난 기록 {opened.prevLabel}</div>}
 
           <div className={`${styles.setScroll} ${restShowing ? styles.scrollWithRest : ''}`}>
             <div className={styles.setList}>
