@@ -4,6 +4,7 @@ import com.fitness.backend.analysis.domain.MuscleGroup;
 import com.fitness.backend.exercise.domain.Equipment;
 import com.fitness.backend.routine.domain.ExerciseOption;
 import com.fitness.backend.routine.domain.RoutineSlot;
+import com.fitness.backend.routine.domain.RuleComposer;
 import com.fitness.backend.routine.domain.SlotPlanner;
 import java.util.Comparator;
 import java.util.List;
@@ -18,8 +19,11 @@ import java.util.Optional;
  */
 public record LlmRoutineRequest(List<Slot> slots) {
 
-    /** @param sets 참고용. 4 이상이면 두 종목으로 나눌 수 있다(L5). LLM은 숫자를 돌려주지 않는다 */
-    public record Slot(MuscleGroup muscle, int sets, List<Candidate> candidates) {
+    /**
+     * @param sets       참고용. LLM은 숫자를 돌려주지 않는다
+     * @param splittable 두 종목으로 나눌 수 있는지(L5). 규칙 선택과 같은 기준이다
+     */
+    public record Slot(MuscleGroup muscle, int sets, boolean splittable, List<Candidate> candidates) {
     }
 
     /** @param favorite 즐겨찾기 / @param firstTime 오늘 전에 한 번도 안 한 종목 */
@@ -32,11 +36,14 @@ public record LlmRoutineRequest(List<Slot> slots) {
                                        Map<Long, String> names) {
         List<Slot> result = slots.stream()
                 .sorted(Comparator.comparingInt(s -> SlotPlanner.SIZE_ORDER.indexOf(s.muscle())))
-                .map(slot -> new Slot(slot.muscle(), slot.sets(),
-                        candidates.getOrDefault(slot.muscle(), List.of()).stream()
-                                .map(o -> new Candidate(o.id(), names.get(o.id()), o.equipment(), o.favorite(),
-                                        o.firstTime()))
-                                .toList()))
+                .map(slot -> {
+                    List<ExerciseOption> options = candidates.getOrDefault(slot.muscle(), List.of());
+                    return new Slot(slot.muscle(), slot.sets(), RuleComposer.splittable(slot.sets(), options),
+                            options.stream()
+                                    .map(o -> new Candidate(o.id(), names.get(o.id()), o.equipment(), o.favorite(),
+                                            o.firstTime()))
+                                    .toList());
+                })
                 .filter(slot -> !slot.candidates().isEmpty())
                 .toList();
         return new LlmRoutineRequest(result);

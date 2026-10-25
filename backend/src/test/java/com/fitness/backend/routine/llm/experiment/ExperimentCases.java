@@ -125,12 +125,12 @@ final class ExperimentCases {
 
     private static MuscleState s(MuscleGroup m, String weekly, VolumeVerdict verdict, LocalDate today, Integer daysAgo) {
         return new MuscleState(m, new BigDecimal(weekly), verdict, daysAgo == null ? null : today.plusDays(daysAgo),
-                false);
+                false, false);
     }
 
     /** 불균형의 적은 쪽. 판정은 부족 */
     private static MuscleState lesser(MuscleGroup m, String weekly, LocalDate today, Integer daysAgo) {
         return new MuscleState(m, new BigDecimal(weekly), VolumeVerdict.INSUFFICIENT,
-                daysAgo == null ? null : today.plusDays(daysAgo), true);
+                daysAgo == null ? null : today.plusDays(daysAgo), true, false);
     }
 }

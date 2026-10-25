@@ -45,17 +45,30 @@ class RuleComposerAndCheckTest {
         assertEquals(List.of(10L, 20L, 30L), items.stream().map(PlannedItem::exerciseId).toList());
     }
 
+    private static ExerciseOption known(long id, String group) {
+        return new ExerciseOption(id, group, BARBELL, false, 2, false, null);
+    }
+
     @Test
-    @DisplayName("5세트 이상이고 계열이 다른 후보가 있으면 두 종목으로 나눈다 — 앞 종목이 하나 더")
+    @DisplayName("6세트 이상이고 해 본 종목과 계열이 다른 후보가 있으면 두 종목으로 나눈다 — 앞 종목이 하나 더")
     void splitsLargeSlots() {
-        List<RoutineSlot> slots = List.of(slot(CHEST, 5, "0"));
         Map<MuscleGroup, List<ExerciseOption>> candidates = Map.of(
-                CHEST, List.of(ex(10, "벤치"), ex(11, "벤치"), ex(12, "플라이")));
+                CHEST, List.of(known(10, "벤치"), ex(11, "벤치"), ex(12, "플라이")));
 
-        List<PlannedItem> items = RuleComposer.compose(slots, candidates);
+        assertEquals(List.of(new PlannedItem(CHEST, 10L, 3), new PlannedItem(CHEST, 12L, 3)),
+                RuleComposer.compose(List.of(slot(CHEST, 6, "0")), candidates));
+        assertEquals(List.of(new PlannedItem(CHEST, 10L, 5)),
+                RuleComposer.compose(List.of(slot(CHEST, 5, "0")), candidates));
+        assertArrayEquals(new int[] {4, 3}, RuleComposer.split(7, 2));
+    }
 
-        assertEquals(List.of(new PlannedItem(CHEST, 10L, 3), new PlannedItem(CHEST, 12L, 2)), items);
-        assertArrayEquals(new int[] {2, 2}, RuleComposer.split(4, 2));
+    @Test
+    @DisplayName("처음 하는 종목만 있는 부위는 6세트여도 나누지 않는다 — 첫날 새 동작이 두 배가 되지 않게")
+    void firstTimeOnlySlotsStayWhole() {
+        Map<MuscleGroup, List<ExerciseOption>> candidates = Map.of(CHEST, List.of(ex(10, "벤치"), ex(12, "플라이")));
+
+        assertEquals(List.of(new PlannedItem(CHEST, 10L, 6)),
+                RuleComposer.compose(List.of(slot(CHEST, 6, "0")), candidates));
     }
 
     @Test
@@ -103,8 +116,8 @@ class RuleComposerAndCheckTest {
     void catchesOverloadAndWorseningImbalance() {
         List<RoutineSlot> slots = List.of(
                 new RoutineSlot(CHEST, 6, new BigDecimal("18"), BELOW_RECOMMENDED, false),
-                slot(BACK, 2, "1"));
-        List<PlannedItem> items = List.of(new PlannedItem(CHEST, 10L, 6), new PlannedItem(BACK, 20L, 2));
+                slot(BACK, 3, "1"));
+        List<PlannedItem> items = List.of(new PlannedItem(CHEST, 10L, 6), new PlannedItem(BACK, 20L, 3));
         // 밀기가 이미 많은데 오늘도 밀기를 더 많이 한다
         List<Imbalance> imbalances = List.of(new Imbalance(BalanceSide.PULL, BalanceSide.PUSH));
 
@@ -112,6 +125,18 @@ class RuleComposerAndCheckTest {
                 Map.of(CHEST, Set.of(10L), BACK, Set.of(20L)), RoutinePolicy.DEFAULT);
 
         assertEquals(List.of("R2", "R3"), failures);
+    }
+
+    @Test
+    @DisplayName("불균형이 둘이면 적은 쪽 하나를 채우는 날은 통과한다 — 하루에 한 묶음이라 둘을 한날에 못 채운다")
+    void oneLesserSideIsEnough() {
+        List<RoutineSlot> slots = List.of(slot(BACK, 6, "0"));
+        List<PlannedItem> items = List.of(new PlannedItem(BACK, 20L, 6));
+        List<Imbalance> imbalances = List.of(
+                new Imbalance(BalanceSide.PULL, BalanceSide.PUSH), new Imbalance(BalanceSide.LOWER, BalanceSide.UPPER));
+
+        assertTrue(RoutineCheck.check(slots, items, imbalances, Map.of(BACK, Set.of(20L)), RoutinePolicy.DEFAULT)
+                .isEmpty());
     }
 
     @Test

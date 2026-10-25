@@ -75,15 +75,15 @@ class RoutineLlmWiringTest {
     @DisplayName("LLM이 고른 순서와 설명이 그대로 저장된다 — 세트는 규칙 값")
     void storesLlmChoice() throws Exception {
         // 받은 부위를 거꾸로, 부위마다 첫 후보
-        BEHAVIOR.set(prompt -> answer(prompt, true, "하체부터 시작해서 가슴으로 마무리하는 순서로 바꿔 봤어요."));
+        BEHAVIOR.set(prompt -> answer(prompt, true, "팔부터 풀고 가슴으로 마무리하는 순서로 바꿔 봤어요."));
 
         long id = idOf(createToday()
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.generatedBy").value("LLM"))
-                .andExpect(jsonPath("$.comment").value("하체부터 시작해서 가슴으로 마무리하는 순서로 바꿔 봤어요."))
-                .andExpect(jsonPath("$.items[0].muscleGroup").value("POSTERIOR"))
-                .andExpect(jsonPath("$.items[3].muscleGroup").value("CHEST"))
-                .andExpect(jsonPath("$.items[0].plannedSets").value(4)));
+                .andExpect(jsonPath("$.comment").value("팔부터 풀고 가슴으로 마무리하는 순서로 바꿔 봤어요."))
+                .andExpect(jsonPath("$.items[0].muscleGroup").value("TRICEPS"))
+                .andExpect(jsonPath("$.items[2].muscleGroup").value("CHEST"))
+                .andExpect(jsonPath("$.items[0].plannedSets").value(6)));
 
         Map<String, Object> row = row(id);
         assertEquals(1, ((Number) row.get("llm_attempts")).intValue());
@@ -117,7 +117,7 @@ class RoutineLlmWiringTest {
         long id = idOf(createToday()
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.generatedBy").value("LLM"))
-                .andExpect(jsonPath("$.comment").value("큰 근육 위주로, 큰 부위부터 하는 순서예요.")));
+                .andExpect(jsonPath("$.comment").value("큰 근육부터 시작해서 작은 근육으로 마무리하는 순서예요.")));
 
         assertEquals("RULE", row(id).get("comment_by"));
     }

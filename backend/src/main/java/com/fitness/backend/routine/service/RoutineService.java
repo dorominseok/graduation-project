@@ -149,14 +149,13 @@ public class RoutineService {
         BalanceResponse balance = analysisService.balance(userId, null, referenceDate);
 
         List<Imbalance> imbalances = imbalances(balance);
-        Set<MuscleGroup> lesser = imbalances.stream()
-                .flatMap(im -> im.lesser().components().stream())
-                .collect(Collectors.toSet());
+        Set<MuscleGroup> lesser = RoutineCheck.lesserOnly(imbalances);
+        Set<MuscleGroup> bigger = RoutineCheck.biggerOnly(imbalances);
         Map<MuscleGroup, LocalDate> lastTrained = lastTrained(userId, today);
         List<MuscleState> states = volume.tiers().stream()
                 .flatMap(tier -> tier.children().stream())
                 .map((ChildResponse c) -> new MuscleState(c.key(), c.weeklySets(), c.verdict(),
-                        lastTrained.get(c.key()), lesser.contains(c.key())))
+                        lastTrained.get(c.key()), lesser.contains(c.key()), bigger.contains(c.key())))
                 .toList();
 
         List<RoutineSlot> slots = SlotPlanner.plan(states, daysPerWeek(volume, policy), today, policy);
@@ -255,8 +254,8 @@ public class RoutineService {
     }
 
     /**
-     * 주당 운동 일수. 운동한 날이 너무 적으면 모른다고 보고 기본값(3일)을 쓴다 —
-     * 하루 기록한 사람을 "주 1회"로 보면 부위마다 6세트가 나온다.
+     * 주당 운동 일수. 운동한 날이 너무 적으면 모른다고 보고 기본값(5일)을 쓴다 —
+     * 첫 주의 하루 이틀만 보고 "주 1회"라고 단정하지 않는다.
      */
     private static double daysPerWeek(MuscleVolumeResponse volume, RoutinePolicy policy) {
         int days = volume.confidence().workoutDayCount();

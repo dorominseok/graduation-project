@@ -5,9 +5,11 @@ import com.fitness.backend.analysis.domain.MuscleGroup;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -47,8 +49,10 @@ public final class RoutineCheck {
 
         Map<MuscleGroup, Integer> setsByMuscle = new EnumMap<>(MuscleGroup.class);
         items.forEach(i -> setsByMuscle.merge(i.muscle(), i.sets(), Integer::sum));
-        boolean r3 = imbalances.stream().allMatch(im ->
-                sum(setsByMuscle, im.lesser()) >= sum(setsByMuscle, im.bigger()));
+        // 하루에 한 묶음이라 불균형이 둘이면(당기기·하체가 함께 적으면) 쪽마다의 합으로는 둘을 한날에
+        // 지킬 수 없다. 대신 많은 쪽에만 속한 부위에 세트를 두지 않는지 본다
+        Set<MuscleGroup> biggerOnly = biggerOnly(imbalances);
+        boolean r3 = items.stream().noneMatch(i -> biggerOnly.contains(i.muscle()));
         if (!r3) {
             failures.add("R3");
         }
@@ -73,8 +77,24 @@ public final class RoutineCheck {
         return List.copyOf(failures);
     }
 
-    private static int sum(Map<MuscleGroup, Integer> setsByMuscle, BalanceSide side) {
-        return side.components().stream().mapToInt(m -> setsByMuscle.getOrDefault(m, 0)).sum();
+    /** 어느 불균형의 적은 쪽이고, 어느 불균형의 많은 쪽도 아닌 부위 */
+    public static Set<MuscleGroup> lesserOnly(List<Imbalance> imbalances) {
+        Set<MuscleGroup> result = sides(imbalances, Imbalance::lesser);
+        result.removeAll(sides(imbalances, Imbalance::bigger));
+        return result;
+    }
+
+    /** 어느 불균형의 많은 쪽이고, 어느 불균형의 적은 쪽도 아닌 부위 */
+    public static Set<MuscleGroup> biggerOnly(List<Imbalance> imbalances) {
+        Set<MuscleGroup> result = sides(imbalances, Imbalance::bigger);
+        result.removeAll(sides(imbalances, Imbalance::lesser));
+        return result;
+    }
+
+    private static Set<MuscleGroup> sides(List<Imbalance> imbalances, Function<Imbalance, BalanceSide> side) {
+        return imbalances.stream()
+                .flatMap(im -> side.apply(im).components().stream())
+                .collect(Collectors.toCollection(() -> EnumSet.noneOf(MuscleGroup.class)));
     }
 
     /** 불균형인 쌍. 루틴이 적은 쪽 세트를 많은 쪽보다 적게 두면 불균형을 키운다(R3) */

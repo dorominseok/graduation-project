@@ -33,10 +33,10 @@ import tools.jackson.databind.json.JsonMapper;
 class LlmRoutineComposerTest {
 
     private static final List<RoutineSlot> SLOTS = List.of(
-            new RoutineSlot(BACK, 5, BigDecimal.ZERO, INSUFFICIENT, false),
+            new RoutineSlot(BACK, 6, BigDecimal.ZERO, INSUFFICIENT, false),
             new RoutineSlot(BICEPS, 3, BigDecimal.ZERO, INSUFFICIENT, false));
     private static final Map<MuscleGroup, List<ExerciseOption>> CANDIDATES = Map.of(
-            BACK, List.of(new ExerciseOption(20L, "랫풀다운", CABLE, false, 0, true, 1),
+            BACK, List.of(new ExerciseOption(20L, "랫풀다운", CABLE, false, 2, false, 1),
                     new ExerciseOption(23L, "로우", BARBELL, false, 0, true, null)),
             BICEPS, List.of(new ExerciseOption(83L, "컬", DUMBBELL, false, 0, true, 1)));
     private static final Map<Long, String> NAMES = Map.of(20L, "랫풀다운: 와이드 그립", 23L, "바벨 로우", 83L, "덤벨 컬");
@@ -76,7 +76,7 @@ class LlmRoutineComposerTest {
     void acceptsLlmChoice() {
         Composition result = compose(new ScriptedClient(GOOD));
 
-        assertEquals(List.of(new PlannedItem(BACK, 23L, 3), new PlannedItem(BACK, 20L, 2),
+        assertEquals(List.of(new PlannedItem(BACK, 23L, 3), new PlannedItem(BACK, 20L, 3),
                 new PlannedItem(BICEPS, 83L, 3)), result.items());
         assertEquals(Author.LLM, result.generatedBy());
         assertEquals(Author.LLM, result.commentBy());

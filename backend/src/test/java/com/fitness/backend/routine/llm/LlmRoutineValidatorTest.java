@@ -24,12 +24,12 @@ class LlmRoutineValidatorTest {
 
     private static final JsonMapper JSON = JsonMapper.shared();
 
-    /** 등 5세트(후보 20·23), 이두 3세트(후보 83) */
+    /** 등 6세트(나눌 수 있음, 후보 20·23), 이두 3세트(후보 83) */
     private static final LlmRoutineRequest REQUEST = new LlmRoutineRequest(List.of(
-            new Slot(BACK, 5, List.of(
+            new Slot(BACK, 6, true, List.of(
                     new Candidate(20, "랫풀다운: 와이드 그립", CABLE, false, true),
                     new Candidate(23, "바벨 로우", BARBELL, false, true))),
-            new Slot(BICEPS, 3, List.of(new Candidate(83, "덤벨 컬", DUMBBELL, false, false)))));
+            new Slot(BICEPS, 3, false, List.of(new Candidate(83, "덤벨 컬", DUMBBELL, false, false)))));
 
     private static final String GOOD_COMMENT = "등은 케이블과 바벨로 당기는 방향을 바꿔 가며 하고, 덤벨 컬로 팔을 마무리하는 순서예요.";
 
@@ -85,11 +85,12 @@ class LlmRoutineValidatorTest {
     }
 
     @Test
-    @DisplayName("L5 — 4세트 슬롯을 두 종목으로 나눔. 규칙과 같이 5세트부터다")
+    @DisplayName("L5 — 나눌 수 없는 슬롯(split false)을 두 종목으로 나눔")
     void l5() {
-        LlmRoutineRequest threeSets = new LlmRoutineRequest(List.of(new Slot(BACK, 4, REQUEST.slots().get(0).candidates())));
+        LlmRoutineRequest notSplittable = new LlmRoutineRequest(List.of(
+                new Slot(BACK, 6, false, REQUEST.slots().get(0).candidates())));
 
-        Result result = LlmRoutineValidator.validate(threeSets,
+        Result result = LlmRoutineValidator.validate(notSplittable,
                 "{\"items\":[" + pick("BACK", "20") + "," + pick("BACK", "23") + "],\"comment\":\"" + GOOD_COMMENT + "\"}",
                 JSON);
 

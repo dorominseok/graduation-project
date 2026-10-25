@@ -35,11 +35,15 @@ class SlotPlannerTest {
     private static final RoutinePolicy POLICY = RoutinePolicy.DEFAULT;
 
     private static MuscleState state(MuscleGroup m, String weekly, VolumeVerdict v, LocalDate last) {
-        return new MuscleState(m, new BigDecimal(weekly), v, last, false);
+        return new MuscleState(m, new BigDecimal(weekly), v, last, false, false);
     }
 
     private static MuscleState lesser(MuscleGroup m, String weekly, VolumeVerdict v) {
-        return new MuscleState(m, new BigDecimal(weekly), v, null, true);
+        return new MuscleState(m, new BigDecimal(weekly), v, null, true, false);
+    }
+
+    private static MuscleState bigger(MuscleGroup m, String weekly, VolumeVerdict v) {
+        return new MuscleState(m, new BigDecimal(weekly), v, null, false, true);
     }
 
     /** 9종 전부 기본 상태로 두고 일부만 바꾼다 */
@@ -60,44 +64,73 @@ class SlotPlannerTest {
         return slots.stream().mapToInt(RoutineSlot::sets).sum();
     }
 
+    private static List<MuscleGroup> muscles(List<RoutineSlot> slots) {
+        return slots.stream().map(RoutineSlot::muscle).toList();
+    }
+
     @Test
-    @DisplayName("기록이 없으면 큰 근육 순으로 4세트씩, 18을 넘기 전까지 — 첫날 16세트 (2.6)")
+    @DisplayName("기록이 없으면 주 5회로 보고 큰 근육의 묶음부터 — 첫날은 밀기 3부위 6세트씩 18세트")
     void newUserFirstDay() {
-        List<RoutineSlot> slots = SlotPlanner.plan(all(INSUFFICIENT, "0", null), 3, TODAY, POLICY);
+        List<RoutineSlot> slots = SlotPlanner.plan(all(INSUFFICIENT, "0", null), 5, TODAY, POLICY);
 
-        assertEquals(List.of(CHEST, BACK, QUADS, POSTERIOR), slots.stream().map(RoutineSlot::muscle).toList());
-        assertTrue(slots.stream().allMatch(s -> s.sets() == 4));
-        assertEquals(16, total(slots));
+        assertEquals(List.of(CHEST, DELT_FRONT, TRICEPS), muscles(slots));
+        assertTrue(slots.stream().allMatch(s -> s.sets() == 6));
+        assertEquals(18, total(slots));
     }
 
     @Test
-    @DisplayName("다음 날은 어제 한 큰 근육이 회복 중이라 작은 근육이 온다 — 분할이 저절로 생긴다 (2.6)")
-    void newUserSecondDay() {
+    @DisplayName("다음 날은 어제 한 밀기가 회복 중이라 당기기, 그다음 날은 하체 + 코어 — 묶음이 저절로 돈다")
+    void bundlesRotate() {
         LocalDate yesterday = TODAY.minusDays(1);
-        List<MuscleState> states = all(INSUFFICIENT, "0", null,
-                state(CHEST, "0", INSUFFICIENT, yesterday), state(BACK, "0", INSUFFICIENT, yesterday),
-                state(QUADS, "0", INSUFFICIENT, yesterday), state(POSTERIOR, "0", INSUFFICIENT, yesterday));
+        LocalDate twoDaysAgo = TODAY.minusDays(2);
+        List<MuscleState> secondDay = all(INSUFFICIENT, "0", null,
+                state(CHEST, "6", BELOW_RECOMMENDED, yesterday), state(DELT_FRONT, "6", BELOW_RECOMMENDED, yesterday),
+                state(TRICEPS, "6", BELOW_RECOMMENDED, yesterday));
+        List<MuscleState> thirdDay = all(INSUFFICIENT, "0", null,
+                state(CHEST, "6", BELOW_RECOMMENDED, twoDaysAgo), state(DELT_FRONT, "6", BELOW_RECOMMENDED, twoDaysAgo),
+                state(TRICEPS, "6", BELOW_RECOMMENDED, twoDaysAgo),
+                state(BACK, "6", BELOW_RECOMMENDED, yesterday), state(DELT_REAR, "6", BELOW_RECOMMENDED, yesterday),
+                state(BICEPS, "6", BELOW_RECOMMENDED, yesterday));
 
-        List<RoutineSlot> slots = SlotPlanner.plan(states, 3, TODAY, POLICY);
-
-        assertEquals(List.of(DELT_FRONT, DELT_REAR, TRICEPS, BICEPS), slots.stream().map(RoutineSlot::muscle).toList());
+        assertEquals(List.of(BACK, DELT_REAR, BICEPS), muscles(SlotPlanner.plan(secondDay, 5, TODAY, POLICY)));
+        assertEquals(List.of(QUADS, POSTERIOR, CORE), muscles(SlotPlanner.plan(thirdDay, 5, TODAY, POLICY)));
     }
 
     @Test
-    @DisplayName("설계서 3.3 예시 — 주 3회, 어깨 후면 4 · 삼두 4 · 가슴 3 · 앞허벅지 3 = 14, 등(최적)은 빠진다")
-    void designExample() {
-        LocalDate longAgo = TODAY.minusDays(10);
+    @DisplayName("부족한 부위가 여러 묶음에 흩어져 있으면 맨 앞 부위의 묶음만 하고, 같은 묶음의 최적 부위로 채운다")
+    void oneBundlePerDay() {
         List<MuscleState> states = all(OPTIMAL, "12", TODAY.minusDays(3),
-                state(DELT_REAR, "0", INSUFFICIENT, null),
-                state(TRICEPS, "2", INSUFFICIENT, longAgo),
-                state(CHEST, "4", BELOW_RECOMMENDED, longAgo),
-                state(QUADS, "6", BELOW_RECOMMENDED, longAgo));
+                state(POSTERIOR, "2.1", INSUFFICIENT, TODAY.minusDays(5)),
+                state(DELT_REAR, "1.8", INSUFFICIENT, TODAY.minusDays(5)),
+                state(CORE, "1.4", INSUFFICIENT, TODAY.minusDays(5)));
 
-        List<RoutineSlot> slots = SlotPlanner.plan(states, 3, TODAY, POLICY);
+        List<RoutineSlot> slots = SlotPlanner.plan(states, 5, TODAY, POLICY);
 
-        assertEquals(Map.of(DELT_REAR, 4, TRICEPS, 4, CHEST, 3, QUADS, 3), sets(slots));
-        assertEquals(14, total(slots));
-        assertEquals(List.of(DELT_REAR, TRICEPS, CHEST, QUADS), slots.stream().map(RoutineSlot::muscle).toList());
+        // 코어는 묶음이 없어 건너뛰고, 모자란 양이 더 큰 어깨 후면의 당기기 묶음
+        assertEquals(Map.of(DELT_REAR, 6, CORE, 6, BACK, 3, BICEPS, 3), sets(slots));
+        assertEquals(List.of(BACK, BICEPS), muscles(slots.stream().filter(RoutineSlot::fill).toList()));
+    }
+
+    @Test
+    @DisplayName("뒤허벅지를 하는 날은 앞허벅지를 같이 채우고, 그래도 12에 못 미치면 최적인 코어로 채운다")
+    void fillWithinBundleThenCore() {
+        List<MuscleState> states = all(OPTIMAL, "12", TODAY.minusDays(3),
+                state(POSTERIOR, "2", INSUFFICIENT, TODAY.minusDays(5)));
+
+        List<RoutineSlot> slots = SlotPlanner.plan(states, 5, TODAY, POLICY);
+
+        assertEquals(Map.of(POSTERIOR, 6, QUADS, 3, CORE, 3), sets(slots));
+        assertEquals(12, total(slots));
+    }
+
+    @Test
+    @DisplayName("채우는 3세트로 과다 경계(20)를 넘는 최적 부위는 채우지 않는다 (R2)")
+    void fillNeverOverloads() {
+        List<MuscleState> states = all(OPTIMAL, "12", TODAY.minusDays(3),
+                state(POSTERIOR, "2", INSUFFICIENT, TODAY.minusDays(5)),
+                state(QUADS, "19", OPTIMAL, TODAY.minusDays(3)));
+
+        assertFalse(sets(SlotPlanner.plan(states, 5, TODAY, POLICY)).containsKey(QUADS));
     }
 
     @Test
@@ -108,7 +141,7 @@ class SlotPlannerTest {
                 state(BACK, "0", INSUFFICIENT, TODAY.minusDays(1)),
                 state(QUADS, "0", INSUFFICIENT, TODAY.minusDays(2)));
 
-        Map<MuscleGroup, Integer> sets = sets(SlotPlanner.plan(states, 3, TODAY, POLICY));
+        Map<MuscleGroup, Integer> sets = sets(SlotPlanner.plan(states, 5, TODAY, POLICY));
 
         assertFalse(sets.containsKey(CHEST));
         assertFalse(sets.containsKey(BACK));
@@ -120,61 +153,89 @@ class SlotPlannerTest {
     void excessiveNeverIncluded() {
         List<MuscleState> states = all(EXCESSIVE, "25", null);
 
-        assertTrue(SlotPlanner.plan(states, 3, TODAY, POLICY).isEmpty());
+        assertTrue(SlotPlanner.plan(states, 5, TODAY, POLICY).isEmpty());
     }
 
     @Test
-    @DisplayName("같은 판정이면 불균형의 적은 쪽이 먼저지만, 판정은 뛰어넘지 않는다 (2.3)")
-    void lesserSideWithinVerdictOnly() {
-        LocalDate recent = TODAY.minusDays(1);
-        List<MuscleState> states = all(OPTIMAL, "12", recent,
-                state(CHEST, "5", BELOW_RECOMMENDED, null),     // 모자란 양 5
-                lesser(BACK, "8", BELOW_RECOMMENDED),           // 모자란 양 2지만 적은 쪽
-                state(TRICEPS, "3", INSUFFICIENT, null));       // 부족이 권장 이하보다 먼저
-
-        List<MuscleGroup> order = SlotPlanner.plan(states, 3, TODAY, POLICY).stream().map(RoutineSlot::muscle).toList();
-
-        assertEquals(List.of(TRICEPS, BACK, CHEST), order);
-    }
-
-    @Test
-    @DisplayName("같은 판정·같은 부족량이면 오래 쉰 부위가 먼저다")
-    void olderLastTrainedFirst() {
-        List<MuscleState> states = all(OPTIMAL, "12", TODAY.minusDays(1),
-                state(CHEST, "0", INSUFFICIENT, TODAY.minusDays(3)),
-                state(BICEPS, "0", INSUFFICIENT, TODAY.minusDays(9)));
-
-        List<MuscleGroup> order = SlotPlanner.plan(states, 3, TODAY, POLICY).stream().map(RoutineSlot::muscle).toList();
-
-        assertEquals(List.of(BICEPS, CHEST), order.subList(0, 2));
-    }
-
-    @Test
-    @DisplayName("12세트에 못 미치면 최적 부위 중 가장 오래 쉰 부위로 3세트씩 채운다 (2.5)")
-    void fillWithLongestRestedOptimal() {
+    @DisplayName("불균형의 적은 쪽이 모자라면 판정이 더 나쁜 반대쪽보다 그 묶음을 먼저 한다 (R3)")
+    void lesserSideBundleFirst() {
         List<MuscleState> states = all(OPTIMAL, "12", TODAY.minusDays(3),
-                state(CORE, "0", INSUFFICIENT, null),
-                state(BACK, "12", OPTIMAL, TODAY.minusDays(8)),
-                state(QUADS, "12", OPTIMAL, TODAY.minusDays(6)),
-                state(CHEST, "12", OPTIMAL, TODAY.minusDays(1)));   // 회복 중이라 채우지 않는다
+                bigger(CHEST, "3", INSUFFICIENT),
+                lesser(BACK, "8", BELOW_RECOMMENDED));
 
-        List<RoutineSlot> slots = SlotPlanner.plan(states, 3, TODAY, POLICY);
+        List<RoutineSlot> slots = SlotPlanner.plan(states, 5, TODAY, POLICY);
 
-        assertEquals(CORE, slots.get(0).muscle());
-        assertEquals(BACK, slots.get(1).muscle());
-        assertEquals(QUADS, slots.get(2).muscle());
-        assertTrue(slots.stream().filter(RoutineSlot::fill).allMatch(s -> s.sets() == 3));
-        assertTrue(total(slots) >= 12);
+        assertEquals(BACK, slots.get(0).muscle());
         assertFalse(sets(slots).containsKey(CHEST));
     }
 
     @Test
-    @DisplayName("주당 일수로 세트가 바뀐다 — 주 2회 5세트, 주 1회는 6에서 자르고, 주 7회는 2에서 받친다")
-    void setsFollowDaysPerWeek() {
-        List<MuscleState> states = all(INSUFFICIENT, "0", null);
+    @DisplayName("많은 쪽에만 속한 부위는 모자라도 묶음을 정하지 못한다 — 적은 쪽이 최적이어도 그쪽을 채운다")
+    void biggerSideNeverLeads() {
+        List<MuscleState> states = all(EXCESSIVE, "25", null,
+                bigger(CHEST, "3", INSUFFICIENT),
+                new MuscleState(BACK, new BigDecimal("12"), OPTIMAL, null, true, false));
 
-        assertEquals(5, SlotPlanner.plan(states, 2, TODAY, POLICY).get(0).sets());
-        assertEquals(6, SlotPlanner.plan(states, 1, TODAY, POLICY).get(0).sets());
-        assertEquals(2, SlotPlanner.plan(states, 7, TODAY, POLICY).get(0).sets());
+        assertEquals(List.of(BACK), muscles(SlotPlanner.plan(states, 5, TODAY, POLICY)));
+    }
+
+    @Test
+    @DisplayName("같은 판정·같은 부족량이면 오래 쉰 부위의 묶음이다")
+    void olderLastTrainedFirst() {
+        List<MuscleState> states = all(OPTIMAL, "12", TODAY.minusDays(4),
+                state(CHEST, "0", INSUFFICIENT, TODAY.minusDays(3)),
+                state(BICEPS, "0", INSUFFICIENT, TODAY.minusDays(9)));
+
+        List<RoutineSlot> slots = SlotPlanner.plan(states, 5, TODAY, POLICY);
+
+        assertEquals(BICEPS, slots.get(0).muscle());
+        assertFalse(sets(slots).containsKey(CHEST));
+    }
+
+    @Test
+    @DisplayName("어제 묶음의 한 부위만 했어도 그 묶음은 통째로 쉰다 — 미는 동작이 이틀 이어지지 않게")
+    void wholeBundleRests() {
+        List<MuscleState> states = all(INSUFFICIENT, "0", null,
+                state(CHEST, "3", INSUFFICIENT, TODAY.minusDays(1)));
+
+        List<MuscleGroup> today = muscles(SlotPlanner.plan(states, 5, TODAY, POLICY));
+
+        assertEquals(List.of(BACK, DELT_REAR, BICEPS), today);
+    }
+
+    @Test
+    @DisplayName("하한에 못 미치면 다른 묶음을 끌어오지 않고 담은 부위의 세트를 올린다")
+    void topUpWithinBundle() {
+        List<MuscleState> states = all(OPTIMAL, "12", TODAY.minusDays(3),
+                state(QUADS, "5", BELOW_RECOMMENDED, TODAY.minusDays(3)),
+                state(POSTERIOR, "5", BELOW_RECOMMENDED, TODAY.minusDays(3)),
+                state(CORE, "19", OPTIMAL, TODAY.minusDays(3)));
+
+        // 주 7회면 권장 이하는 4세트씩 = 8. 코어는 채우면 과다라 못 넣고, 두 부위를 6세트까지 올린다
+        List<RoutineSlot> slots = SlotPlanner.plan(states, 7, TODAY, POLICY);
+
+        assertEquals(Map.of(QUADS, 6, POSTERIOR, 6), sets(slots));
+    }
+
+    @Test
+    @DisplayName("세트 = 주 목표 ÷ (주당 일수 ÷ 묶음 셋) — 주 5회 6, 주 7회 부족은 5·권장 이하는 4, 3에서 받친다")
+    void setsFollowDaysPerWeek() {
+        List<MuscleState> lacking = all(INSUFFICIENT, "0", null);
+        List<MuscleState> below = all(BELOW_RECOMMENDED, "5", null);
+
+        assertEquals(6, SlotPlanner.plan(lacking, 5, TODAY, POLICY).get(0).sets());
+        assertEquals(6, SlotPlanner.plan(lacking, 2, TODAY, POLICY).get(0).sets());
+        assertEquals(5, SlotPlanner.plan(lacking, 7, TODAY, POLICY).get(0).sets());
+        assertEquals(4, SlotPlanner.plan(below, 7, TODAY, POLICY).get(0).sets());
+        assertEquals(3, SlotPlanner.plan(lacking, 20, TODAY, POLICY).get(0).sets());
+    }
+
+    @Test
+    @DisplayName("하루 18세트를 넘으면 마지막 부위는 남은 만큼만 담는다")
+    void lastSlotTakesWhatIsLeft() {
+        List<RoutineSlot> slots = SlotPlanner.plan(all(INSUFFICIENT, "0", null), 6, TODAY, POLICY);
+
+        assertEquals(Map.of(CHEST, 5, DELT_FRONT, 5, TRICEPS, 5, CORE, 3), sets(slots));
+        assertEquals(18, total(slots));
     }
 }

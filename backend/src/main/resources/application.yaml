@@ -78,13 +78,13 @@ app:
   # 오늘의 루틴. 초기값 — 실험과 실사용으로 조정한다
   routine:
     target-weekly-sets: 10        # 부위당 주 목표 = 최적 하한
-    per-muscle-min-sets: 2        # 부위당 한 번에 최소·최대
+    per-muscle-min-sets: 3        # 부위당 한 번에 최소·최대
     per-muscle-max-sets: 6
-    fill-max-sets: 3              # 총량을 채우는 최적 부위의 최대 세트
+    fill-max-sets: 3              # 묶음을 채우는 최적 부위의 최대 세트
     daily-min-sets: 12            # 하루 총량 (약 40~60분)
     daily-max-sets: 18
     recovery-days: 2              # 오늘·어제 한 부위는 뺀다 (48시간)
-    default-days-per-week: 3      # 주당 운동 일수를 모를 때
+    default-days-per-week: 5      # 주당 운동 일수를 모를 때 — 막 시작한 사람은 의욕이 크다
     min-known-days: 3             # 운동한 날이 이보다 적으면 모른다고 본다
     candidates-per-muscle: 5      # LLM에 넘길 후보를 작게 유지
     history-weeks: 8              # "해 본 종목"을 보는 기간
