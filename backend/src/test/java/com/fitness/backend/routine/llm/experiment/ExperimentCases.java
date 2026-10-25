@@ -45,7 +45,7 @@ final class ExperimentCases {
 
     static List<Case> all(LocalDate today) {
         return List.of(
-                new Case("01-no-history", "기록 없음 — 첫날 루틴(설계서 2.6)", 3,
+                new Case("01-no-history", "기록 없음 — 첫날 루틴, 기본 주 5회(설계서 2.6)", 5,
                         states(today, VolumeVerdict.INSUFFICIENT, "0", null), List.of(), Set.of(), Map.of()),
 
                 new Case("02-push-heavy", "밀기 편중 — 당기기(등·어깨 후면·이두) 보정, R3", 4,
@@ -62,7 +62,7 @@ final class ExperimentCases {
                         Map.of("바벨 벤치프레스", 8, "덤벨 숄더프레스", 6, "케이블 푸시다운", 6, "바벨 스쿼트", 4,
                                 "루마니안 데드리프트", 4, "랫풀다운: 와이드 그립", 2, "덤벨 컬", 2)),
 
-                new Case("03-no-legs", "하체 미수행 — 하체 우선, 하루 총량을 상체로 채움", 4,
+                new Case("03-no-legs", "하체 미수행 — 하체 묶음 + 코어", 4,
                         states(today, VolumeVerdict.OPTIMAL, "12", -3,
                                 s(BACK, "12", VolumeVerdict.OPTIMAL, today, -6),
                                 s(DELT_REAR, "10", VolumeVerdict.OPTIMAL, today, -5),
@@ -82,7 +82,7 @@ final class ExperimentCases {
                         Map.of("바벨 벤치프레스", 8, "바벨 로우", 6, "바벨 스쿼트", 6, "루마니안 데드리프트", 5,
                                 "밀리터리 프레스", 5, "이지바 스컬크러셔", 4, "바벨 컬", 4, "플랭크", 4)),
 
-                new Case("05-twice-a-week", "주 2회 — 부위당 5세트, 두 종목으로 나눌 여지", 2,
+                new Case("05-twice-a-week", "주 2회 — 부위당 6세트, 해 본 종목이 있는 부위만 둘로 나눔", 2,
                         states(today, VolumeVerdict.BELOW_RECOMMENDED, "6", -7,
                                 s(CHEST, "2", VolumeVerdict.INSUFFICIENT, today, -7),
                                 s(BACK, "2", VolumeVerdict.INSUFFICIENT, today, -7),
@@ -91,11 +91,11 @@ final class ExperimentCases {
                         Map.of("덤벨 벤치프레스", 3, "머신 체스트프레스", 2, "랫풀다운: 와이드 그립", 3,
                                 "원암 덤벨 로우", 2, "레그 익스텐션", 2)),
 
-                new Case("06-five-a-week", "주 5회 — 부위당 2세트로 아홉 부위, 처음 종목 몰림", 5,
+                new Case("06-five-a-week", "주 5회 — 부위당 6세트, 처음 종목뿐인 부위는 한 종목", 5,
                         states(today, VolumeVerdict.INSUFFICIENT, "2", -5), List.of(), Set.of(),
                         Map.of("바벨 벤치프레스", 3, "랫풀다운: 와이드 그립", 3, "바벨 스쿼트", 2)),
 
-                new Case("07-yesterday-chest-back", "어제 가슴·등 — 회복 제외", 3,
+                new Case("07-yesterday-chest-back", "어제 가슴·등 — 밀기·당기기 묶음이 쉬어 하체", 3,
                         states(today, VolumeVerdict.INSUFFICIENT, "1", -6,
                                 s(CHEST, "3", VolumeVerdict.INSUFFICIENT, today, -1),
                                 s(BACK, "3", VolumeVerdict.INSUFFICIENT, today, -1)),
