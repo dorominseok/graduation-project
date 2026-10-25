@@ -1,0 +1,111 @@
+/* 휴식 띠 — 기록 화면과, 하단 탭이 있는 화면(종목 상세 등)에 같은 모양으로 뜬다 */
+
+.rest,
+.done {
+  position: absolute;
+  left: var(--space-12);
+  right: var(--space-12);
+  bottom: var(--space-12);
+  z-index: 40;
+}
+
+.aboveTabBar {
+  bottom: calc(var(--tabbar-height) + var(--space-12));
+}
+
+.rest {
+  composes: g-thick from global;
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-14);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  box-shadow: 0 12px 32px rgba(20, 24, 20, 0.16), 0 2px 8px rgba(20, 24, 20, 0.08);
+}
+
+.time {
+  min-width: 66px;
+  font-size: 26px;
+  font-weight: var(--weight-heavy);
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+}
+
+.label {
+  margin-bottom: var(--space-6);
+  font-size: var(--font-2xs);
+  color: var(--text-secondary);
+}
+
+.track {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--chip-bg);
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--fill-good);
+  transition: width 1s linear;
+}
+
+.buttons {
+  display: flex;
+  gap: var(--space-6);
+  flex-shrink: 0;
+}
+
+.button {
+  composes: g-secondary from global;
+  height: 34px;
+  padding: 0 var(--space-10);
+  border: 1px solid var(--card-border);
+  border-radius: 9px;
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-size: var(--font-3xs);
+  font-weight: var(--weight-bold);
+}
+
+.skip {
+  composes: g-primary from global;
+  height: 34px;
+  padding: 0 var(--space-12);
+  border: none;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--on-fill);
+  font-size: var(--font-3xs);
+  font-weight: var(--weight-heavy);
+}
+
+.done {
+  composes: g-primary from global;
+  padding: var(--space-14);
+  border-radius: var(--radius-lg);
+  background: var(--accent);
+  color: var(--on-fill);
+  text-align: center;
+  font-size: var(--font-sm);
+  font-weight: var(--weight-heavy);
+  box-shadow: 0 12px 32px rgba(20, 24, 20, 0.16);
+}
+
+:global(:root[data-theme='glass']) .button,
+:global(:root[data-theme='glass']) .skip {
+  border-radius: var(--radius-pill);
+}
+
+:global(:root[data-theme='glass']) .rest,
+:global(:root[data-theme='glass']) .done {
+  border-radius: var(--radius-xl);
+}

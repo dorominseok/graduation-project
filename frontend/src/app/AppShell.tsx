@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom'
-import { TabBar } from '../components'
+import { RestBar, TabBar } from '../components'
 import styles from './AppShell.module.css'
 
 /**
@@ -13,6 +13,8 @@ export function AppShell() {
         <Outlet />
       </main>
       <TabBar />
+      {/* 기록 중에 종목 상세를 보러 와도 쉬는 시간이 보이게 */}
+      <RestBar aboveTabBar />
     </div>
   )
 }
