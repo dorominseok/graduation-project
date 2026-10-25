@@ -1,0 +1,37 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-12) var(--space-4);
+  padding: var(--space-14) var(--space-8);
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  font-size: var(--font-3xs);
+  color: var(--text-tertiary);
+}
+
+.value {
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.unit {
+  margin-left: 1px;
+  font-size: var(--font-3xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+/* 워밍업 칸은 흐리게. 본세트 수에도 넣지 않는다 */
+.warmup {
+  opacity: 0.55;
+}

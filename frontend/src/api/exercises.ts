@@ -5,6 +5,7 @@ import type {
   CategoryCount,
   Equipment,
   Exercise,
+  ExerciseHistoryDay,
   GroupCount,
   LastPerformance,
   MeasureType,
@@ -93,4 +94,9 @@ export function removeFavorite(exerciseId: number): Promise<void> {
 export async function getLastPerformance(exerciseId: number): Promise<LastPerformance | null> {
   const result = await request<LastPerformance | null>(`/exercises/${exerciseId}/last-performance`)
   return result ?? null
+}
+
+/** 종목 기록 — 그 종목을 한 날마다 그날 세트. 오늘 포함, 최신순 */
+export function getHistory(exerciseId: number, page = 0, size = 10): Promise<Page<ExerciseHistoryDay>> {
+  return request<Page<ExerciseHistoryDay>>(`/exercises/${exerciseId}/history?page=${page}&size=${size}`)
 }

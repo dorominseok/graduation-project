@@ -109,6 +109,18 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
                                            @Param("before") LocalDate before,
                                            Pageable pageable);
 
+    /** 그 종목의 세트가 있는 날. 오늘 포함, 운동 날짜 최신순 */
+    @Query("""
+            select s from WorkoutSession s
+            where s.userId = :userId
+              and exists (select 1 from WorkoutSet w
+                          where w.sessionId = s.id and w.exerciseId = :exerciseId)
+            order by s.performedOn desc
+            """)
+    Page<WorkoutSession> findPerformed(@Param("userId") Long userId,
+                                       @Param("exerciseId") Long exerciseId,
+                                       Pageable pageable);
+
     /**
      * 판정 신뢰도({@code confidence})용 운동한 날 수.
      *

@@ -23,6 +23,7 @@ export const paths = {
   routineDetail: (routineId: number | string = ':routineId') => `/routines/${routineId}`,
   exerciseList: '/exercises',
   exerciseDetail: (exerciseId: number | string = ':exerciseId') => `/exercises/${exerciseId}`,
+  exerciseHistory: (exerciseId: number | string = ':exerciseId') => `/exercises/${exerciseId}/history`,
   settings: '/settings',
   accountSettings: '/settings/account',
   personalInfo: '/settings/personal',

@@ -27,6 +27,8 @@ public interface WorkoutSetRepository extends JpaRepository<WorkoutSet, Long> {
     /** 직전 수행 기록. {@code setNo} 순서가 곧 수행 순서다 */
     List<WorkoutSet> findBySessionIdAndExerciseIdOrderBySetNoAsc(Long sessionId, Long exerciseId);
 
+    List<WorkoutSet> findBySessionIdInAndExerciseIdOrderBySetNoAsc(List<Long> sessionIds, Long exerciseId);
+
     /** 종목 단위 삭제. 그 종목의 세트를 한 번에 지운다 */
     int deleteBySessionIdAndExerciseId(Long sessionId, Long exerciseId);
 }
