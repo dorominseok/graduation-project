@@ -1178,13 +1178,12 @@ export function SessionScreen() {
             {cards.map((card, cardIndex) => {
               const saved = card.rows.filter((row) => row.savedId !== null)
               const planned = card.rows.length - saved.length
+              // 수행률은 이 카드의 줄 기준이다. 세트를 더하거나 빼면 분모도 따라간다
+              const done = Math.round((saved.length / card.rows.length) * 100)
               const summary =
                 saved.length === 0
                   ? `예정 ${planned}세트 · 아직 기록 없음`
-                  : `${saved.length}세트 기록${planned > 0 ? ` · ${planned}세트 예정` : ''} · 최근 ${describeSet(
-                      card.measureType,
-                      saved[saved.length - 1],
-                    )}`
+                  : `${saved.length}세트 기록${planned > 0 ? ` · ${planned}세트 예정` : ''} · ${done}%`
               return (
                 <div key={`${card.exerciseId}-${cardIndex}`} className={styles.exRow}>
                   {/* 카드 전체가 세부 기록으로 가는 문이라 따로 화살표를 두지 않는다 */}
@@ -1208,7 +1207,6 @@ export function SessionScreen() {
                       )}
                     </span>
                     <span className={styles.exSummary}>{summary}</span>
-                    {card.routineTarget && <span className={styles.exTarget}>목표 {card.routineTarget}</span>}
                   </button>
                   <button
                     type="button"
