@@ -1,0 +1,43 @@
+.day {
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  overflow: hidden;
+}
+
+.day + .day {
+  margin-top: var(--space-10);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--space-12) var(--space-16);
+  border-bottom: 1px solid var(--divider);
+}
+
+.date {
+  font-size: var(--font-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.count {
+  font-size: var(--font-2xs);
+  color: var(--text-tertiary);
+}
+
+/* ── 유리 테마 */
+
+.day {
+  composes: g-card from global;
+}
+
+:global(:root[data-theme='glass']) .day {
+  border-radius: var(--radius-xl);
+}
+
+:global(:root[data-theme='glass']) .head {
+  border-bottom-color: rgb(255 255 255 / 0.7);
+}

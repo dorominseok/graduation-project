@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ScreenHeader } from '../../components'
 import { groupApi } from '../../api'
-import type { MeasureType, MemberDay, MemberSession } from '../../api'
+import type { MemberDay, MemberSession } from '../../api'
 import { useAuth } from '../../auth'
 import { paths } from '../../app/paths'
 import { formatDayLabel, formatDuration } from '../../app/dates'
 import { exerciseImage, hideOnError } from '../full/exerciseImage'
-import { trimNumber } from '../full/setFormat'
+import { SetGrid } from '../full/SetGrid'
 import { CheerButton } from './CheerButton'
 import { isId, useGroupFail } from './useGroupFail'
 import styles from './group.module.css'
@@ -87,7 +87,6 @@ function metaOf(session: MemberSession): string[] {
 }
 
 type MemberExercise = MemberSession['exercises'][number]
-type MemberSet = MemberExercise['sets'][number]
 
 /**
  * 그날 기록 — 머리 줄(시각·시간·세트 수·따봉) 아래에 종목마다 카드 하나.
@@ -119,11 +118,6 @@ function SessionBlock({ groupId, session, mine }: { groupId: number; session: Me
 }
 
 function ExerciseCard({ exercise }: { exercise: MemberExercise }) {
-  // 워밍업은 번호를 매기지 않는다. 본세트만 볼륨에 들어가는 것과 같은 기준이다
-  const labels = exercise.sets.reduce<string[]>((acc, set) => {
-    const done = acc.filter((label) => label !== '워밍업').length
-    return [...acc, set.isWarmup ? '워밍업' : `${done + 1}세트`]
-  }, [])
   const shots = ([1, 2] as const)
     .map((shot) => exerciseImage(exercise.exerciseNameEn, shot))
     .filter((src): src is string => src != null)
@@ -140,44 +134,7 @@ function ExerciseCard({ exercise }: { exercise: MemberExercise }) {
           </span>
         )}
       </div>
-      <div className={styles.setGrid}>
-        {exercise.sets.map((set, index) => (
-          <SetCell
-            key={set.setNo}
-            label={labels[index]}
-            measureType={exercise.measureType}
-            set={set}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/** 세트 한 칸 — "1세트 / 40kg / 10회". 종목의 측정 방식이 쓰지 않는 줄은 그리지 않는다 */
-function SetCell({ label, measureType, set }: { label: string; measureType: MeasureType; set: MemberSet }) {
-  const weighted = measureType === 'WEIGHT_REPS' || measureType === 'WEIGHTED_BODYWEIGHT'
-  return (
-    <div className={`${styles.setCell} ${set.isWarmup ? styles.warmup : ''}`}>
-      <span className={styles.setLabel}>{label}</span>
-      {weighted && (
-        <span className={styles.setValue}>
-          {measureType === 'WEIGHTED_BODYWEIGHT' ? '+' : ''}
-          {trimNumber(set.weightKg ?? 0)}
-          <span className={styles.setUnit}>kg</span>
-        </span>
-      )}
-      {measureType === 'TIME' ? (
-        <span className={styles.setValue}>
-          {set.durationSec ?? 0}
-          <span className={styles.setUnit}>초</span>
-        </span>
-      ) : (
-        <span className={styles.setValue}>
-          {set.reps ?? 0}
-          <span className={styles.setUnit}>회</span>
-        </span>
-      )}
+      <SetGrid measureType={exercise.measureType} sets={exercise.sets} />
     </div>
   )
 }

@@ -292,6 +292,13 @@ export interface LastPerformance {
   }[]
 }
 
+/** 종목 기록의 하루 — 그날 그 종목의 세트. 워밍업도 담는다 */
+export interface ExerciseHistoryDay {
+  sessionId: number
+  performedOn: string
+  sets: LastPerformance['sets']
+}
+
 // ── 통계
 
 /** 종목 하나의 추정 1RM 추이. 기록이 없는 날은 점이 없다 */

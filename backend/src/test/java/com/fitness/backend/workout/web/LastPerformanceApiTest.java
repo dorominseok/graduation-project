@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 종목 프리필 — 직전 수행 기록.
+ * 종목별 개인 기록 — 직전 수행(프리필)과 날짜별 기록.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -130,6 +130,75 @@ class LastPerformanceApiTest {
     @DisplayName("프리필은 로그인이 필요하다 — 종목 목록과 달리 개인 기록이다")
     void requiresAuth() throws Exception {
         mvc.perform(get("/api/v1/exercises/" + benchPress + "/last-performance"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // ── 날짜별 기록
+
+    @Test
+    @DisplayName("종목 기록은 그 종목을 한 날마다 그날 세트를 준다 — 오늘 포함, 최신순, 다른 종목 세트는 빠진다")
+    void historyByDay() throws Exception {
+        long squat = exerciseIdOf("바벨 스쿼트");
+        long older = openDay(LocalDate.now().minusDays(7));
+        postSet(older, set(benchPress, "50.0", 15, false)).andExpect(status().isCreated());
+        long today = openDay(LocalDate.now());
+        postSet(today, set(benchPress, "60.0", 12, true)).andExpect(status().isCreated());
+        postSet(today, set(benchPress, "70.0", 10, false)).andExpect(status().isCreated());
+        postSet(today, set(squat, "80.0", 8, false)).andExpect(status().isCreated());
+        long squatOnly = openDay(LocalDate.now().minusDays(3));
+        postSet(squatOnly, set(squat, "80.0", 8, false)).andExpect(status().isCreated());
+
+        mvc.perform(get("/api/v1/exercises/" + benchPress + "/history")
+                        .header(HttpHeaders.AUTHORIZATION, bearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andExpect(jsonPath("$.content[0].sessionId").value(today))
+                .andExpect(jsonPath("$.content[0].performedOn").value(LocalDate.now().toString()))
+                .andExpect(jsonPath("$.content[0].sets.length()").value(2))
+                .andExpect(jsonPath("$.content[0].sets[0].isWarmup").value(true))
+                .andExpect(jsonPath("$.content[0].sets[1].weightKg").value(70.0))
+                .andExpect(jsonPath("$.content[1].sessionId").value(older))
+                .andExpect(jsonPath("$.page.totalElements").value(2));
+    }
+
+    @Test
+    @DisplayName("종목 기록은 페이지로 나눠 준다 — 상세는 최근 3일만, 더보기는 이어서")
+    void historyPages() throws Exception {
+        for (int daysAgo = 1; daysAgo <= 4; daysAgo++) {
+            long sessionId = openDay(LocalDate.now().minusDays(daysAgo));
+            postSet(sessionId, set(benchPress, String.valueOf(60 + daysAgo), 10, false)).andExpect(status().isCreated());
+        }
+
+        mvc.perform(get("/api/v1/exercises/" + benchPress + "/history").param("size", "3")
+                        .header(HttpHeaders.AUTHORIZATION, bearer))
+                .andExpect(jsonPath("$.content.length()").value(3))
+                .andExpect(jsonPath("$.content[0].sets[0].weightKg").value(61.0))
+                .andExpect(jsonPath("$.page.totalElements").value(4))
+                .andExpect(jsonPath("$.page.totalPages").value(2));
+        mvc.perform(get("/api/v1/exercises/" + benchPress + "/history").param("size", "3").param("page", "1")
+                        .header(HttpHeaders.AUTHORIZATION, bearer))
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].sets[0].weightKg").value(64.0));
+    }
+
+    @Test
+    @DisplayName("종목 기록 — 기록이 없으면 빈 페이지, 남의 기록은 안 보이고, 없는 종목은 404, 한 번에 50일까지")
+    void historyEdges() throws Exception {
+        long sessionId = openDay(LocalDate.now().minusDays(1));
+        postSet(sessionId, set(benchPress, "70.0", 10, false)).andExpect(status().isCreated());
+        String other = "Bearer " + authService
+                .signUp("o" + UUID.randomUUID().toString().substring(0, 8) + "@example.com", "hunter2hunter2", "타인")
+                .tokens().accessToken();
+
+        mvc.perform(get("/api/v1/exercises/" + benchPress + "/history").header(HttpHeaders.AUTHORIZATION, other))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(0));
+        mvc.perform(get("/api/v1/exercises/999999/history").header(HttpHeaders.AUTHORIZATION, bearer))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/exercises/" + benchPress + "/history").param("size", "51")
+                        .header(HttpHeaders.AUTHORIZATION, bearer))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/exercises/" + benchPress + "/history"))
                 .andExpect(status().isUnauthorized());
     }
 

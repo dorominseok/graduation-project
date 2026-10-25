@@ -54,25 +54,18 @@
   color: var(--text-primary);
 }
 
-.lastBox {
-  padding: var(--space-12) var(--space-14);
+/* 최근 기록 아래 "기록 더보기", 종목 기록 끝의 "더 보기" */
+.more {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-10);
+  padding: var(--space-12);
   border: 1px solid var(--card-border);
   border-radius: var(--radius-lg);
   background: var(--card-bg);
-}
-
-.lastDate {
-  margin-bottom: var(--space-8);
-  font-size: var(--font-2xs);
-  color: var(--text-tertiary);
-}
-
-.lastSet {
-  display: flex;
-  justify-content: space-between;
-  padding: var(--space-8) 0;
+  color: var(--text-secondary);
   font-size: var(--font-sm);
-  color: var(--text-primary);
+  font-weight: var(--weight-bold);
 }
 
 .star {
@@ -115,8 +108,8 @@
   composes: g-card from global;
 }
 
-.lastBox {
-  composes: g-card from global;
+.more {
+  composes: g-secondary from global;
 }
 
 :global(:root[data-theme='glass']) .hero {
@@ -133,7 +126,6 @@
   border-bottom: none;
 }
 
-:global(:root[data-theme='glass']) .lastBox {
-  border-radius: var(--radius-xl);
-  padding: var(--space-14) var(--space-16);
+:global(:root[data-theme='glass']) .more {
+  border-radius: var(--radius-pill);
 }

@@ -236,6 +236,10 @@ public final class WorkoutDtos {
         }
     }
 
+    /** 종목 기록의 하루 — 그날 그 종목의 세트. 워밍업도 담고 {@code isWarmup}으로 구분한다 */
+    public record ExerciseHistoryDay(Long sessionId, LocalDate performedOn, List<LastPerformanceSet> sets) {
+    }
+
     /** 캘린더 월별 요약 */
     public record CalendarResponse(int year, int month, List<CalendarDay> days) {
     }

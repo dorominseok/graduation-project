@@ -16,6 +16,7 @@ import com.fitness.backend.workout.web.WorkoutDtos.CalendarResponse;
 import com.fitness.backend.workout.web.WorkoutDtos.CreateSetRequest;
 import com.fitness.backend.workout.web.WorkoutDtos.DayTimes;
 import com.fitness.backend.workout.web.WorkoutDtos.ExerciseGroup;
+import com.fitness.backend.workout.web.WorkoutDtos.ExerciseHistoryDay;
 import com.fitness.backend.workout.web.WorkoutDtos.ExerciseRef;
 import com.fitness.backend.workout.web.WorkoutDtos.LastPerformanceResponse;
 import com.fitness.backend.workout.web.WorkoutDtos.LastPerformanceSet;
@@ -225,6 +226,26 @@ public class WorkoutService {
 
         return Optional.of(new LastPerformanceResponse(exerciseId, exercise.getNameKo(),
                 exercise.getMeasureType(), session.getId(), session.getPerformedOn(), sets));
+    }
+
+    /**
+     * 종목 하나의 기록. 그 종목을 한 날마다 그날의 세트를 담는다. 오늘 포함, 최신순.
+     *
+     * <p>세트는 페이지의 날들을 한 번에 읽는다. 날마다 읽으면 페이지 크기만큼 쿼리가 나간다.
+     */
+    public Page<ExerciseHistoryDay> exerciseHistory(Long userId, Long exerciseId, Pageable pageable) {
+        if (!exerciseRepository.existsById(exerciseId)) {
+            throw new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "종목을 찾을 수 없습니다.");
+        }
+        Page<WorkoutSession> page = sessionRepository.findPerformed(userId, exerciseId, pageable);
+        List<Long> sessionIds = page.getContent().stream().map(WorkoutSession::getId).toList();
+        Map<Long, List<LastPerformanceSet>> setsBySession = sessionIds.isEmpty()
+                ? Map.of()
+                : setRepository.findBySessionIdInAndExerciseIdOrderBySetNoAsc(sessionIds, exerciseId).stream()
+                        .collect(Collectors.groupingBy(WorkoutSet::getSessionId,
+                                Collectors.mapping(LastPerformanceSet::of, Collectors.toList())));
+        return page.map(session -> new ExerciseHistoryDay(session.getId(), session.getPerformedOn(),
+                setsBySession.getOrDefault(session.getId(), List.of())));
     }
 
     /** 캘린더 월별 요약. 운동한 날만 담는다. */

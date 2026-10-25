@@ -17,6 +17,7 @@ import { SessionScreen } from '../screens/full/SessionScreen'
 import { RoutineScreen } from '../screens/routine/RoutineScreen'
 import { ExerciseListScreen } from '../screens/full/ExerciseListScreen'
 import { ExerciseDetailScreen } from '../screens/full/ExerciseDetailScreen'
+import { ExerciseHistoryScreen } from '../screens/full/ExerciseHistoryScreen'
 import { SettingsScreen } from '../screens/full/SettingsScreen'
 import { AccountSettingsScreen } from '../screens/full/AccountSettingsScreen'
 import { PersonalInfoScreen } from '../screens/full/PersonalInfoScreen'
@@ -58,6 +59,7 @@ export const router = createBrowserRouter([
           { path: paths.profile, element: <ProfileScreen /> },
           { path: paths.exerciseList, element: <ExerciseListScreen /> },
           { path: paths.exerciseDetail(), element: <ExerciseDetailScreen /> },
+          { path: paths.exerciseHistory(), element: <ExerciseHistoryScreen /> },
           { path: paths.settings, element: <SettingsScreen /> },
           { path: paths.accountSettings, element: <AccountSettingsScreen /> },
           { path: paths.personalInfo, element: <PersonalInfoScreen /> },

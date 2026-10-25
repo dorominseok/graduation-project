@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ScreenHeader, useToast } from '../../components'
 import { exerciseApi, isApiError } from '../../api'
-import type { Exercise, LastPerformance } from '../../api'
+import type { Exercise, ExerciseHistoryDay, Page } from '../../api'
 import {
   BODY_PART_LABEL,
   EQUIPMENT_LABEL,
@@ -11,13 +11,16 @@ import {
   PUSH_PULL_LABEL,
 } from './exerciseLabels'
 import { exerciseImage, hideOnError } from './exerciseImage'
-import { describeSet } from './setFormat'
+import { ExerciseDayCard } from './ExerciseDayCard'
 import { OneRmTrendPanel } from '../analysis/OneRmTrendPanel'
-import { formatDayLabel } from '../../app/dates'
+import { paths } from '../../app/paths'
 import styles from './exerciseDetail.module.css'
 
+/** 상세에 보여 줄 최근 기록 날 수. 더 있으면 "기록 더보기"로 종목 기록 페이지에 간다 */
+const RECENT_DAYS = 3
+
 /**
- * 종목 상세 — 종목 정보, 직전 수행 기록, 중량·횟수 종목이면 추정 1RM 추이.
+ * 종목 상세 — 종목 정보, 최근 기록(날짜별 세트 칸), 중량·횟수 종목이면 추정 1RM 추이.
  * 추이 패널은 분석 탭 통계와 같은 것이다.
  */
 export function ExerciseDetailScreen() {
@@ -26,7 +29,7 @@ export function ExerciseDetailScreen() {
   const { showToast } = useToast()
 
   const [exercise, setExercise] = useState<Exercise | null>(null)
-  const [last, setLast] = useState<LastPerformance | null>(null)
+  const [recent, setRecent] = useState<Page<ExerciseHistoryDay> | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -34,13 +37,13 @@ export function ExerciseDetailScreen() {
     let alive = true
     const load = async () => {
       try {
-        const [detail, lastPerformance] = await Promise.all([
+        const [detail, history] = await Promise.all([
           exerciseApi.get(Number(exerciseId)),
-          exerciseApi.getLastPerformance(Number(exerciseId)),
+          exerciseApi.getHistory(Number(exerciseId), 0, RECENT_DAYS),
         ])
         if (!alive) return
         setExercise(detail)
-        setLast(lastPerformance)
+        setRecent(history)
       } catch (err) {
         if (!isApiError(err)) throw err
         showToast({ message: err.message, tone: 'danger' })
@@ -147,19 +150,21 @@ export function ExerciseDetailScreen() {
         </dl>
 
         <div className={styles.sectionTitle}>최근 기록</div>
-        {last ? (
-          <div className={styles.lastBox}>
-            <div className={styles.lastDate}>{formatDayLabel(last.performedOn)}</div>
-            {last.sets.map((set) => (
-              <div key={set.setNo} className={styles.lastSet}>
-                <span>{set.setNo}세트</span>
-                <span>
-                  {describeSet(exercise.measureType, set)}
-                  {set.isWarmup && ' (워밍업)'}
-                </span>
-              </div>
+        {recent && recent.content.length > 0 ? (
+          <>
+            {recent.content.map((day) => (
+              <ExerciseDayCard key={day.sessionId} day={day} measureType={exercise.measureType} />
             ))}
-          </div>
+            {recent.page.totalElements > RECENT_DAYS && (
+              <button
+                type="button"
+                className={styles.more}
+                onClick={() => navigate(paths.exerciseHistory(exercise.id))}
+              >
+                기록 더보기 ›
+              </button>
+            )}
+          </>
         ) : (
           <div className={styles.empty}>아직 기록이 없어요</div>
         )}

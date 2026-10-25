@@ -28,6 +28,7 @@ export type {
   Equipment,
   Exercise,
   ExerciseGroup,
+  ExerciseHistoryDay,
   GroupCount,
   GroupDetail,
   GroupSummary,
