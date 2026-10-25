@@ -417,7 +417,7 @@ export function SessionScreen() {
         // 직전 세트를 복사해 채운다. 보통 같은 무게로 이어간다.
         const last = card.rows[card.rows.length - 1]
         const next = last
-          ? { ...last, clientSetId: crypto.randomUUID(), savedId: null, fromPrev: false }
+          ? { ...last, clientSetId: crypto.randomUUID(), savedId: null }
           : emptyRow()
         return { ...card, rows: [...card.rows, next] }
       }),
@@ -864,7 +864,6 @@ export function SessionScreen() {
                       <div className={styles.subLine}>
                         <span>휴식 {formatRest(row.restSec)}</span>
                         {row.isWarmup && <span className={styles.subWarmup}>워밍업 · 분석 제외</span>}
-                        {row.fromPrev && !done && <span>이전 기록에서 채움</span>}
                       </div>
                     </div>
 

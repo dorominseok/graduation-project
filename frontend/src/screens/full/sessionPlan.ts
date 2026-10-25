@@ -25,8 +25,6 @@ export interface SetRow {
   restSec: number
   /** 저장된 세트의 서버 id. null이면 아직 계획 행이다 */
   savedId: number | null
-  /** 직전 기록에서 채운 행인지. 값의 출처를 줄 아래에 적어준다 */
-  fromPrev: boolean
 }
 
 export interface ExerciseCard {
@@ -49,7 +47,6 @@ export function emptyRow(): SetRow {
     isWarmup: false,
     restSec: DEFAULT_REST_SEC,
     savedId: null,
-    fromPrev: false,
   }
 }
 
@@ -63,7 +60,6 @@ export function rowsFromLast(sets: LastPerformance['sets']): SetRow[] {
     isWarmup: set.isWarmup,
     restSec: DEFAULT_REST_SEC,
     savedId: null,
-    fromPrev: true,
   }))
 }
 
@@ -92,7 +88,6 @@ export function savedCards(session: WorkoutSession): ExerciseCard[] {
       isWarmup: set.isWarmup,
       restSec: DEFAULT_REST_SEC,
       savedId: set.id,
-      fromPrev: false,
     })),
   }))
 }
