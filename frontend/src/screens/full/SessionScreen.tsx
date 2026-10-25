@@ -371,7 +371,7 @@ export function SessionScreen() {
   }
 
   /**
-   * 워밍업 표시. 워밍업 세트는 볼륨 집계에서 빠진다 — 준비 세트까지 세면 부족한 부위가
+   * 워밍업 표시. 워밍업 세트는 분석의 세트 집계에서 빠진다 — 준비 세트까지 세면 부족한 부위가
    * 충분한 것으로 보인다.
    */
   const toggleWarmup = async (cardIndex: number, rowIndex: number) => {
@@ -639,7 +639,11 @@ export function SessionScreen() {
       .map((row) => row.weightKg)
       .filter((weight): weight is number => weight != null)
     const savedMaxWeight = savedWeights.length > 0 ? Math.max(...savedWeights) : null
-    const savedWorkingSets = savedRows.filter((row) => !row.isWarmup).length
+    const savedWorking = savedRows.filter((row) => !row.isWarmup)
+    const savedVolume =
+      savedWorking.length > 0
+        ? savedWorking.reduce((sum, row) => sum + (row.weightKg ?? 0) * (row.reps ?? 0), 0)
+        : null
     // 중량 딥스 같은 종목의 무게는 몸무게가 아니라 매단 무게라 1RM을 내지 않는다
     const isAddedWeight = opened.measureType === 'WEIGHTED_BODYWEIGHT'
     // 다른 세션의 응답이 남아 있을 수 있어 세션 번호까지 맞춰 본다
@@ -700,7 +704,7 @@ export function SessionScreen() {
 
           {/*
             지표 3종. 저장된 세트만 센다 — 아직 체크하지 않은 줄은 한 것이 아니다.
-            볼륨은 톤(무게×횟수)이 아니라 본세트 수다.
+            볼륨은 본세트의 무게×횟수 합이다. 종목 하나 안이라 무게를 그대로 더해도 비교가 된다.
           */}
           {showStats && (
             <div className={styles.stats}>
@@ -722,8 +726,11 @@ export function SessionScreen() {
                 },
                 {
                   label: '볼륨',
-                  value: String(savedWorkingSets),
-                  unit: '세트',
+                  value:
+                    savedVolume == null
+                      ? '—'
+                      : `${isAddedWeight ? '+' : ''}${savedVolume.toLocaleString('ko-KR')}`,
+                  unit: savedVolume == null ? '' : 'kg',
                   note: '워밍업 제외',
                 },
               ].map((stat) => (
@@ -981,7 +988,7 @@ export function SessionScreen() {
                         <div className={styles.fieldRow}>
                           <span className={styles.fieldLabel}>분석</span>
                           <span className={styles.warmupHint}>
-                            {row.isWarmup ? '볼륨 집계에서 제외됨' : '볼륨 집계에 포함'}
+                            {row.isWarmup ? '분석 집계에서 제외됨' : '분석 집계에 포함'}
                           </span>
                           <button
                             type="button"
