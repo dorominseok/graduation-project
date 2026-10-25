@@ -44,3 +44,22 @@ export const PUSH_PULL_LABEL: Record<string, string> = {
   PULL: '당기기',
   NONE: '해당 없음',
 }
+
+/** 주동근. 종목 데이터(free-exercise-db)의 영어 값이라 화면에는 이 표로 적는다 */
+export const PRIMARY_MUSCLE_LABEL: Record<string, string> = {
+  chest: '가슴',
+  lats: '광배',
+  'middle back': '등 중앙',
+  'lower back': '허리',
+  traps: '승모근',
+  shoulders: '어깨',
+  biceps: '이두',
+  triceps: '삼두',
+  forearms: '전완',
+  abdominals: '복부',
+  quadriceps: '앞허벅지',
+  hamstrings: '뒤허벅지',
+  glutes: '엉덩이',
+  abductors: '엉덩이 바깥',
+  calves: '종아리',
+}

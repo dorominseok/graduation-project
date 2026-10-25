@@ -6,8 +6,7 @@ export function trimNumber(value: number): string {
 }
 
 /**
- * 세트 한 줄을 "60kg×10" 꼴로. 기록 화면의 카드 요약·직전 기록 줄과 그룹의 멤버 기록이
- * 같은 말투를 쓴다.
+ * 세트 한 줄을 "60kg×10" 꼴로. 맨몸은 횟수만, 시간 종목은 초만 적는다.
  */
 export function describeSet(
   measureType: MeasureType,

@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom'
-import { TabBar } from '../components'
+import { RestBar, TabBar, useRestTimer } from '../components'
 import styles from './AppShell.module.css'
 
 /**
@@ -7,12 +7,15 @@ import styles from './AppShell.module.css'
  * 하던 일이 있는 화면(기록·루틴·피드백)은 이걸 쓰지 않는다.
  */
 export function AppShell() {
+  const { rest, done } = useRestTimer()
   return (
     <div className={styles.root}>
-      <main className={styles.content}>
+      <main className={`${styles.content} ${rest || done ? styles.withRest : ''}`}>
         <Outlet />
       </main>
       <TabBar />
+      {/* 기록 중에 종목 상세를 보러 와도 쉬는 시간이 보이게 */}
+      <RestBar aboveTabBar />
     </div>
   )
 }

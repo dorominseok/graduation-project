@@ -204,6 +204,10 @@ export async function buildCards(
   restoreRoutine = false,
 ): Promise<ExerciseCard[]> {
   const saved = new Map(savedCards(session).map((card) => [card.exerciseId, card]))
+  // 저장 응답이 오기 전에 화면을 떠나면 그 줄이 체크 전 상태로 임시 저장에 남는다. 서버에 있는 줄은
+  // 빼서 같은 세트가 두 번 나오지 않게 한다
+  const savedIds = new Set(session.exercises.flatMap((group) => group.sets.map((set) => set.clientSetId)))
+  const unsaved = (rows: SetRow[]) => rows.filter((row) => !savedIds.has(row.clientSetId))
   const take = (exerciseId: number) => {
     const card = saved.get(exerciseId)
     saved.delete(exerciseId)
@@ -211,7 +215,10 @@ export async function buildCards(
   }
 
   if (draft && draft.routineKey === routineKeyOf(routine)) {
-    const cards = draft.cards.map((card) => ({ ...card, rows: [...(take(card.exerciseId)?.rows ?? []), ...card.rows] }))
+    const cards = draft.cards.map((card) => ({
+      ...card,
+      rows: [...(take(card.exerciseId)?.rows ?? []), ...unsaved(card.rows)],
+    }))
     const shown = new Set(cards.map((card) => card.exerciseId))
     const restored =
       restoreRoutine && routine
@@ -232,8 +239,8 @@ export async function buildCards(
   // 루틴이 바뀌어 다시 만들었어도, 루틴 밖에서 추가해 둔 종목은 살린다
   for (const extra of draft?.cards.filter((card) => card.routineTarget === null) ?? []) {
     const existing = cards.find((card) => card.exerciseId === extra.exerciseId)
-    if (existing) existing.rows = [...existing.rows, ...extra.rows]
-    else cards.push(extra)
+    if (existing) existing.rows = [...existing.rows, ...unsaved(extra.rows)]
+    else cards.push({ ...extra, rows: unsaved(extra.rows) })
   }
   return cards
 }

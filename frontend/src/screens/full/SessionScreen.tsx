@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { BottomSheet, useToast } from '../../components'
-import { exerciseApi, isApiError, routineApi, statsApi, workoutApi } from '../../api'
+import { BottomSheet, RestBar, useRestTimer, useToast } from '../../components'
+import { isApiError, routineApi, statsApi, workoutApi } from '../../api'
 import type { Exercise, MeasureType, MuscleGroupKey, Routine, SessionIntensity, WorkoutSession } from '../../api'
 import { useAuth } from '../../auth'
-import { formatDuration } from '../../app/dates'
+import { formatDuration, formatRest } from '../../app/dates'
 import { paths } from '../../app/paths'
 import { ExercisePicker } from './ExercisePicker'
 import type { PickerStep } from './ExercisePicker'
-import { BODY_PART_LABEL, EQUIPMENT_LABEL, MEASURE_CHIP_LABEL } from './exerciseLabels'
 import { NumberField } from './NumberField'
 import { RestField } from './RestField'
 import { describeSet, trimNumber } from './setFormat'
@@ -38,8 +37,6 @@ const STEP_WEIGHT = 2.5
 const STEP_REST = 30
 /** 저장된 줄이 초록으로 물들어 있는 시간 */
 const FLASH_MS = 600
-/** "휴식 끝" 띠를 띄워두는 시간 */
-const REST_DONE_MS = 3000
 
 /** 측정 유형이 실제로 쓰는 입력 칸만 고른다. */
 function fieldsOf(measureType: MeasureType): Field[] {
@@ -62,12 +59,6 @@ function formatDayLabel(key: string): string {
   const [year, month, day] = key.split('-').map(Number)
   const weekday = WEEKDAYS[new Date(year, month - 1, day).getDay()]
   return `${month}월 ${day}일 (${weekday})`
-}
-
-function formatRest(seconds: number): string {
-  const mm = Math.floor(seconds / 60)
-  const ss = String(seconds % 60).padStart(2, '0')
-  return `${mm}:${ss}`
 }
 
 /**
@@ -111,9 +102,8 @@ export function SessionScreen() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [flashId, setFlashId] = useState<string | null>(null)
 
-  // 휴식 타이머. 기록이 아니라 운동 중 보조라 화면에만 있다.
-  const [rest, setRest] = useState<{ left: number; total: number } | null>(null)
-  const [restDone, setRestDone] = useState(false)
+  // 휴식 타이머. 종목 상세를 보러 가도 이어지게 화면 밖(RestTimerProvider)에 있다
+  const restTimer = useRestTimer()
 
   // 종목 고르기는 화면을 옮기지 않고 시트로 띄운다. 기록 화면이 살아 있어야
   // 아직 체크하지 않은 종목들이 그대로 남는다 — 루틴을 미리 세팅해두고
@@ -129,8 +119,7 @@ export function SessionScreen() {
       : { category: null, group: null },
   )
 
-  // 종목 정보와 일괄 수정도 같은 이유로 시트다.
-  const [info, setInfo] = useState<Exercise | null>(null)
+  // 일괄 수정도 같은 이유로 시트다.
   const [batchOpen, setBatchOpen] = useState(false)
   const [batchPicked, setBatchPicked] = useState<Record<string, boolean>>({})
   const [batchPrimary, setBatchPrimary] = useState(0)
@@ -241,28 +230,6 @@ export function SessionScreen() {
     }
   }, [sessionId, statsVersion])
 
-  // 휴식 카운트다운. 0이 되면 "휴식 끝" 띠로 바뀐다.
-  useEffect(() => {
-    if (!rest) return
-    const timer = window.setInterval(() => {
-      setRest((prev) => {
-        if (!prev) return prev
-        if (prev.left <= 1) {
-          setRestDone(true)
-          return null
-        }
-        return { ...prev, left: prev.left - 1 }
-      })
-    }, 1000)
-    return () => window.clearInterval(timer)
-  }, [rest])
-
-  useEffect(() => {
-    if (!restDone) return
-    const timer = window.setTimeout(() => setRestDone(false), REST_DONE_MS)
-    return () => window.clearTimeout(timer)
-  }, [restDone])
-
   useEffect(() => {
     if (!flashId) return
     const timer = window.setTimeout(() => setFlashId(null), FLASH_MS)
@@ -360,8 +327,7 @@ export function SessionScreen() {
 
       // 본세트를 하나 끝냈으면 쉴 차례다. 워밍업은 쉬지 않고 이어간다.
       if (!row.isWarmup && row.restSec > 0) {
-        setRestDone(false)
-        setRest({ left: row.restSec, total: row.restSec })
+        restTimer.start(row.restSec)
       }
     } catch (err) {
       fail(err)
@@ -470,14 +436,6 @@ export function SessionScreen() {
     setRemoveTarget(null)
   }
 
-  const openInfo = async (exerciseId: number) => {
-    try {
-      setInfo(await exerciseApi.get(exerciseId))
-    } catch (err) {
-      fail(err)
-    }
-  }
-
   /**
    * 다른 날짜의 기록으로 옮긴다. 날짜만 바꾸면 화면이 그날 기록을 연다 — 기록이 없던 날이면
    * 그 날짜의 빈 기록이 열려 빠뜨린 운동을 채울 수 있다.
@@ -529,84 +487,7 @@ export function SessionScreen() {
         ? `${savedCount}세트 · ${formatDuration(duration)}`
         : `${savedCount}세트`
   /** 휴식 띠가 떠 있으면 스크롤 끝이 가려진다 */
-  const restShowing = rest !== null || restDone
-
-  const restOverlay = (
-    <>
-      {rest && (
-        <div className={styles.rest}>
-          <span className={styles.restTime}>{formatRest(rest.left)}</span>
-          <div className={styles.restMain}>
-            <div className={styles.restLabel}>휴식 중</div>
-            <div className={styles.restTrack}>
-              <div
-                className={styles.restBar}
-                style={{ width: `${Math.round((rest.left / rest.total) * 100)}%` }}
-              />
-            </div>
-          </div>
-          <div className={styles.restButtons}>
-            <button
-              type="button"
-              className={styles.restButton}
-              onClick={() => setRest({ ...rest, left: Math.max(1, rest.left - STEP_REST) })}
-            >
-              −30s
-            </button>
-            <button
-              type="button"
-              className={styles.restButton}
-              onClick={() =>
-                setRest({
-                  left: rest.left + STEP_REST,
-                  total: Math.max(rest.total, rest.left + STEP_REST),
-                })
-              }
-            >
-              +30s
-            </button>
-            <button type="button" className={styles.restSkip} onClick={() => setRest(null)}>
-              건너뛰기
-            </button>
-          </div>
-        </div>
-      )}
-
-      {restDone && <div className={styles.restDone}>휴식 끝 · 다음 세트 시작</div>}
-    </>
-  )
-
-  /* 기록 중에는 상세 화면으로 나갈 수 없다 — 나가면 체크 안 한 종목이 사라진다 */
-  const infoSheet = (
-    <BottomSheet
-      open={info !== null}
-      onClose={() => setInfo(null)}
-      title={<span className={styles.sheetTitle}>종목 정보</span>}
-    >
-      {info && (
-        <>
-          <div className={styles.infoName}>{info.nameKo}</div>
-          <div className={styles.infoChips}>
-            <span className={styles.typeTag}>
-              {BODY_PART_LABEL[info.bodyPart] ?? info.bodyPart}
-            </span>
-            <span className={styles.typeTag}>
-              {MEASURE_CHIP_LABEL[info.measureType] ?? info.measureType}
-            </span>
-            <span className={styles.typeTag}>
-              {EQUIPMENT_LABEL[info.equipment] ?? info.equipment}
-            </span>
-            {info.groupName && <span className={styles.typeTag}>{info.groupName}</span>}
-          </div>
-          <p className={styles.infoNote}>
-            {info.nameEn ?? '영문 이름이 등록되지 않은 종목이에요'}
-            <br />
-            동작 설명과 그림은 아직 준비 중이에요.
-          </p>
-        </>
-      )}
-    </BottomSheet>
-  )
+  const restShowing = restTimer.rest !== null || restTimer.done
 
   if (loading) {
     return (
@@ -695,7 +576,7 @@ export function SessionScreen() {
             <button
               type="button"
               className={styles.headerBack}
-              onClick={() => void openInfo(opened.exerciseId)}
+              onClick={() => navigate(paths.exerciseDetail(opened.exerciseId))}
               aria-label="종목 정보"
             >
               ⓘ
@@ -1027,7 +908,7 @@ export function SessionScreen() {
             </div>
           </div>
 
-          {restOverlay}
+          <RestBar />
         </div>
 
         {/*
@@ -1128,7 +1009,6 @@ export function SessionScreen() {
           </button>
         </BottomSheet>
 
-        {infoSheet}
       </>
     )
   }
@@ -1226,7 +1106,7 @@ export function SessionScreen() {
           </div>
         )}
 
-        {restOverlay}
+        <RestBar />
       </div>
 
       <BottomSheet
@@ -1263,7 +1143,6 @@ export function SessionScreen() {
         )}
       </BottomSheet>
 
-      {infoSheet}
     </>
   )
 }

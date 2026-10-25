@@ -7,10 +7,13 @@ import {
   BODY_PART_LABEL,
   EQUIPMENT_LABEL,
   MEASURE_LABEL,
+  PRIMARY_MUSCLE_LABEL,
   PUSH_PULL_LABEL,
 } from './exerciseLabels'
 import { exerciseImage, hideOnError } from './exerciseImage'
+import { describeSet } from './setFormat'
 import { OneRmTrendPanel } from '../analysis/OneRmTrendPanel'
+import { formatDayLabel } from '../../app/dates'
 import styles from './exerciseDetail.module.css'
 
 /**
@@ -133,7 +136,9 @@ export function ExerciseDetailScreen() {
           </div>
           <div className={styles.spec}>
             <dt>주동근</dt>
-            <dd>{exercise.primaryMuscle ?? '-'}</dd>
+            <dd>
+              {exercise.primaryMuscle ? (PRIMARY_MUSCLE_LABEL[exercise.primaryMuscle] ?? exercise.primaryMuscle) : '-'}
+            </dd>
           </div>
           <div className={styles.spec}>
             <dt>동작</dt>
@@ -144,14 +149,12 @@ export function ExerciseDetailScreen() {
         <div className={styles.sectionTitle}>최근 기록</div>
         {last ? (
           <div className={styles.lastBox}>
-            <div className={styles.lastDate}>{last.performedOn}</div>
+            <div className={styles.lastDate}>{formatDayLabel(last.performedOn)}</div>
             {last.sets.map((set) => (
               <div key={set.setNo} className={styles.lastSet}>
                 <span>{set.setNo}세트</span>
                 <span>
-                  {set.durationSec != null
-                    ? `${set.durationSec}초`
-                    : `${set.weightKg ?? '-'}kg × ${set.reps ?? '-'}회`}
+                  {describeSet(exercise.measureType, set)}
                   {set.isWarmup && ' (워밍업)'}
                 </span>
               </div>

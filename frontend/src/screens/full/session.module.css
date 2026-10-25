@@ -591,101 +591,6 @@
   font-weight: var(--weight-medium);
 }
 
-/* ── 휴식 타이머. 본문 위에 얹어 스크롤과 무관하게 같은 자리에 둔다. */
-
-.rest {
-  position: absolute;
-  left: var(--space-12);
-  right: var(--space-12);
-  bottom: var(--space-12);
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  padding: var(--space-12) var(--space-14);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
-  background: var(--card-bg);
-  box-shadow: 0 12px 32px rgba(20, 24, 20, 0.16), 0 2px 8px rgba(20, 24, 20, 0.08);
-}
-
-.restTime {
-  min-width: 66px;
-  font-size: 26px;
-  font-weight: var(--weight-heavy);
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-}
-
-.restMain {
-  flex: 1;
-  min-width: 0;
-}
-
-.restLabel {
-  margin-bottom: var(--space-6);
-  font-size: var(--font-2xs);
-  color: var(--text-secondary);
-}
-
-.restTrack {
-  height: 6px;
-  border-radius: var(--radius-pill);
-  background: var(--chip-bg);
-  overflow: hidden;
-}
-
-.restBar {
-  height: 100%;
-  border-radius: var(--radius-pill);
-  background: var(--fill-good);
-  transition: width 1s linear;
-}
-
-.restButtons {
-  display: flex;
-  gap: var(--space-6);
-  flex-shrink: 0;
-}
-
-.restButton {
-  height: 34px;
-  padding: 0 var(--space-10);
-  border: 1px solid var(--card-border);
-  border-radius: 9px;
-  background: var(--card-bg);
-  color: var(--text-secondary);
-  font-size: var(--font-3xs);
-  font-weight: var(--weight-bold);
-}
-
-.restSkip {
-  height: 34px;
-  padding: 0 var(--space-12);
-  border: none;
-  border-radius: 9px;
-  background: var(--accent);
-  color: var(--on-fill);
-  font-size: var(--font-3xs);
-  font-weight: var(--weight-heavy);
-}
-
-.restDone {
-  position: absolute;
-  left: var(--space-12);
-  right: var(--space-12);
-  bottom: var(--space-12);
-  z-index: 40;
-  padding: var(--space-14);
-  border-radius: var(--radius-lg);
-  background: var(--accent);
-  color: var(--on-fill);
-  text-align: center;
-  font-size: var(--font-sm);
-  font-weight: var(--weight-heavy);
-  box-shadow: 0 12px 32px rgba(20, 24, 20, 0.16);
-}
-
 /* ── 시트 안쪽 */
 
 /* 종목 고르기. 시트가 이미 높이를 제한하므로 안쪽은 그 안을 채운다. */
@@ -700,27 +605,6 @@
   font-size: var(--font-md);
   font-weight: var(--weight-bold);
   color: var(--text-primary);
-}
-
-/* 종목 정보. 기록 중에는 상세 화면으로 나갈 수 없어 여기서 보여준다 */
-.infoName {
-  margin-bottom: var(--space-10);
-  font-size: var(--font-lg);
-  font-weight: var(--weight-bold);
-  color: var(--text-primary);
-}
-
-.infoChips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-6);
-  margin-bottom: var(--space-12);
-}
-
-.infoNote {
-  font-size: var(--font-sm);
-  color: var(--text-tertiary);
-  line-height: 1.6;
 }
 
 /* 일괄 수정. 같은 무게로 여러 세트를 한 번에 맞추는 자리다. */
@@ -874,22 +758,6 @@
   composes: g-secondary from global;
 }
 
-.rest {
-  composes: g-thick from global;
-}
-
-.restButton {
-  composes: g-secondary from global;
-}
-
-.restSkip {
-  composes: g-primary from global;
-}
-
-.restDone {
-  composes: g-primary from global;
-}
-
 .batchRow {
   composes: g-thin from global;
 }
@@ -907,16 +775,12 @@
 :global(:root[data-theme='glass']) .emptyAdd,
 :global(:root[data-theme='glass']) .addSet,
 :global(:root[data-theme='glass']) .batchButton,
-:global(:root[data-theme='glass']) .restButton,
-:global(:root[data-theme='glass']) .restSkip,
 :global(:root[data-theme='glass']) .batchApply,
 :global(:root[data-theme='glass']) .confirmDanger {
   border-radius: var(--radius-pill);
 }
 
-:global(:root[data-theme='glass']) .exCard,
-:global(:root[data-theme='glass']) .rest,
-:global(:root[data-theme='glass']) .restDone {
+:global(:root[data-theme='glass']) .exCard {
   border-radius: var(--radius-xl);
 }
 
