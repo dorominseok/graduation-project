@@ -281,6 +281,22 @@ export function SessionScreen() {
     )
   }
 
+  /**
+   * 쉬고 나서 할 세트. 이 종목에 체크 안 한 줄이 남았으면 이 종목, 다 했으면 목록에서 다음 종목이고,
+   * 뒤에 없으면 앞쪽에 남겨 둔 종목이다. 남은 세트가 없으면 null.
+   */
+  const nextSet = (cardIndex: number, rowIndex: number): { card: ExerciseCard; setNumber: number } | null => {
+    const hasLeft = (card: ExerciseCard, skip: number | null) =>
+      card.rows.some((row, index) => index !== skip && row.savedId === null)
+    const doneWorking = (card: ExerciseCard) => card.rows.filter((row) => !row.isWarmup && row.savedId !== null).length
+    const current = cards[cardIndex]
+    // 방금 체크한 줄은 아직 저장 전 상태라 직접 더한다
+    if (hasLeft(current, rowIndex)) return { card: current, setNumber: doneWorking(current) + 2 }
+    const order = [...cards.keys()].slice(cardIndex + 1).concat([...cards.keys()].slice(0, cardIndex))
+    const found = order.find((index) => hasLeft(cards[index], null))
+    return found === undefined ? null : { card: cards[found], setNumber: doneWorking(cards[found]) + 1 }
+  }
+
   const toggleSaved = async (cardIndex: number, rowIndex: number) => {
     if (busy) return
     const card = cards[cardIndex]
@@ -325,12 +341,16 @@ export function SessionScreen() {
       setFlashId(row.clientSetId)
       setExpandedId(null)
 
-      // 본세트를 하나 끝냈으면 쉴 차례다. 워밍업은 쉬지 않고 이어간다.
-      if (!row.isWarmup && row.restSec > 0) {
+      // 본세트를 하나 끝냈으면 쉴 차례다. 워밍업은 쉬지 않고 이어가고, 오늘 할 세트가 더 없으면 쉬지 않는다
+      const next = row.isWarmup || row.restSec <= 0 ? null : nextSet(cardIndex, rowIndex)
+      if (next) {
         restTimer.start(row.restSec, {
-          path: `${location.pathname}?${new URLSearchParams(cardParams(card.exerciseId))}`,
-          exerciseName: card.name,
+          path: `${location.pathname}?${new URLSearchParams(cardParams(next.card.exerciseId))}`,
+          exerciseName: next.card.name,
+          setNumber: next.setNumber,
         })
+      } else {
+        restTimer.dismiss()
       }
     } catch (err) {
       fail(err)
@@ -580,7 +600,9 @@ export function SessionScreen() {
               type="button"
               className={styles.headerBack}
               onClick={() =>
-                navigate(paths.exerciseDetail(opened.exerciseId), { state: { fromSession: true } })
+                navigate(paths.exerciseDetail(opened.exerciseId), {
+                  state: { fromSession: `${location.pathname}${location.search}` },
+                })
               }
               aria-label="종목 정보"
             >
