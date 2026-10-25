@@ -129,14 +129,14 @@ class RoutineApiTest {
     }
 
     @Test
-    @DisplayName("가슴만 3세트 했으면 밀기에 치우쳐 적은 쪽인 당기기 묶음이 온다")
+    @DisplayName("가슴만 3세트 했으면 밀기·상체가 많은 쪽이다 — 당기기도 상체라 어느 쪽으로도 많지 않은 하체가 온다")
     void lesserSideBundleComes() throws Exception {
         sets(today.minusDays(3), benchPress, 3);
 
         createToday()
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.items[*].muscleGroup").value(
-                        Matchers.contains("BACK", "DELT_REAR", "BICEPS")));
+                        Matchers.contains("QUADS", "POSTERIOR", "CORE")));
     }
 
     @Test

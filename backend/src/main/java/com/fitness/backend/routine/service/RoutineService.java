@@ -149,14 +149,13 @@ public class RoutineService {
         BalanceResponse balance = analysisService.balance(userId, null, referenceDate);
 
         List<Imbalance> imbalances = imbalances(balance);
-        Set<MuscleGroup> lesser = imbalances.stream()
-                .flatMap(im -> im.lesser().components().stream())
-                .collect(Collectors.toSet());
+        Set<MuscleGroup> lesser = RoutineCheck.lesserOnly(imbalances);
+        Set<MuscleGroup> bigger = RoutineCheck.biggerOnly(imbalances);
         Map<MuscleGroup, LocalDate> lastTrained = lastTrained(userId, today);
         List<MuscleState> states = volume.tiers().stream()
                 .flatMap(tier -> tier.children().stream())
                 .map((ChildResponse c) -> new MuscleState(c.key(), c.weeklySets(), c.verdict(),
-                        lastTrained.get(c.key()), lesser.contains(c.key())))
+                        lastTrained.get(c.key()), lesser.contains(c.key()), bigger.contains(c.key())))
                 .toList();
 
         List<RoutineSlot> slots = SlotPlanner.plan(states, daysPerWeek(volume, policy), today, policy);
