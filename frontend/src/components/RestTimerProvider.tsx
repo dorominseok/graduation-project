@@ -9,19 +9,21 @@ interface Running {
   total: number
   /** 시작한 사용자. 로그아웃하고 다른 계정이 들어오면 보이지 않는다 */
   userId: number | null
-  origin: RestOrigin
+  origin: RestOrigin | null
 }
 
 const STORAGE_KEY = 'rest-timer'
-/** "휴식 끝" 띠를 띄워두는 시간 */
-const DONE_MS = 3000
+/** "휴식 끝" 띠는 다음 세트를 하거나 닫을 때까지 두고, 아무것도 안 하면 이만큼 뒤에 내린다 */
+const DONE_MS = 60_000
 
 function load(): Running | null {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY)
     if (!raw) return null
     const saved = JSON.parse(raw) as Running
-    return saved.endsAt > Date.now() ? saved : null
+    if (saved.endsAt <= Date.now()) return null
+    // 이전 판이 남긴 저장값에는 세트 번호가 없다
+    return { ...saved, origin: saved.origin?.setNumber ? saved.origin : null }
   } catch {
     return null
   }
@@ -99,14 +101,14 @@ export function RestTimerProvider({ userId, children }: { userId: number | null;
   }, [])
 
   const skip = useCallback(() => setRunning(null), [])
+  const dismiss = useCallback(() => setDone(false), [])
 
   const mine = running !== null && running.userId === userId ? running : null
   const left = mine ? Math.max(1, Math.ceil((mine.endsAt - now) / 1000)) : 0
-  // 이전 판이 남긴 저장값에는 출발점이 없다
-  const origin = (mine ? mine.origin : done ? doneOrigin : null) ?? null
+  const origin = mine ? mine.origin : done ? doneOrigin : null
   const value = useMemo(
-    () => ({ rest: mine ? { left, total: mine.total } : null, done, origin, start, adjust, skip }),
-    [mine, left, done, origin, start, adjust, skip],
+    () => ({ rest: mine ? { left, total: mine.total } : null, done, origin, start, adjust, skip, dismiss }),
+    [mine, left, done, origin, start, adjust, skip, dismiss],
   )
 
   return <RestTimerContext value={value}>{children}</RestTimerContext>

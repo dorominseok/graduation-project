@@ -111,15 +111,36 @@
 
 .done {
   composes: g-primary from global;
-  border: none;
-  padding: var(--space-14);
+  display: flex;
+  align-items: center;
   border-radius: var(--radius-lg);
   background: var(--accent);
   color: var(--on-fill);
-  text-align: center;
   font-size: var(--font-sm);
   font-weight: var(--weight-heavy);
   box-shadow: 0 12px 32px rgba(20, 24, 20, 0.16);
+}
+
+.doneOpen {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-14) 0 var(--space-14) var(--space-16);
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}
+
+.doneClose {
+  flex-shrink: 0;
+  width: 44px;
+  align-self: stretch;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: var(--font-sm);
+  opacity: 0.8;
 }
 
 :global(:root[data-theme='glass']) .button,
