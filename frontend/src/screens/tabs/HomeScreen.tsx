@@ -240,7 +240,7 @@ export function HomeScreen() {
             <TodayRoutine
               routine={routine}
               answering={answering}
-              onRecord={() => navigate(paths.session)}
+              onRecord={() => navigate(paths.session, { state: { fromRoutine: true } })}
               onOpen={() => navigate(paths.routineDetail(routine.id))}
               onAnswer={(rating, reason) => void answerToday(rating, reason)}
             />

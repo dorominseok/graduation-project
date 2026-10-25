@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { BottomSheet, useToast } from '../../components'
 import { exerciseApi, isApiError, routineApi, statsApi, workoutApi } from '../../api'
@@ -80,11 +80,14 @@ function formatRest(seconds: number): string {
  * <p>시작·종료가 없다. 들어오면 그날 기록을 열고(없으면 서버가 만든다), 체크한 세트가 그
  * 자리에서 쌓인다. 세트 없이 나가면 빈 기록이 남지만 목록·달력·횟수에는 나오지 않는다.
  *
- * <p>오늘 루틴이 있으면 열 때마다 "체크한 세트 + 루틴의 남은 계획"으로 카드를 다시 만든다.
+ * <p>오늘 루틴이 있으면 열 때마다 "체크한 세트 + 루틴의 남은 계획"으로 카드를 다시 만든다. 여기서 뺀
+ * 루틴 종목은 그날 계속 빠져 있다가, 루틴의 "이 루틴으로 기록"으로 들어오면 다시 나온다.
  */
 export function SessionScreen() {
   const navigate = useNavigate()
   const location = useLocation()
+  // 처음 열 때만 본다. 날짜를 옮겨 다시 읽을 때는 뺀 종목을 되살리지 않는다
+  const restoreRoutine = useRef((location.state as { fromRoutine?: boolean } | null)?.fromRoutine === true)
   // 경로에 id가 있으면 지난 기록을 여는 것이고, 없으면 오늘 운동이다.
   const { sessionId: sessionIdParam } = useParams()
   const { showToast } = useToast()
@@ -174,8 +177,11 @@ export function SessionScreen() {
           routine = await routineApi.get(current.routineId).catch(() => null)
         }
         const draft = userId === null ? null : loadDraft(userId, current.performedOn)
-        const built = await buildCards(current, routine, draft).catch(() => savedCards(current))
+        const built = await buildCards(current, routine, draft, restoreRoutine.current).catch(() =>
+          savedCards(current),
+        )
         if (!alive) return
+        restoreRoutine.current = false
         // 기록·카드를 한 번에 바꾼다. 날짜를 옮길 때 기록만 먼저 바뀌면 앞 날짜의 카드가
         // 새 날짜의 임시 저장으로 써진다
         setSession(current)

@@ -199,7 +199,8 @@ export function saveDraft(userId: number, performedOn: string, routineKey: strin
  * 카드를 만든다.
  *
  * <ol>
- *   <li>임시 저장이 있고 루틴이 그대로면 — 임시 저장의 순서·행에 저장된 세트를 끼운다.</li>
+ *   <li>임시 저장이 있고 루틴이 그대로면 — 임시 저장의 순서·행에 저장된 세트를 끼운다. "이 루틴으로 기록"을
+ *       눌러 들어왔으면({@code restoreRoutine}) 기록 화면에서 뺀 루틴 종목을 뒤에 다시 붙인다.</li>
  *   <li>아니면 — 루틴 종목(루틴 순서) → 루틴 밖에서 체크한 종목(한 순서) → 임시 저장의 루틴 밖 종목.</li>
  * </ol>
  *
@@ -209,6 +210,7 @@ export async function buildCards(
   session: WorkoutSession,
   routine: Routine | null,
   draft: Draft | null,
+  restoreRoutine = false,
 ): Promise<ExerciseCard[]> {
   const saved = new Map(savedCards(session).map((card) => [card.exerciseId, card]))
   const take = (exerciseId: number) => {
@@ -219,7 +221,16 @@ export async function buildCards(
 
   if (draft && draft.routineKey === routineKeyOf(routine)) {
     const cards = draft.cards.map((card) => ({ ...card, rows: [...(take(card.exerciseId)?.rows ?? []), ...card.rows] }))
-    return [...cards, ...saved.values()]
+    const shown = new Set(cards.map((card) => card.exerciseId))
+    const restored =
+      restoreRoutine && routine
+        ? await Promise.all(
+            activeItems(routine)
+              .filter((item) => !shown.has(item.exerciseId))
+              .map((item) => routineCard(item, take(item.exerciseId))),
+          )
+        : []
+    return [...cards, ...restored, ...saved.values()]
   }
 
   const routineCards = routine
