@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { RestTimerContext } from './rest-timer-context'
+import type { RestOrigin } from './rest-timer-context'
 
 interface Running {
   /** 끝나는 시각(ms). 남은 시간은 볼 때마다 지금과의 차로 계산한다 */
@@ -8,6 +9,7 @@ interface Running {
   total: number
   /** 시작한 사용자. 로그아웃하고 다른 계정이 들어오면 보이지 않는다 */
   userId: number | null
+  origin: RestOrigin
 }
 
 const STORAGE_KEY = 'rest-timer'
@@ -45,6 +47,8 @@ export function RestTimerProvider({ userId, children }: { userId: number | null;
   const [running, setRunning] = useState<Running | null>(load)
   const [now, setNow] = useState(() => Date.now())
   const [done, setDone] = useState(false)
+  // "휴식 끝" 띠를 눌러도 돌아갈 수 있게 끝난 휴식의 출발점을 잠깐 남긴다
+  const [doneOrigin, setDoneOrigin] = useState<RestOrigin | null>(null)
 
   useEffect(() => {
     save(running)
@@ -54,6 +58,7 @@ export function RestTimerProvider({ userId, children }: { userId: number | null;
       if (current >= running.endsAt) {
         setRunning(null)
         setDone(running.userId === userId)
+        setDoneOrigin(running.origin)
       } else {
         setNow(current)
       }
@@ -73,12 +78,15 @@ export function RestTimerProvider({ userId, children }: { userId: number | null;
     return () => window.clearTimeout(timer)
   }, [done])
 
-  const start = useCallback((seconds: number) => {
-    const current = Date.now()
-    setNow(current)
-    setDone(false)
-    setRunning({ endsAt: current + seconds * 1000, total: seconds, userId })
-  }, [userId])
+  const start = useCallback(
+    (seconds: number, origin: RestOrigin) => {
+      const current = Date.now()
+      setNow(current)
+      setDone(false)
+      setRunning({ endsAt: current + seconds * 1000, total: seconds, userId, origin })
+    },
+    [userId],
+  )
 
   const adjust = useCallback((deltaSeconds: number) => {
     const current = Date.now()
@@ -94,9 +102,11 @@ export function RestTimerProvider({ userId, children }: { userId: number | null;
 
   const mine = running !== null && running.userId === userId ? running : null
   const left = mine ? Math.max(1, Math.ceil((mine.endsAt - now) / 1000)) : 0
+  // 이전 판이 남긴 저장값에는 출발점이 없다
+  const origin = (mine ? mine.origin : done ? doneOrigin : null) ?? null
   const value = useMemo(
-    () => ({ rest: mine ? { left, total: mine.total } : null, done, start, adjust, skip }),
-    [mine, left, done, start, adjust, skip],
+    () => ({ rest: mine ? { left, total: mine.total } : null, done, origin, start, adjust, skip }),
+    [mine, left, done, origin, start, adjust, skip],
   )
 
   return <RestTimerContext value={value}>{children}</RestTimerContext>
