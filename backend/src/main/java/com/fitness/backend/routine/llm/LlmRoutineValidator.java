@@ -1,7 +1,6 @@
 package com.fitness.backend.routine.llm;
 
 import com.fitness.backend.analysis.domain.MuscleGroup;
-import com.fitness.backend.routine.domain.RuleComposer;
 import com.fitness.backend.routine.llm.LlmRoutineRequest.Slot;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -115,9 +114,8 @@ public final class LlmRoutineValidator {
             if (count == 0 || count > MAX_PER_SLOT) {
                 failures.add(new Failure("L3", slot.muscle().name() + " slot의 종목이 " + count
                         + "개다. 모든 slot에 1~2개를 넣는다"));
-            } else if (count == 2 && slot.sets() < RuleComposer.SPLIT_FROM_SETS) {
-                failures.add(new Failure("L5", slot.muscle().name() + " slot은 sets가 " + slot.sets()
-                        + "라 종목을 1개만 넣는다"));
+            } else if (count == 2 && !slot.splittable()) {
+                failures.add(new Failure("L5", slot.muscle().name() + " slot은 split이 false라 종목을 1개만 넣는다"));
             }
         }
 

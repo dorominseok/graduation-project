@@ -12,7 +12,7 @@ import java.util.Objects;
  *
  * <pre>
  *   슬롯마다 후보 1순위(즐겨찾기 → 자주 한 종목 → 새 종목)
- *   슬롯 세트가 5 이상이고 계열이 다른 후보가 있으면 둘로 나눈다(앞 종목이 하나 더)
+ *   슬롯 세트가 6 이상이고 해 본 종목이 있고 계열이 다른 후보가 있으면 둘로 나눈다(앞 종목이 하나 더)
  *   순서는 큰 근육 → 작은 근육, 코어 마지막
  * </pre>
  */
@@ -24,11 +24,8 @@ public final class RuleComposer {
     /** 오늘 할 부위가 없을 때 — 전부 회복 중이거나 이미 충분하다 */
     public static final String REST_COMMENT = "최근에 운동한 부위가 회복 중이라 오늘은 쉬어 가도 좋아요.";
 
-    /**
-     * 슬롯 세트가 이 값 이상일 때만 두 종목으로 나눈다. LLM의 L5도 이 값을 쓴다 — 4세트를 2+2로 나누면
-     * 첫날 루틴이 새 동작 여덟 개가 되고 동작마다 연습이 모자란다(오프라인 실험 r1)
-     */
-    public static final int SPLIT_FROM_SETS = 5;
+    /** 슬롯 세트가 이 값 이상일 때만 두 종목으로 나눈다 — 나눠도 종목마다 3세트는 남는다 */
+    public static final int SPLIT_FROM_SETS = 6;
 
     private RuleComposer() {
     }
@@ -45,7 +42,7 @@ public final class RuleComposer {
                 continue;
             }
             ExerciseOption first = options.get(0);
-            ExerciseOption second = slot.sets() >= SPLIT_FROM_SETS
+            ExerciseOption second = splittable(slot.sets(), options)
                     ? options.stream()
                             .skip(1)
                             .filter(o -> o.groupName() == null || !Objects.equals(o.groupName(), first.groupName()))
@@ -61,6 +58,14 @@ public final class RuleComposer {
             }
         }
         return List.copyOf(items);
+    }
+
+    /**
+     * 두 종목으로 나눌 수 있는지. 해 본 종목이 하나도 없는 부위는 나누지 않는다 — 처음 하는 사람의 첫 루틴이
+     * 새 동작 여섯 개가 되면 동작마다 연습이 모자란다. LLM의 L5도 이걸 쓴다.
+     */
+    public static boolean splittable(int sets, List<ExerciseOption> options) {
+        return sets >= SPLIT_FROM_SETS && options.stream().anyMatch(o -> !o.firstTime());
     }
 
     /**

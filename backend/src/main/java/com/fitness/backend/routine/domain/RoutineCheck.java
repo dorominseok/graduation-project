@@ -47,7 +47,9 @@ public final class RoutineCheck {
 
         Map<MuscleGroup, Integer> setsByMuscle = new EnumMap<>(MuscleGroup.class);
         items.forEach(i -> setsByMuscle.merge(i.muscle(), i.sets(), Integer::sum));
-        boolean r3 = imbalances.stream().allMatch(im ->
+        // 하루에 한 묶음이라 불균형이 둘이면(당기기·하체가 함께 적으면) 둘을 한날에 채울 수 없다.
+        // 적은 쪽 하나를 채우는 날이면 통과 — 많은 쪽만 하는 날을 잡는다
+        boolean r3 = imbalances.isEmpty() || imbalances.stream().anyMatch(im ->
                 sum(setsByMuscle, im.lesser()) >= sum(setsByMuscle, im.bigger()));
         if (!r3) {
             failures.add("R3");

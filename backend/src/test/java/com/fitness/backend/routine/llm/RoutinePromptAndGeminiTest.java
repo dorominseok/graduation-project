@@ -23,10 +23,10 @@ class RoutinePromptAndGeminiTest {
 
     private static final JsonMapper JSON = JsonMapper.shared();
     private static final LlmRoutineRequest REQUEST = new LlmRoutineRequest(List.of(
-            new Slot(BACK, 4, List.of(
+            new Slot(BACK, 4, false, List.of(
                     new Candidate(20, "랫풀다운: 와이드 그립", CABLE, true, false),
                     new Candidate(23, "바벨 로우", BARBELL, false, true))),
-            new Slot(BICEPS, 3, List.of(new Candidate(83, "덤벨 컬", DUMBBELL, false, true)))));
+            new Slot(BICEPS, 3, false, List.of(new Candidate(83, "덤벨 컬", DUMBBELL, false, true)))));
 
     @Test
     @DisplayName("스키마는 이번 요청의 슬롯·종목만 enum으로 받고, 숫자 필드가 하나도 없다")
@@ -44,7 +44,7 @@ class RoutinePromptAndGeminiTest {
     void userMessage() {
         String user = RoutinePrompt.user(REQUEST, List.of(), JSON);
 
-        assertTrue(user.contains("\"slot\":\"BACK\",\"label\":\"등\",\"sets\":4"), user);
+        assertTrue(user.contains("\"slot\":\"BACK\",\"label\":\"등\",\"sets\":4,\"split\":false"), user);
         assertTrue(user.contains("\"exerciseId\":\"20\",\"name\":\"랫풀다운: 와이드 그립\",\"equipment\":\"케이블\""), user);
         assertTrue(user.contains("\"favorite\":true"), user);
         assertFalse(user.contains("<이전응답의문제>"));

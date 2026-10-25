@@ -1,7 +1,6 @@
 package com.fitness.backend.routine.llm;
 
 import com.fitness.backend.exercise.domain.Equipment;
-import com.fitness.backend.routine.domain.RuleComposer;
 import com.fitness.backend.routine.llm.LlmRoutineRequest.Candidate;
 import com.fitness.backend.routine.llm.LlmRoutineRequest.Slot;
 import com.fitness.backend.routine.llm.LlmRoutineValidator.Failure;
@@ -20,7 +19,7 @@ import tools.jackson.databind.ObjectMapper;
 public final class RoutinePrompt {
 
     /** 프롬프트를 고치면 올린다. 실험 결과와 저장된 루틴을 버전으로 나눠 본다 */
-    public static final String VERSION = "r2";
+    public static final String VERSION = "r3";
 
     public static final String SYSTEM = """
             너는 헬스 앱에서 오늘의 운동 루틴을 짜는 역할이다. 오늘 운동할 부위(slot)와 부위별 세트 수는 앱이 이미 정했다.
@@ -29,7 +28,7 @@ public final class RoutinePrompt {
             [종목 고르기]
             - 각 slot의 candidates 안에서만 고른다. 후보에 없는 종목이나 다른 slot의 종목은 쓰지 않는다.
             - 모든 slot을 빠짐없이 쓴다. slot마다 종목 1개가 기본이다.
-            - sets가 %d 이상인 slot만 종목 2개로 나눌 수 있다. 그보다 적으면 반드시 1개다. 나눌 때는 기구나 동작이 서로 다른 두 종목을 고른다.
+            - split이 true인 slot만 종목 2개로 나눌 수 있다. false면 반드시 1개다. 나눌 때는 기구나 동작이 서로 다른 두 종목을 고른다.
             - 같은 종목을 두 번 쓰지 않는다.
             - favorite이 true인 종목(사용자가 즐겨찾기한 종목)은 특별한 이유가 없으면 고른다.
             - 해 본 종목(firstTime이 false)이 있는 slot에서는 해 본 종목을 먼저 고려한다. 그런 slot에서 처음 해 보는 종목(firstTime이 true)을 고르는 것은 루틴 전체에서 2개까지다. 해 본 종목이 하나도 없는 slot은 이 제한과 상관없다.
@@ -53,9 +52,9 @@ public final class RoutinePrompt {
             - slot은 입력의 slot 값, exerciseId는 입력의 exerciseId 값을 그대로 쓴다.
 
             [예시]
-            입력: BACK(sets 5, 후보 "20" 랫풀다운: 와이드 그립 / "23" 바벨 로우), BICEPS(sets 3, 후보 "83" 덤벨 컬 / "93" 해머컬)
+            입력: BACK(sets 6, split true, 후보 "20" 랫풀다운: 와이드 그립 / "23" 바벨 로우), BICEPS(sets 3, split false, 후보 "83" 덤벨 컬 / "93" 해머컬)
             출력: {"items":[{"slot":"BACK","exerciseId":"23"},{"slot":"BACK","exerciseId":"20"},{"slot":"BICEPS","exerciseId":"83"}],"comment":"등은 바벨 로우로 무겁게 시작해 랫풀다운으로 당기는 방향을 바꾸고, 덤벨 컬로 팔을 마무리하는 순서예요."}
-            """.formatted(RuleComposer.SPLIT_FROM_SETS);
+            """;
 
     private static final Map<Equipment, String> EQUIPMENT_LABEL = Map.of(
             Equipment.BARBELL, "바벨",
@@ -95,6 +94,7 @@ public final class RoutinePrompt {
         result.put("slot", slot.muscle().name());
         result.put("label", slot.muscle().label());
         result.put("sets", slot.sets());
+        result.put("split", slot.splittable());
         result.put("candidates", slot.candidates().stream().map(RoutinePrompt::candidate).toList());
         return result;
     }

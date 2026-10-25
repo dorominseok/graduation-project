@@ -69,24 +69,24 @@ class RoutineApiTest {
     // ── 만들기
 
     @Test
-    @DisplayName("기록이 없으면 큰 근육 넷을 4세트씩 — 첫날 16세트, 규칙이 만들고 신뢰도 낮음 안내가 붙는다")
-    void newUserGetsSixteenSets() throws Exception {
+    @DisplayName("기록이 없으면 주 5회로 보고 밀기 묶음을 6세트씩 — 첫날 18세트, 규칙이 만들고 신뢰도 낮음 안내가 붙는다")
+    void newUserGetsPushDay() throws Exception {
         createToday()
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.routineDate").value(today.toString()))
                 .andExpect(jsonPath("$.referenceDate").value(today.minusDays(1).toString()))
                 .andExpect(jsonPath("$.generatedBy").value("RULE"))
-                // 큰 근육 넷뿐인 날이라 작은 근육·코어를 말하지 않는다
-                .andExpect(jsonPath("$.comment").value("큰 근육 위주로, 큰 부위부터 하는 순서예요."))
+                // 코어가 없는 날이라 코어를 말하지 않는다
+                .andExpect(jsonPath("$.comment").value("큰 근육부터 시작해서 작은 근육으로 마무리하는 순서예요."))
                 .andExpect(jsonPath("$.lowConfidence").value(true))
-                .andExpect(jsonPath("$.totalSets").value(16))
+                .andExpect(jsonPath("$.totalSets").value(18))
                 .andExpect(jsonPath("$.doneSets").value(0))
-                .andExpect(jsonPath("$.items", hasSize(4)))
+                // 처음 하는 종목뿐이라 나누지 않는다 — 부위마다 한 종목
+                .andExpect(jsonPath("$.items", hasSize(3)))
                 .andExpect(jsonPath("$.items[0].muscleGroup").value("CHEST"))
-                .andExpect(jsonPath("$.items[1].muscleGroup").value("BACK"))
-                .andExpect(jsonPath("$.items[2].muscleGroup").value("QUADS"))
-                .andExpect(jsonPath("$.items[3].muscleGroup").value("POSTERIOR"))
-                .andExpect(jsonPath("$.items[0].plannedSets").value(4))
+                .andExpect(jsonPath("$.items[1].muscleGroup").value("DELT_FRONT"))
+                .andExpect(jsonPath("$.items[2].muscleGroup").value("TRICEPS"))
+                .andExpect(jsonPath("$.items[0].plannedSets").value(6))
                 // 해 본 적 없는 종목이라 [처음]이 붙고, 중량 종목은 8~12회다
                 .andExpect(jsonPath("$.items[0].firstTime").value(true))
                 .andExpect(jsonPath("$.items[0].targetMin").value(8))
@@ -129,15 +129,14 @@ class RoutineApiTest {
     }
 
     @Test
-    @DisplayName("가슴만 3세트 했으면 가슴은 뒤로 가고, 밀기에 치우쳐 당기기(등·어깨 후면)가 앞으로 온다")
-    void trainedMuscleYieldsAndLesserSideMovesUp() throws Exception {
+    @DisplayName("가슴만 3세트 했으면 밀기에 치우쳐 적은 쪽인 당기기 묶음이 온다")
+    void lesserSideBundleComes() throws Exception {
         sets(today.minusDays(3), benchPress, 3);
 
-        // 고른 넷은 등·어깨 후면(적은 쪽) → 앞허벅지·후면 사슬(큰 근육 순). 보이는 순서는 큰 근육부터
         createToday()
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.items[*].muscleGroup").value(
-                        Matchers.contains("BACK", "QUADS", "POSTERIOR", "DELT_REAR")));
+                        Matchers.contains("BACK", "DELT_REAR", "BICEPS")));
     }
 
     @Test
@@ -155,15 +154,14 @@ class RoutineApiTest {
     }
 
     @Test
-    @DisplayName("기록이 없으면 입문 대표 종목으로 짠다 — 벤치프레스 · 랫풀다운 · 스쿼트 · 루마니안 데드리프트")
+    @DisplayName("기록이 없으면 입문 대표 종목으로 짠다 — 벤치프레스 · 덤벨 숄더프레스 · 케이블 푸시다운")
     void newUserGetsStarterExercises() throws Exception {
         createToday()
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.items[*].exerciseId").value(Matchers.contains(
                         (int) benchPress,
-                        (int) exerciseIdOf("랫풀다운: 와이드 그립"),
-                        (int) exerciseIdOf("바벨 스쿼트"),
-                        (int) exerciseIdOf("루마니안 데드리프트"))));
+                        (int) exerciseIdOf("덤벨 숄더프레스"),
+                        (int) exerciseIdOf("케이블 푸시다운"))));
     }
 
     @Test
@@ -202,11 +200,11 @@ class RoutineApiTest {
         long routineId = idOf(createToday());
         long chestExercise = itemExerciseId(routineId, 0);
 
-        sets(today, chestExercise, 6);
+        sets(today, chestExercise, 8);
 
         routine(routineId)
-                .andExpect(jsonPath("$.items[0].doneSets").value(6))
-                .andExpect(jsonPath("$.doneSets").value(4))
+                .andExpect(jsonPath("$.items[0].doneSets").value(8))
+                .andExpect(jsonPath("$.doneSets").value(6))
                 .andExpect(jsonPath("$.askFeedback").value(true));
     }
 
@@ -264,7 +262,7 @@ class RoutineApiTest {
         mvc.perform(delete("/api/v1/routines/" + routineId + "/items/" + itemId(routineId, 0))
                         .header(HttpHeaders.AUTHORIZATION, bearer))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items", hasSize(4)))
+                .andExpect(jsonPath("$.items", hasSize(3)))
                 .andExpect(jsonPath("$.items[0].removed").value(true))
                 .andExpect(jsonPath("$.items[0].adjusted").value(true))
                 .andExpect(jsonPath("$.totalSets").value(12));
