@@ -1823,7 +1823,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 
 만들 때 **그날 기록을 열어(6.2) `routineId`를 채운다.** 기록 화면은 그 값으로 루틴을 찾아 남은 계획을 붙인다.
 
-오늘 할 부위가 없으면(전부 회복 중이거나 충분) `items`가 빈 루틴이 만들어지고 `comment`가 쉬어 가라는 문장이다. 버튼을 막지 않는다 — 기록이 없는 사람도 기본값(주 3회, 큰 근육부터)으로 루틴을 받는다(설계서 2.6).
+오늘 할 부위가 없으면(전부 회복 중이거나 충분) `items`가 빈 루틴이 만들어지고 `comment`가 쉬어 가라는 문장이다. 버튼을 막지 않는다 — 기록이 없는 사람도 기본값(주 5회, 큰 근육부터)으로 루틴을 받는다 — 첫날은 밀기 묶음(설계서 2.6).
 
 ### 11.3 GET /routines/today · GET /routines/feedback-pending
 
@@ -1844,9 +1844,9 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
   "routineDate": "2026-10-24",
   "referenceDate": "2026-10-23",
   "generatedBy": "RULE",
-  "comment": "큰 근육 위주로, 큰 부위부터 하는 순서예요.",
+  "comment": "큰 근육부터 시작해서 작은 근육으로 마무리하는 순서예요.",
   "lowConfidence": true,
-  "totalSets": 16,
+  "totalSets": 18,
   "doneSets": 4,
   "items": [
     {
@@ -1854,7 +1854,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
       "muscleGroup": "CHEST", "muscleLabel": "가슴",
       "exerciseId": 5, "exerciseName": "바벨 벤치프레스", "exerciseNameEn": "Barbell Bench Press - Medium Grip",
       "measureType": "WEIGHT_REPS", "equipment": "BARBELL",
-      "plannedSets": 4, "targetMin": 8, "targetMax": 12,
+      "plannedSets": 6, "targetMin": 8, "targetMax": 12,
       "firstTime": true,
       "basisWeeklySets": 0.0, "basisVerdict": "INSUFFICIENT", "basisVerdictLabel": "부족",
       "removed": false, "adjusted": false,
@@ -1959,11 +1959,11 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | 설정 | 기본값 | 의미 |
 |---|---|---|
 | `target-weekly-sets` | 10 | 부위당 주간 목표 세트 (권장 구간의 아래 끝) |
-| `per-muscle-min-sets` · `per-muscle-max-sets` | 2 · 6 | 하루 한 부위 세트 범위 |
-| `fill-max-sets` | 3 | 하루 총량을 못 채울 때 최적 부위로 채우는 세트 |
+| `per-muscle-min-sets` · `per-muscle-max-sets` | 3 · 6 | 하루 한 부위 세트 범위 |
+| `fill-max-sets` | 3 | 그날 묶음의 최적 부위로 채우는 세트 |
 | `daily-min-sets` · `daily-max-sets` | 12 · 18 | 하루 총 세트 범위 |
 | `recovery-days` | 2 | 이 날수 안에 한 부위는 뺀다 (오늘·어제) |
-| `default-days-per-week` | 3 | 기록이 적을 때 쓰는 주당 운동 일수 |
+| `default-days-per-week` | 5 | 기록이 적을 때 쓰는 주당 운동 일수 |
 | `min-known-days` | 3 | 운동한 날이 이보다 적으면 주당 일수를 기본값으로 |
 | `candidates-per-muscle` | 5 | 부위당 후보 종목 |
 | `history-weeks` · `history-max-candidates` | 8 · 3 | 해 본 종목을 보는 기간과 후보 안의 최대 개수 |
