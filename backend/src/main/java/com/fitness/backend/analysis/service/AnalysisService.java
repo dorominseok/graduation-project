@@ -96,12 +96,15 @@ public class AnalysisService {
         for (BalancePair pair : BalancePair.values()) {
             SideResponse left = toSide(pair.left(), aggregate, period.basisDays());
             SideResponse right = toSide(pair.right(), aggregate, period.basisDays());
-            BalanceEvaluation evaluation =
-                    BalanceEvaluation.of(left.weeklySets(), right.weeklySets(), threshold);
+            // 부위당 평균의 비율 = 왼쪽 합 × 오른쪽 부위 수 ÷ (오른쪽 합 × 왼쪽 부위 수).
+            // 반올림한 평균끼리 나누지 않고 합에 곱해 맞대야 3 대 3인 밀기/당기기가 전과 같은 값이 된다
+            BigDecimal leftScaled = left.weeklySets().multiply(BigDecimal.valueOf(pair.right().components().size()));
+            BigDecimal rightScaled = right.weeklySets().multiply(BigDecimal.valueOf(pair.left().components().size()));
+            BalanceEvaluation evaluation = BalanceEvaluation.of(leftScaled, rightScaled, threshold);
 
             pairs.add(new PairResponse(
                     pair, pair.label(), left, right,
-                    biggerSide(pair, left.weeklySets(), right.weeklySets()),
+                    biggerSide(pair, leftScaled, rightScaled),
                     evaluation.ratio(), evaluation.smallerSideZero(),
                     evaluation.verdict(), evaluation.verdict().label()));
         }
@@ -173,7 +176,9 @@ public class AnalysisService {
         for (MuscleGroup component : side.components()) {
             total += aggregate.total(component);
         }
-        return new SideResponse(side, side.label(), weeklyAverage(total, basisDays), side.components());
+        // 부위 수만큼 일수를 늘려 나누면 부위당 주 평균이다 (합 × 7 ÷ (일수 × 부위 수))
+        BigDecimal perMuscle = weeklyAverage(total, basisDays * side.components().size());
+        return new SideResponse(side, side.label(), weeklyAverage(total, basisDays), perMuscle, side.components());
     }
 
     /** 세트가 많은 쪽. 양쪽 다 0이면 가릴 것이 없어 {@code null}이고, 같으면 왼쪽으로 둔다. */

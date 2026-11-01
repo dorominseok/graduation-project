@@ -103,7 +103,8 @@ public final class AnalysisDtos {
     public record SideResponse(
             BalanceSide key,
             String label,
-            BigDecimal weeklySets,
+            @Schema(description = "구성 부위의 주당 세트 합") BigDecimal weeklySets,
+            @Schema(description = "부위당 주 평균 세트. 비율은 이 값끼리 맞댄다") BigDecimal perMuscleSets,
             @Schema(description = "합산에 쓴 판정 부위. 근거 표시용") List<MuscleGroup> components) {
     }
 }

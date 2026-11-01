@@ -579,7 +579,7 @@ function BalanceCard({ volume, balance }: { volume: MuscleVolume; balance: Balan
       </div>
 
       {balance.pairs.map((pair) => {
-        const max = Math.max(pair.left.weeklySets, pair.right.weeklySets, 1)
+        const max = Math.max(pair.left.perMuscleSets, pair.right.perMuscleSets, 1)
         return (
           <div key={pair.key} className={styles.pair}>
             <div className={styles.pairHead}>
@@ -592,30 +592,30 @@ function BalanceCard({ volume, balance }: { volume: MuscleVolume; balance: Balan
               <span className={styles.half}>
                 <span
                   className={`${styles.sideBar} ${styles.sideLeft}`}
-                  style={{ width: `${(pair.left.weeklySets / max) * 100}%` }}
+                  style={{ width: `${(pair.left.perMuscleSets / max) * 100}%` }}
                 />
               </span>
               <span className={styles.axis} />
               <span className={`${styles.half} ${styles.halfRight}`}>
                 <span
                   className={`${styles.sideBar} ${styles.sideRight}`}
-                  style={{ width: `${(pair.right.weeklySets / max) * 100}%` }}
+                  style={{ width: `${(pair.right.perMuscleSets / max) * 100}%` }}
                 />
               </span>
             </div>
             <div className={styles.sideLabels}>
               <span>
-                {pair.left.label} {pair.left.weeklySets}
+                {pair.left.label} {pair.left.perMuscleSets}
               </span>
               <span>
-                {pair.right.label} {pair.right.weeklySets}
+                {pair.right.label} {pair.right.perMuscleSets}
               </span>
             </div>
           </div>
         )
       })}
 
-      <div className={styles.weakScale}>주당 평균 세트 · {balance.ratioThreshold}배까지 정상</div>
+      <div className={styles.weakScale}>부위당 주 평균 세트 · {balance.ratioThreshold}배까지 정상</div>
     </button>
   )
 }

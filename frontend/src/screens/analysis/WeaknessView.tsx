@@ -249,7 +249,7 @@ export function WeaknessView({ volume, balance }: WeaknessViewProps) {
       <section className={styles.balance}>
         <div className={styles.sectionTitle}>균형</div>
         {balance.pairs.map((pair) => {
-          const max = Math.max(pair.left.weeklySets, pair.right.weeklySets, 1)
+          const max = Math.max(pair.left.perMuscleSets, pair.right.perMuscleSets, 1)
           return (
             <div key={pair.key} className={styles.pair}>
               <div className={styles.pairHead}>
@@ -261,14 +261,14 @@ export function WeaknessView({ volume, balance }: WeaknessViewProps) {
                 <div className={styles.half}>
                   <span
                     className={`${styles.sideBar} ${styles.sideLeft}`}
-                    style={{ width: `${(pair.left.weeklySets / max) * 100}%` }}
+                    style={{ width: `${(pair.left.perMuscleSets / max) * 100}%` }}
                   />
                 </div>
                 <span className={styles.axis} />
                 <div className={`${styles.half} ${styles.halfRight}`}>
                   <span
                     className={`${styles.sideBar} ${styles.sideRight}`}
-                    style={{ width: `${(pair.right.weeklySets / max) * 100}%` }}
+                    style={{ width: `${(pair.right.perMuscleSets / max) * 100}%` }}
                   />
                 </div>
               </div>
@@ -276,19 +276,19 @@ export function WeaknessView({ volume, balance }: WeaknessViewProps) {
               <div className={styles.sideLabels}>
                 <span>
                   <span className={`${styles.swatch} ${styles.sideLeft}`} />
-                  {pair.left.label} {pair.left.weeklySets}세트
+                  {pair.left.label} {pair.left.perMuscleSets}세트
                 </span>
                 <span>
-                  {pair.right.label} {pair.right.weeklySets}세트
+                  {pair.right.label} {pair.right.perMuscleSets}세트
                   <span className={`${styles.swatch} ${styles.sideRight}`} />
                 </span>
               </div>
 
               <div className={styles.pairSentence}>{balanceSentence(pair, balance.ratioThreshold)}</div>
               <div className={styles.components}>
-                {pair.left.label} = {namesOf(pair.left.components)}
+                {pair.left.label} = {namesOf(pair.left.components)}의 평균
                 <br />
-                {pair.right.label} = {namesOf(pair.right.components)}
+                {pair.right.label} = {namesOf(pair.right.components)}의 평균
               </div>
             </div>
           )
