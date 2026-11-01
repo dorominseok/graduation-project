@@ -1518,8 +1518,9 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 밀기   = CHEST + DELT_FRONT + TRICEPS
 당기기 = BACK  + DELT_REAR  + BICEPS
 상체   = 밀기 + 당기기
-하체   = QUADS + POSTERIOR + 종아리(calves)   ← 종아리 포함
-비율   = 큰 쪽 ÷ 작은 쪽,  2.0 초과 시 불균형
+하체   = QUADS + POSTERIOR                    ← 종아리 제외 (LOG-43)
+부위당 평균 = 합 ÷ 부위 수 (3 · 3 · 6 · 2)
+비율   = 큰 쪽 평균 ÷ 작은 쪽 평균,  2.0 초과 시 불균형
 ```
 
 **응답 `200 OK`**
@@ -1534,8 +1535,8 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
     {
       "key": "PUSH_PULL",
       "label": "밀기 / 당기기",
-      "left":  { "key": "PUSH", "label": "밀기",   "weeklySets": 20.0, "components": ["CHEST", "DELT_FRONT", "TRICEPS"] },
-      "right": { "key": "PULL", "label": "당기기", "weeklySets": 8.0,  "components": ["BACK", "DELT_REAR", "BICEPS"] },
+      "left":  { "key": "PUSH", "label": "밀기",   "weeklySets": 20.0, "perMuscleSets": 6.7, "components": ["CHEST", "DELT_FRONT", "TRICEPS"] },
+      "right": { "key": "PULL", "label": "당기기", "weeklySets": 8.0,  "perMuscleSets": 2.7, "components": ["BACK", "DELT_REAR", "BICEPS"] },
       "biggerSide": "PUSH",
       "ratio": 2.5,
       "smallerSideZero": false,
@@ -1545,10 +1546,10 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
     {
       "key": "UPPER_LOWER",
       "label": "상체 / 하체",
-      "left":  { "key": "UPPER", "label": "상체", "weeklySets": 28.0, "components": ["CHEST", "BACK", "DELT_FRONT", "DELT_REAR", "TRICEPS", "BICEPS"] },
-      "right": { "key": "LOWER", "label": "하체", "weeklySets": 18.0, "components": ["QUADS", "POSTERIOR", "CALVES"] },
-      "biggerSide": "UPPER",
-      "ratio": 1.56,
+      "left":  { "key": "UPPER", "label": "상체", "weeklySets": 28.0, "perMuscleSets": 4.7, "components": ["CHEST", "BACK", "DELT_FRONT", "DELT_REAR", "TRICEPS", "BICEPS"] },
+      "right": { "key": "LOWER", "label": "하체", "weeklySets": 18.0, "perMuscleSets": 9.0, "components": ["QUADS", "POSTERIOR"] },
+      "biggerSide": "LOWER",
+      "ratio": 1.93,
       "smallerSideZero": false,
       "verdict": "BALANCED",
       "verdictLabel": "정상"
@@ -1560,11 +1561,13 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | 필드 | 설명 |
 |---|---|
 | `basisDays` | 8.2와 같은 분모. 양쪽 주당 평균이 이 값으로 계산된다 (LOG-31) |
-| `ratio` | `round(큰 쪽 / 작은 쪽, 2)`. 작은 쪽이 0이면 `null` |
+| `weeklySets` | 구성 부위의 주당 세트 합 |
+| `perMuscleSets` | 부위당 주 평균 세트(`weeklySets ÷ 부위 수`). 화면 막대와 숫자는 이 값을 쓴다 (LOG-43) |
+| `ratio` | `round(큰 쪽 평균 / 작은 쪽 평균, 2)`. 서버는 반올림한 평균끼리 나누지 않고 `왼쪽 합 × 오른쪽 부위 수 ÷ (오른쪽 합 × 왼쪽 부위 수)`로 계산한다. 작은 쪽이 0이면 `null` |
 | `smallerSideZero` | 작은 쪽 세트가 0일 때 `true` → `verdict`는 `IMBALANCED`(큰 쪽 > 0인 경우), 화면은 "비율 계산 불가"로 표기 |
 | `verdict` | `BALANCED`(≤ 2.0) \| `IMBALANCED`(> 2.0). 양쪽 다 0이면 `INSUFFICIENT_DATA` |
 | `components` | 합산에 쓰인 하위 판정 부위 `key` 목록 (근거 표시용) |
-| `biggerSide` | 세트가 많은 쪽. 양쪽 다 `0`이면 `null`이고, 같으면 `left`다 (2026-09-29 구현 시 확정) |
+| `biggerSide` | 부위당 평균이 큰 쪽. 양쪽 다 `0`이면 `null`이고, 같으면 `left`다 (2026-09-29 구현 시 확정) |
 
 ### 8.4 LLM 분석 해설 (참고 — 9월 범위 밖)
 
@@ -1645,7 +1648,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | 운동 시간을 세트당 ±2분 로컬 카운터 / 세트 수 임의 공식으로 산출 | **서버 `effectiveDurationSec`만 사용.** BACKFILL 세션은 시간 표기 제외 | 기록 방식 4.2·4.3, 8.5 |
 | 종목 상세·통계 "총 볼륨(톤)" 지표 6종 + 이동평균 | **제거**. 톤수 방식은 쓰지 않기로 했고 내려줄 엔드포인트도 없다 | 분석 1.1, 7장(엔드포인트는 `one-rm-trend`·`session-intensity` 둘뿐) |
 | 넘패드·스테퍼: `reps`/`durationSec` 최솟값 0, 중량 소수 자릿수 무제한 | **`reps` ≥ 1, `durationSec` ≥ 1, 중량 소수 2자리**로 제한 | 6.4, 6.11 |
-| 상·하체 비율에서 **종아리 누락** (`lower = legs`만) | **하체 = QUADS + POSTERIOR + CALVES**. 서버 `components` 사용 | 분석 4.3, 8.3. 하체 과소 집계 → 불균형 과다 경고 |
+| 상·하체 비율에서 **종아리 누락** (`lower = legs`만) | ~~하체 = QUADS + POSTERIOR + CALVES~~ → LOG-43에서 **부위당 평균 비교로 바꾸며 종아리를 뺐다**. 서버 `components` 사용 | 분석 4.3, 8.3 |
 | 통계 › 부위별 8주 추이 미니차트 6개 | **제거**. 9월엔 추이 엔드포인트를 만들지 않는다 | 9.1 후속 과제로 이관 |
 | 기록 탭 캘린더가 하루 1세션만 전제 (`historyData[key]` 단일 객체) | **하루 여러 세션 카드**를 그릴 수 있게 수정 | 6.1 하루 복수 세션 허용 확정 |
 | 홈은 월요일 시작 주, 기록 캘린더는 일요일 시작 주 | **월요일 시작으로 통일** | 1.2 주 시작 요일 규정 신설 |
