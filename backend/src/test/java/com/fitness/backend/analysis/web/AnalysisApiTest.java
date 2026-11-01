@@ -47,6 +47,7 @@ class AnalysisApiTest {
     private long facePull;        // shoulders(R) → DELT_REAR
     private long barbellCurl;     // biceps       → BICEPS
     private long calfRaise;       // calves       → 표시 전용
+    private long squat;           // quadriceps   → QUADS
 
     @BeforeEach
     void setUp() throws Exception {
@@ -57,6 +58,7 @@ class AnalysisApiTest {
         facePull = exerciseIdOf("페이스풀");
         barbellCurl = exerciseIdOf("바벨 컬");
         calfRaise = exerciseIdOf("스탠딩 카프레이즈");
+        squat = exerciseIdOf("바벨 스쿼트");
     }
 
     // ── 부위별 볼륨
@@ -285,6 +287,9 @@ class AnalysisApiTest {
         balance(1, reference)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ratioThreshold").value(2.0))
+                // 3부위 대 3부위라 부위당 평균으로 맞대도 합의 비율과 같다
+                .andExpect(jsonPath("$.pairs[0].left.perMuscleSets").value(2.0))
+                .andExpect(jsonPath("$.pairs[0].right.perMuscleSets").value(1.0))
                 .andExpect(jsonPath("$.pairs[0].ratio").value(2.0))
                 .andExpect(jsonPath("$.pairs[0].smallerSideZero").value(false))
                 .andExpect(jsonPath("$.pairs[0].verdict").value("BALANCED"))
@@ -304,17 +309,50 @@ class AnalysisApiTest {
     }
 
     @Test
-    @DisplayName("하체에는 종아리가 들어간다 — 빼면 하체가 과소평가된다")
-    void lowerBodyIncludesCalves() throws Exception {
+    @DisplayName("상체 6부위와 하체 2부위는 부위당 평균으로 맞댄다 — 합으로는 3배라도 부위마다 같으면 정상이다")
+    void upperLowerComparesPerMuscleAverage() throws Exception {
+        LocalDate reference = LocalDate.now().minusDays(1);
+        doneSession(reference, benchPress, 6);
+        doneSession(reference, barbellCurl, 6);   // 상체 12 ÷ 6부위 = 2
+        doneSession(reference, squat, 4);         // 하체 4 ÷ 2부위 = 2
+
+        balance(1, reference)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pairs[1].key").value("UPPER_LOWER"))
+                .andExpect(jsonPath("$.pairs[1].left.weeklySets").value(12.0))
+                .andExpect(jsonPath("$.pairs[1].left.perMuscleSets").value(2.0))
+                .andExpect(jsonPath("$.pairs[1].right.weeklySets").value(4.0))
+                .andExpect(jsonPath("$.pairs[1].right.perMuscleSets").value(2.0))
+                .andExpect(jsonPath("$.pairs[1].ratio").value(1.0))
+                .andExpect(jsonPath("$.pairs[1].verdict").value("BALANCED"));
+    }
+
+    @Test
+    @DisplayName("부위당 평균으로도 2배를 넘으면 상하체 불균형이다")
+    void upperLowerStillDetectsImbalance() throws Exception {
+        LocalDate reference = LocalDate.now().minusDays(1);
+        doneSession(reference, benchPress, 6);    // 상체 6 ÷ 6부위 = 1
+        doneSession(reference, squat, 10);        // 하체 10 ÷ 2부위 = 5
+
+        balance(1, reference)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pairs[1].biggerSide").value("LOWER"))
+                .andExpect(jsonPath("$.pairs[1].ratio").value(5.0))
+                .andExpect(jsonPath("$.pairs[1].verdict").value("IMBALANCED"));
+    }
+
+    @Test
+    @DisplayName("종아리는 하체 평균에 넣지 않는다 — 판정 부위가 아니라 안 한 사람의 하체를 낮추면 안 된다")
+    void calvesAreNotPartOfLowerBody() throws Exception {
         LocalDate reference = LocalDate.now().minusDays(1);
         doneSession(reference, calfRaise, 4);
 
         balance(1, reference)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.pairs[1].key").value("UPPER_LOWER"))
                 .andExpect(jsonPath("$.pairs[1].right.key").value("LOWER"))
-                .andExpect(jsonPath("$.pairs[1].right.weeklySets").value(4.0))
-                .andExpect(jsonPath("$.pairs[1].biggerSide").value("LOWER"));
+                .andExpect(jsonPath("$.pairs[1].right.components.length()").value(2))
+                .andExpect(jsonPath("$.pairs[1].right.weeklySets").value(0.0))
+                .andExpect(jsonPath("$.pairs[1].verdict").value("INSUFFICIENT_DATA"));
     }
 
     @Test

@@ -418,7 +418,10 @@ export type BalanceSideKey = 'PUSH' | 'PULL' | 'UPPER' | 'LOWER'
 export interface BalanceSide {
   key: BalanceSideKey
   label: string
+  /** 구성 부위의 주당 세트 합 */
   weeklySets: number
+  /** 부위당 주 평균 세트. 비율은 이 값끼리 맞댄다 — 상체 6부위와 하체 2부위를 같은 눈금에 둔다 */
+  perMuscleSets: number
   /** 합산에 쓴 판정 부위. 근거로 보여준다 */
   components: MuscleGroupKey[]
 }
