@@ -11,6 +11,7 @@
 > 추가: 오늘의 루틴(UC-03-03~06)은 11장 (2026-10-24, LOG-40). 1단계 규칙 루틴 — 엔드포인트 44→52개
 > 추가: 종목 기록(5.8, 2026-10-25) — 종목 상세의 최근 기록과 "기록 더보기" 페이지. 엔드포인트 52→53개
 > 개정: 2026-11-04 완성된 코드와 대조(LOG-45) — 1.3 인증 예외·403/404, 1.4 페이지 크기, 4.6 훈련 목표, 4.7 함께 지워지는 테이블, 화면이 쓰지 않는 API 표기. 엔드포인트 53개는 컨트롤러와 일치
+> 개정: 2026-11-06 훈련 목표 삭제(LOG-46) — `users.goal`을 지우고(`V12`) 4.5·4.6에서 `profile` 객체를 뺐다. 2.4-(2)·9.1·부록 A 갱신
 
 ---
 
@@ -221,6 +222,8 @@ Authorization: Bearer {accessToken}
 | `created_at` | TIMESTAMPTZ NOT NULL DEFAULT now() | |
 
 **(2) `users` 프로필 컬럼 — 기존 테이블 확장**
+
+> **삭제 (2026-11-06, LOG-46)**: `goal` 컬럼은 `V12`에서 지웠다. 루틴이 반복 범위를 측정 유형으로 정하게 되면서(2026-09-20) 읽는 곳이 없었다. 아래는 `V3` 당시의 결정 기록이다.
 
 `users`에는 현재 `email / password_hash / nickname`만 있다. 프로필 항목 **훈련 목표 1종**을 위해 컬럼을 추가한다.
 
@@ -478,9 +481,6 @@ Authorization: Bearer {accessToken}
   "userId": 42,
   "email": "user@example.com",
   "nickname": "민석",
-  "profile": {
-    "goal": "HYPERTROPHY"
-  },
   "loginMethods": {
     "password": true,
     "google": false
@@ -489,35 +489,30 @@ Authorization: Bearer {accessToken}
 }
 ```
 
-- 프로필 미입력 시 `profile.goal`은 `null`.
 - `loginMethods`는 이 계정으로 로그인하는 방법이다(LOG-37). 구글로만 가입하면 `password: false`이고, 화면은 비밀번호 변경을 숨기고 탈퇴 확인을 구글로 받는다(4.7). 이메일로 가입한 뒤 같은 이메일의 구글로 들어오면 둘 다 `true`다.
-- `profile`을 객체로 감싸 둔 것은 향후 항목이 늘어날 때 최상위 필드가 흩어지지 않게 하기 위함이다. 현재 항목은 `goal` 하나다.
+- 훈련 목표(`profile.goal`)는 2026-11-06에 지웠다(LOG-46). 응답에 `profile` 객체가 없다.
 
 ### 4.6 PATCH /users/me
 
-부분 수정. 포함된 필드만 갱신한다.
+부분 수정. 바꿀 수 있는 항목은 `nickname`뿐이고, 보내지 않으면 그대로 둔다.
 
 **요청 (예)**
 
 ```json
 {
-  "nickname": "민석2",
-  "profile": {
-    "goal": "STRENGTH"
-  }
+  "nickname": "민석2"
 }
 ```
 
 | 필드 | 규칙 |
 |---|---|
 | `nickname` | 1~50자 |
-| `profile.goal` | enum (부록 A). `null`로 보내면 미설정으로 되돌린다 |
 
 **응답 `200 OK`** — 4.5와 동일한 전체 프로필.
 
-> **화면은 `nickname`만 보낸다** (LOG-45). 훈련 목표는 루틴이 반복 범위를 측정 유형으로 정하게 되면서(2026-09-20) 쓰는 곳이 없어져 화면에서 뺐고, 이 필드와 `users.goal` 컬럼만 남아 있다.
+> 훈련 목표(`profile.goal`)는 2026-11-06에 지웠다(LOG-46, `V12`). 루틴이 반복 범위를 측정 유형으로 정하게 되면서(2026-09-20) 쓰는 곳이 없었고, 화면도 `nickname`만 보냈다(LOG-45).
 
-> 프로필 항목은 **훈련 목표 1종**이다. UC-01-03이 명시한 "경력"(LOG-11)에 이어 "키·체중"도 제외했다. 근거는 2.4-(2) — 어떤 로직도 참조하지 않고, 프로필 컬럼은 나중에 추가해도 비용이 같다.
+> UC-01-03·계획서의 프로필 항목("키/체중/경력/목표") 가운데 경력은 LOG-11, 키·체중은 LOG-14, 훈련 목표는 LOG-46에서 뺐다. 근거는 2.4-(2) — 어떤 로직도 참조하지 않고, 프로필 컬럼은 나중에 추가해도 비용이 같다.
 
 > **정정 (2026-09-14, LOG-21)**: 비밀번호 변경은 `PATCH /users/me/password`로 **9월 범위에 추가**한다(4.8). 이메일 변경은 계속 제외한다 — 이메일은 로그인 식별자라 바꾸려면 중복 검사와 기존 세션 처리가 따라붙는데, 지인 10명 검증에서 이메일을 바꿀 이유가 없다.
 
@@ -1625,10 +1620,11 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | `V7__google_login.sql` | `users.google_id` UNIQUE, `password_hash` NULL 허용, 로그인 방법 CHECK (4.9, LOG-37) | 완료 (10월 2주) |
 | `V8__friend_groups.sql` | 친구 그룹 — `friend_groups`·`friend_group_members`·`cheers` (10.11, LOG-38) | 완료 (10월 2주) |
 | `V9__daily_workout_record.sql` | 하루 기록(LOG-39) — 같은 날 기록을 가장 앞 기록으로 합치고(세트·응원 이동, 세트 순번 재부여, 메모 잇기), `status`·`source`·`started_at`·`ended_at`·`duration_sec` 삭제, `(user_id, performed_on)` UNIQUE | 완료 (10월 2주) |
-| `password_reset_tokens` 테이블 | 비밀번호 재설정(4.8 주석). 문서 곳곳에 `V5`로 적혀 있으나 `V5`~`V11`이 이미 쓰여 실제로는 **다음 빈 번호**다. d1에서 떼어 검증 이후로 미뤘다(LOG-25) | **미구현** (기간 안에 하지 않음) |
+| `password_reset_tokens` 테이블 | 비밀번호 재설정(4.8 주석). 문서 곳곳에 `V5`로 적혀 있으나 `V5`~`V12`가 이미 쓰여 실제로는 **다음 빈 번호**다. d1에서 떼어 검증 이후로 미뤘다(LOG-25) | **미구현** (기간 안에 하지 않음) |
 | ~~세션 생성 멱등 키~~ | 하루 하나 제약(`V9`)과 "있으면 그 기록을 준다"(6.2)가 재전송 중복을 막아 **필요 없어졌다** | 해소 (LOG-39) |
 | ~~`routines` FK~~ | `V10`에서 `workout_sessions.routine_id → routines(id)` FK를 걸었다(`ON DELETE SET NULL`) | 완료 (LOG-40) |
 | `V10__routines.sql` · `V11__exercise_starter_rank.sql` | 루틴 `routines`·`routine_items`, 입문 대표 종목 `exercises.starter_rank` (11.9) | 완료 (10월 4주) |
+| `V12__drop_user_goal.sql` | `users.goal` 컬럼과 `ck_users_goal` 제약 삭제 (4.6, LOG-46) | 완료 (11월 1주) |
 | 요약 배지 문안 | `summaryBadge` label 및 `MIXED` 표기 확정 (8.2). enum `key`는 고정 | 완료 (8.2 표 그대로) |
 | QUADS 화면 명칭 | `abductors`·`adductors` 포함이라 "앞허벅지"가 부정확 (LOG-10 한계) | "앞허벅지" 유지 — 시드 109종 중 QUADS 11종은 `quadriceps` 10 + `abductors` 1이고 `adductors`는 없다. 대부분이 대퇴사두라 이름을 바꾸지 않았다 |
 | 우선순위 산출 | 여러 부위 동시 부족·불균형 시 보완 순서 (분석 8장) | 완료 — 「루틴생성_로직_설계서」 2장 |
@@ -1690,7 +1686,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 > 즐겨찾기 별표·탭은 목업 그대로 유지된다(명세가 목업에 맞췄음).
 >
 > **정정(2026-08-31)**: 이 자리에 "'어깨(앞)/어깨(뒤)' 2계층 표시는 목업 그대로 유지된다"고 적혀 있었으나 **사실이 아니다.** 목업에 2계층 표시는 존재하지 않는다 — `어깨(앞)`·`어깨(뒤)`·`삼두`·`이두`·`앞허벅지`·`뒤허벅지` 문자열이 목업 전체에 0회다. 목업 분석 탭은 상위 6종을 평면 리스트로 나열하고 **각 상위 항목에 판정 라벨을 직접 붙인다.** 이는 2.4가 금지한 표시 방식이므로, 2계층 리스트·펼치기·`summaryBadge`는 **신규로 설계해야 한다**(아래 표에 추가). 근거: 「목업_문서_대조_평가」 C-1.
-> 프로필 항목은 **훈련 목표 1종**으로 확정. UC-01-03의 "경력"(LOG-11)에 이어 "키·체중"도 제외했다(2.4-(2), LOG-14). 목업 개인 정보 화면의 키·체중 표시(대조 평가 C-21)는 **제거** 대상이 된다 — C-21이 지적한 "편집 불가" 문제도 함께 해소된다.
+> 프로필 항목은 **훈련 목표 1종**으로 확정(이후 훈련 목표도 2026-11-06 LOG-46에서 지웠다). UC-01-03의 "경력"(LOG-11)에 이어 "키·체중"도 제외했다(2.4-(2), LOG-14). 목업 개인 정보 화면의 키·체중 표시(대조 평가 C-21)는 **제거** 대상이 된다 — C-21이 지적한 "편집 불가" 문제도 함께 해소된다.
 
 ---
 
@@ -2048,7 +2044,6 @@ LLM 설정은 `app.llm.*`(`enabled`, `model`, `timeout-ms`, `temperature`, `max-
 | `exercise.measureType` | `WEIGHT_REPS`, `BODYWEIGHT_REPS`, `WEIGHTED_BODYWEIGHT`, `TIME` |
 | `exercise.equipment` | `BARBELL`, `DUMBBELL`, `MACHINE`, `CABLE`, `BODYWEIGHT`, `PULLUP_BAR` |
 | `exercise.deltRegion` | `FRONT`, `REAR`, `null` (`primaryMuscle = shoulders`인 종목만 값) |
-| `user.goal` | `STRENGTH`, `HYPERTROPHY`, `ENDURANCE`, `GENERAL_FITNESS` (훈련 목표 축 — 체중 목표 아님. 화면에서는 쓰지 않는다, 4.6) |
 | 판정 부위 상위 (`tier.key`) | `CHEST`, `BACK`, `SHOULDERS`, `ARMS`, `LEGS`, `CORE` |
 | 판정 부위 하위 (`child.key`) | `CHEST`, `BACK`, `DELT_FRONT`, `DELT_REAR`, `TRICEPS`, `BICEPS`, `QUADS`, `POSTERIOR`, `CORE` |
 | 표시만 (`displayOnly.key`) | `CALVES`, `FOREARMS` |
