@@ -3,8 +3,6 @@ package com.fitness.backend.user.domain;
 import com.fitness.backend.common.entity.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -47,17 +45,6 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false, length = 50)
     private String nickname;
 
-    /**
-     * 훈련 목표. 회원가입 후 선택 입력이므로 {@code null} 허용.
-     *
-     * <p>{@code EnumType.STRING}이다. {@code ORDINAL}은 enum 상수의 순서가 바뀌면
-     * 이미 저장된 값의 의미가 통째로 달라진다 — DB에는 {@code STRENGTH} 같은
-     * 문자열이 들어가고 {@code ck_users_goal} CHECK 제약도 그 값을 검사한다.
-     */
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private TrainingGoal goal;
-
     private User(String email, String passwordHash, String nickname) {
         this.email = email;
         this.passwordHash = passwordHash;
@@ -90,14 +77,6 @@ public class User extends BaseTimeEntity {
         if (nickname != null) {
             this.nickname = nickname;
         }
-    }
-
-    /**
-     * 훈련 목표 변경. {@code null}로 되돌리는 것과 "바꾸지 않음"을 구분해야 하므로
-     * 호출부가 갱신 여부를 판단해 이 메서드를 호출한다.
-     */
-    public void changeGoal(TrainingGoal goal) {
-        this.goal = goal;
     }
 
     /** 비밀번호 변경. 가입과 마찬가지로 해시는 호출부가 만들어 넘긴다. */

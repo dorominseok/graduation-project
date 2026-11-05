@@ -201,8 +201,7 @@ class AuthFlowTest {
         mvc.perform(get("/api/v1/users/me")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessTokenOf(signUpResult)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value(email))
-                .andExpect(jsonPath("$.profile.goal").doesNotExist());
+                .andExpect(jsonPath("$.email").value(email));
     }
 
     @Test

@@ -49,11 +49,6 @@ public class UserService {
     public User update(Long userId, UserDtos.UpdateMeRequest request) {
         User user = get(userId);
         user.updateNickname(request.nickname());
-        // profile 객체가 없으면 건드리지 않는다. 있으면 goal을 그대로 반영한다
-        // (null이면 미설정으로 되돌린다).
-        if (request.profile() != null) {
-            user.changeGoal(request.profile().goal());
-        }
         return user;
     }
 

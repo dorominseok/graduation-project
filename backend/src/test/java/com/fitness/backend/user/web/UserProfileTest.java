@@ -49,49 +49,29 @@ class UserProfileTest {
     }
 
     @Test
-    @DisplayName("프로필은 훈련 목표 1종이다 — 키·체중은 응답에 없다")
-    void profileHasGoalOnly() throws Exception {
+    @DisplayName("프로필 응답은 계정 정보와 로그인 방법만 준다 — 훈련 목표(profile)는 없다")
+    void meHasAccountFieldsOnly() throws Exception {
         mvc.perform(get("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, bearer))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(userId))
                 .andExpect(jsonPath("$.email").value(email))
                 .andExpect(jsonPath("$.nickname").value("민석"))
                 .andExpect(jsonPath("$.createdAt").exists())
-                .andExpect(jsonPath("$.profile").exists())
-                .andExpect(jsonPath("$.profile.heightCm").doesNotExist())
-                .andExpect(jsonPath("$.profile.weightKg").doesNotExist());
+                .andExpect(jsonPath("$.loginMethods.password").value(true))
+                .andExpect(jsonPath("$.profile").doesNotExist());
     }
 
     @Test
-    @DisplayName("닉네임만 보내면 목표는 건드리지 않는다 — profile 객체가 없으면 미변경")
-    void partialUpdateKeepsGoal() throws Exception {
-        mvc.perform(patch("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, bearer)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"profile\":{\"goal\":\"HYPERTROPHY\"}}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.profile.goal").value("HYPERTROPHY"));
-
+    @DisplayName("닉네임을 바꾸면 응답과 다음 조회에 반영된다")
+    void updateNickname() throws Exception {
         mvc.perform(patch("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, bearer)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nickname\":\"민석2\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nickname").value("민석2"))
-                .andExpect(jsonPath("$.profile.goal").value("HYPERTROPHY"));
-    }
+                .andExpect(jsonPath("$.nickname").value("민석2"));
 
-    @Test
-    @DisplayName("profile.goal을 null로 보내면 미설정으로 되돌린다")
-    void nullGoalUnsets() throws Exception {
-        mvc.perform(patch("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, bearer)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"profile\":{\"goal\":\"STRENGTH\"}}"))
-                .andExpect(jsonPath("$.profile.goal").value("STRENGTH"));
-
-        mvc.perform(patch("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, bearer)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"profile\":{\"goal\":null}}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.profile.goal").doesNotExist());
+        mvc.perform(get("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, bearer))
+                .andExpect(jsonPath("$.nickname").value("민석2"));
     }
 
     @Test
@@ -104,16 +84,6 @@ class UserProfileTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.errors[0].field").value("nickname"));
-    }
-
-    @Test
-    @DisplayName("정의되지 않은 목표 값은 거부한다")
-    void unknownGoalRejected() throws Exception {
-        mvc.perform(patch("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, bearer)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"profile\":{\"goal\":\"BULKING\"}}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
     @Test
