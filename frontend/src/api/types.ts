@@ -5,9 +5,6 @@
  * 화면 쪽에서 가공한다.
  */
 
-/** 훈련 목표. 화면에서는 쓰지 않고, 서버 응답에 아직 이 필드가 있어 타입만 남겼다. */
-export type TrainingGoal = 'STRENGTH' | 'HYPERTROPHY' | 'ENDURANCE' | 'GENERAL_FITNESS'
-
 /** 가입·로그인 응답에 딸려오는 축약 사용자 정보. */
 export interface UserSummary {
   userId: number
@@ -35,11 +32,6 @@ export interface RefreshResponse {
   expiresIn: number
 }
 
-/** 프로필. 항목이 하나여도 객체로 감싼 형태를 유지한다. */
-export interface Profile {
-  goal: TrainingGoal | null
-}
-
 /**
  * 이 계정의 로그인 방법.
  *
@@ -55,17 +47,11 @@ export interface MeResponse {
   userId: number
   email: string
   nickname: string
-  profile: Profile
   loginMethods: LoginMethods
   createdAt: string
 }
 
-/**
- * 프로필 부분 수정 요청.
- *
- * `profile`은 보내지 않는다 — 키를 빼면 서버가 프로필을 건드리지 않는다.
- * 화면이 다루는 항목은 닉네임뿐이다.
- */
+/** 프로필 부분 수정 요청. 바꿀 수 있는 항목은 닉네임뿐이다. */
 export interface UpdateMeRequest {
   nickname?: string
 }

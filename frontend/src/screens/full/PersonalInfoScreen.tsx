@@ -36,7 +36,6 @@ export function PersonalInfoScreen() {
     setSaving(true)
 
     try {
-      // profile 객체를 보내지 않으면 서버가 프로필을 건드리지 않는다.
       const next = await authApi.updateMe({ nickname })
       applyUser(next)
       showToast({ message: '저장했어요' })
