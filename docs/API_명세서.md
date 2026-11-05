@@ -284,7 +284,7 @@ Authorization: Bearer {accessToken}
 | POST | `/auth/refresh` | 액세스 토큰 재발급 (리프레시 쿠키 사용) | 쿠키 |
 | POST | `/auth/logout` | 로그아웃 (리프레시 토큰 폐기) | ✔ |
 | GET | `/users/me` | 내 프로필 조회 | ✔ |
-| PATCH | `/users/me` | 닉네임·프로필 수정 | ✔ |
+| PATCH | `/users/me` | 닉네임 수정 | ✔ |
 | PATCH | `/users/me/password` | 비밀번호 변경 (현재 비밀번호 확인) | ✔ |
 | DELETE | `/users/me` | **회원 탈퇴** (계정·기록 전부 삭제) | ✔ |
 
