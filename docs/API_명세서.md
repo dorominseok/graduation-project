@@ -159,8 +159,18 @@ Authorization: Bearer {accessToken}
 | 409 | `DAY_ALREADY_RECORDED` | 기록의 날짜를 옮기려는데 그 날짜에 기록이 이미 있음 (6.9, LOG-39) |
 | 409 | `GROUP_LIMIT_EXCEEDED` | 그룹 인원 20명 또는 한 사람의 그룹 10개 초과 (10장) |
 | 409 | `ROUTINE_FEEDBACK_EXISTS` | 이미 만족도를 답했거나 건너뛴 루틴 (11.8) |
-| 429 | `RATE_LIMITED` | 요청 한도 초과 (코드만 정의, 한도는 도입하지 않음) |
+| 429 | `RATE_LIMITED` | 요청 한도 초과 — 로그인·가입·구글 로그인만 IP마다 센다(아래). `Retry-After` 헤더에 다시 해도 되는 초 |
 | 500 | `INTERNAL_ERROR` | 서버 내부 오류 |
+
+**요청 횟수 제한** — 로그인 없이 부를 수 있는 인증 API만 IP마다 센다. 한도를 넘으면 컨트롤러까지 가지 않고 `429 RATE_LIMITED`와 `Retry-After`(초)를 준다. 운영(prod)에서만 켜고, 값은 `app.rate-limit.*`로 바꾼다.
+
+| 엔드포인트 | 한도 | 막는 것 |
+|---|---|---|
+| `POST /auth/login` | 1분에 20회 | 비밀번호 대입 |
+| `POST /auth/signup` | 1시간에 20회 | 계정 대량 생성 — 계정마다 오늘 루틴 LLM이 한 번 불린다 |
+| `POST /auth/google` | 1분에 20회 | 처음 로그인하면 가입이 된다 |
+
+> 한꺼번에 20회까지 되고, 다 쓰면 간격(1분 한도는 3초, 1시간 한도는 3분)마다 한 번씩 다시 생긴다. 학교·회사 와이파이는 여러 사람이 IP 하나를 같이 쓰므로 사람 손으로는 걸리지 않게 넉넉히 두었다. 토큰 재발급(`/auth/refresh`)은 앱이 알아서 부르는 요청이라 세지 않는다. IP는 Caddy가 넘긴 `X-Forwarded-For`다(내부망에서 온 값만 믿는다). 서버 메모리에 세므로 재시작하면 처음부터 센다.
 
 > 구현: Spring `@RestControllerAdvice`로 `MethodArgumentNotValidException`, 커스텀 `ApiException`(→ `code` 보유), `AuthenticationException` 등을 위 구조로 직렬화하는 단일 핸들러를 둔다.
 
@@ -410,6 +420,7 @@ Authorization: Bearer {accessToken}
 |---|---|
 | 이메일 중복 | `409 EMAIL_ALREADY_EXISTS` |
 | 형식 오류 | `400 VALIDATION_ERROR` (`errors`에 필드별 사유) |
+| 같은 IP에서 1시간에 20회 넘게 | `429 RATE_LIMITED` (1.5) |
 
 ### 4.2 POST /auth/login
 
@@ -426,6 +437,7 @@ Authorization: Bearer {accessToken}
 | 상황 | 응답 |
 |---|---|
 | 이메일 없음 / 비밀번호 불일치 | `401 INVALID_CREDENTIALS` (둘을 구분하지 않는다 — 계정 존재 여부 노출 방지) |
+| 같은 IP에서 1분에 20회 넘게 | `429 RATE_LIMITED` (1.5) |
 
 ### 4.3 POST /auth/refresh
 
@@ -643,6 +655,7 @@ Authorization: Bearer {accessToken}
 | 새 계정이 필요한데 구글이 이메일을 확인하지 않음 | `401 GOOGLE_LOGIN_FAILED` |
 | 같은 이메일 계정에 이미 다른 구글 계정이 묶여 있음 | `409 EMAIL_ALREADY_EXISTS` |
 | `credential` 누락 | `400 VALIDATION_ERROR` |
+| 같은 IP에서 1분에 20회 넘게 | `429 RATE_LIMITED` (1.5) |
 
 > 구글로만 가입한 계정으로 `POST /auth/login`을 하면 일반 실패와 같은 `401 INVALID_CREDENTIALS`다(4.2). 다르게 알려주면 가입 방법이 드러난다.
 
@@ -1632,7 +1645,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | 비밀번호 **변경** API | **9월 범위에 추가** (4.8) — 스키마·의존성 추가 없이 엔드포인트 1개 | LOG-21 |
 | 이메일 변경 API | 계속 제외 — 로그인 식별자라 중복 검사·세션 처리가 따라붙고, 지인 10명 검증에서 바꿀 이유가 없다 | 필요 시 |
 | 비밀번호 **재설정**(찾기) | **미구현.** d1(배포 준비) 이후로 유예했고 기간 안에 만들지 않았다. 메일 발송 수단이 스택에 없고(`build.gradle`에 mail 의존성 없음), 재설정 토큰 테이블·엔드포인트 2개·화면 2개가 필요하다. 무엇보다 **재설정 링크가 가리킬 HTTPS 도메인이 10월2주에나 생겨** 지금 만들면 동작을 확인할 수 없다. 그 전까지 비밀번호를 잊은 검증 참여자는 운영으로 대응한다(연락받아 해시 직접 갱신) | LOG-21 |
-| Rate limiting | `429 RATE_LIMITED` 코드만 예약. 도입하지 않았다 | 미도입 |
+| Rate limiting | 로그인·가입·구글 로그인만 IP마다 센다(1.5) | 완료 (2026-11-10) |
 | 즐겨찾기 개수 상한 | 현재 무제한. 필요 시 `409`로 추가 (5.4) | 배포 후 판단 |
 | **LOG-11 작성** | 프로필에서 운동 경력 제외 결정을 「설계 변경 로그」에 신설 | 완료 |
 | **LOG-14 작성** | 프로필에서 키·체중까지 제외해 **훈련 목표 1종으로 축소**한 결정. UC-01-03·계획서의 "키/체중/경력/목표"와의 차이를 기록 (2.4-(2)) | 완료 |

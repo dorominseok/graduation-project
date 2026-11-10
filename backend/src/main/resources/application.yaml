@@ -99,6 +99,20 @@ app:
     max-retries: 2                # 검증 실패 시 다시 묻기. 호출 실패는 다시 묻지 않는다
     max-output-tokens: 1024       # 실측 출력 ~130 토큰
     api-key: ${GEMINI_API_KEY:}   # 환경변수로만. 여기에 키를 적지 않는다
+  # 로그인 없이 부를 수 있는 인증 API의 요청 횟수 제한(IP마다). 운영(prod)에서만 켠다 —
+  # 로컬·테스트는 같은 주소(127.0.0.1)로 가입·로그인을 수십 번 한다.
+  # 사람 손으로는 걸리지 않게 넉넉히 둔다 — 학교·회사 와이파이는 여러 사람이 IP 하나를 같이 쓴다
+  rate-limit:
+    enabled: false
+    login:                        # 비밀번호 대입
+      capacity: 20
+      period: 1m
+    signup:                       # 계정 대량 생성 — 계정마다 오늘 루틴 LLM이 한 번 불린다
+      capacity: 20
+      period: 1h
+    google:                       # 처음 로그인하면 가입이 된다
+      capacity: 20
+      period: 1m
 
 management:
   endpoints:
@@ -136,6 +150,8 @@ app:
     secret: ${JWT_SECRET}
     # 배포는 HTTPS가 전제다. 이 값이 false면 리프레시 쿠키가 저장되지 않는다.
     cookie-secure: true
+  rate-limit:
+    enabled: true
 
 # API 문서는 개발 중 계약 확인용이다. 운영에서는 만들지도 않는다
 springdoc:
