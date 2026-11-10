@@ -435,6 +435,40 @@ export interface Balance {
   }[]
 }
 
+export type RecoveryState = 'HIGH' | 'MEDIUM' | 'LOW' | 'RECOVERED'
+
+/** 부위 하나의 회복 상태. */
+export interface RecoveryMuscle {
+  key: MuscleGroupKey
+  label: string
+  /** 부족 판정 대상인지. 종아리·전완은 false — 루틴이 고르지 않는 부위다 */
+  judged: boolean
+  state: RecoveryState
+  stateLabel: string
+  /** 최근 4주 안의 마지막 운동일. 없으면 null */
+  lastTrainedOn: string | null
+  /** 마지막 운동일부터 오늘까지 일수. 오늘 했으면 0, 기록이 없으면 null */
+  daysSince: number | null
+  /** 오늘 포함 recoveryDays일 동안의 본세트 수 */
+  recentSets: number
+}
+
+/**
+ * 부위별 회복 상태. 피로를 잰 값이 아니라 기록(날짜·세트 수)으로 짐작한 값이다.
+ *
+ * 상태는 서버가 정한다. 회복 중(HIGH·MEDIUM)은 오늘의 루틴이 부위를 빼는 판정과 같은 함수다.
+ */
+export interface Recovery {
+  /** 기준일(오늘) */
+  date: string
+  /** 오늘 포함 이 일수 안에 한 부위가 회복 중이다. 0이면 회복 중인 부위가 없다 */
+  recoveryDays: number
+  /** 회복 중 기간의 세트가 이 값 이상이면 HIGH */
+  heavySets: number
+  /** 11개 부위가 늘 같은 순서로 모두 온다 */
+  muscles: RecoveryMuscle[]
+}
+
 // ── 친구 그룹
 
 /** 내 그룹 목록 한 줄. */

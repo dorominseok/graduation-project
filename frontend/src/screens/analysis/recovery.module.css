@@ -1,0 +1,266 @@
+/*
+ * 분석 탭 — 회복 서브탭. 앞·뒤 그림 한 판, 고른 부위 상세, 색이 칠해진 부위 이름.
+ *
+ * 그림 자체(선·칠)는 body/bodyMap.module.css에 있다. 색은 그림·범례·이름·상세가 모두
+ * 같은 토큰(--recovery-*)을 쓴다 — 한 곳이라도 다르면 범례가 거짓말이 된다.
+ */
+
+/* ── 그림 판 */
+
+.mapCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-14);
+  padding: var(--space-16);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-xl);
+}
+
+/* 두 장을 늘 한 줄에 둔다. 폭 360에서도 한 장이 140px쯤 나온다 */
+.figures {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-8);
+}
+
+.figures > * {
+  flex: 1;
+  min-width: 0;
+  /* 넓은 화면에서 그림만 커져 화면을 다 차지하지 않게 */
+  max-width: 180px;
+}
+
+.figureCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.sideLabel {
+  text-align: center;
+  font-size: var(--font-2xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-tertiary);
+}
+
+/* ── 범례 */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-6) var(--space-14);
+  list-style: none;
+  margin: 0;
+  padding: var(--space-12) 0 0;
+  border-top: 1px solid var(--divider);
+  font-size: var(--font-2xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  white-space: nowrap;
+}
+
+/* 판정 기준. 화면 맨 아래에 둔다 */
+.footnote {
+  font-size: var(--font-3xs);
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+
+/* 색 견본. 노랑·회색은 흰 바탕과 밝기가 비슷해 가는 테두리로 가장자리를 잡아 준다 */
+.swatch {
+  flex-shrink: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--body-outline);
+}
+
+.high {
+  background: var(--recovery-high);
+}
+.medium {
+  background: var(--recovery-medium);
+}
+.low {
+  background: var(--recovery-low);
+}
+.recovered {
+  background: var(--recovery-none);
+}
+
+/* ── 색이 칠해진 부위 이름 */
+
+.names {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.nameRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-10);
+}
+
+/* 두 줄의 이름이 같은 자리에서 시작하게 폭을 잡아 둔다 */
+.nameRowLabel {
+  flex-shrink: 0;
+  width: 56px;
+  line-height: 34px;
+  font-size: var(--font-xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-secondary);
+}
+
+.nameList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  height: 34px;
+  padding: 0 var(--space-12);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+.nameOn {
+  border-color: var(--text-primary);
+  font-weight: var(--weight-bold);
+}
+
+.namesNone {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+/* ── 고른 부위 */
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  /* 그림을 눌러 이 카드를 화면에 올릴 때, 떠 있는 탭바에 가리지 않는 데까지 올린다 */
+  scroll-margin-bottom: calc(var(--under-tabbar, 0px) + var(--space-16));
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-xl);
+}
+
+.detailHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.detailName {
+  font-size: var(--font-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.detailState {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--divider);
+}
+
+.fact {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-12);
+  font-size: var(--font-sm);
+}
+
+.fact dt {
+  color: var(--text-secondary);
+}
+
+.fact dd {
+  margin: 0;
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.detailNote {
+  padding: var(--space-10) var(--space-12);
+  border-radius: var(--radius-md);
+  background: var(--chip-bg);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+.hint {
+  padding: var(--space-6) 0;
+  text-align: center;
+  text-wrap: balance;
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+/* ── 기록 없음. 회색 그림 아래에 안내를 둔다 */
+
+.emptyText {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  padding-top: var(--space-14);
+  border-top: 1px solid var(--divider);
+  text-align: center;
+}
+
+/* ── 유리 테마 (재질은 glass.css. 기본 테마에서는 아래 규칙이 하나도 걸리지 않는다) */
+
+.mapCard {
+  composes: g-card from global;
+}
+
+.detail {
+  composes: g-card from global;
+}
+
+.name {
+  composes: g-thin from global;
+}
+
+:global(:root[data-theme='glass']) .nameOn {
+  border-color: var(--text-secondary);
+  background: rgb(255 255 255 / 0.86);
+}
