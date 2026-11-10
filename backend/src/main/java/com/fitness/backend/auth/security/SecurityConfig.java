@@ -1,6 +1,7 @@
 package com.fitness.backend.auth.security;
 
 import com.fitness.backend.common.error.ErrorCode;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -43,11 +44,14 @@ public class SecurityConfig {
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final SecurityErrorResponder errorResponder;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          RateLimitFilter rateLimitFilter,
                           SecurityErrorResponder errorResponder) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.rateLimitFilter = rateLimitFilter;
         this.errorResponder = errorResponder;
     }
 
@@ -79,9 +83,22 @@ public class SecurityConfig {
                         .accessDeniedHandler((request, response, e) ->
                                 errorResponder.write(request, response, ErrorCode.ACCESS_DENIED)))
 
+                // 요청 횟수 제한을 먼저 — 막을 요청이면 토큰 검사도 하지 않는다. 같은 자리에 건 필터는 건 순서대로 돈다
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * 요청 횟수 제한 필터를 서블릿 필터로는 등록하지 않는다. {@code @Component} 필터는 스프링 부트가
+     * 서블릿 필터로도 자동 등록해, 시큐리티 체인과 합쳐 같은 요청을 두 번 셀 수 있다.
+     */
+    @Bean
+    public FilterRegistrationBean<RateLimitFilter> rateLimitFilterRegistration(RateLimitFilter filter) {
+        FilterRegistrationBean<RateLimitFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     /**
