@@ -339,6 +339,7 @@ Authorization: Bearer {accessToken}
 |---|---|---|---|
 | GET | `/analysis/muscle-volume` | 부위별 볼륨·부족 판정 (2계층) + 신뢰도 | ✔ |
 | GET | `/analysis/balance` | 밀기/당기기·상하체 균형 판정 | ✔ |
+| GET | `/analysis/recovery` | **부위별 회복 상태** 4단계 — 분석 탭 회복 지도 (8.6) | ✔ |
 
 ### 3.6 친구 그룹 (10장, LOG-38)
 
@@ -1616,6 +1617,49 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 
 > 모든 값은 `application.yaml`의 `app.analysis.*` 프로퍼티로 노출해 코드 수정 없이 조정 가능하게 한다.
 
+### 8.6 GET /analysis/recovery
+
+> 2026-11-10 신설. 「회복지도_설계서」. 분석 탭 "회복" 서브탭(통계 서브탭 자리)의 앞·뒤 인체 지도가 쓴다.
+
+11개 부위의 회복 상태. 파라미터 없음 — 오늘 기준이다.
+
+**응답 `200 OK`**
+
+```json
+{
+  "date": "2026-11-10",
+  "recoveryDays": 2,
+  "heavySets": 6,
+  "muscles": [
+    { "key": "CHEST", "label": "가슴", "judged": true,
+      "state": "HIGH", "stateLabel": "회복 중 · 많이 함",
+      "lastTrainedOn": "2026-11-09", "daysSince": 1, "recentSets": 7 },
+    { "key": "CORE", "label": "코어", "judged": true,
+      "state": "RECOVERED", "stateLabel": "회복됨",
+      "lastTrainedOn": null, "daysSince": null, "recentSets": 0 }
+  ]
+}
+```
+
+| 필드 | 설명 |
+|---|---|
+| `muscles` | 11개 부위(판정 9 + 표시 전용 2)가 `MuscleGroup` 순서로 **항상 모두** 온다 |
+| `state` | `HIGH` 회복 중·많이 함 / `MEDIUM` 회복 중 / `LOW` 거의 회복 / `RECOVERED` 회복됨 |
+| `lastTrainedOn` · `daysSince` | 최근 4주(`app.analysis.weeks`) 안의 마지막 운동일과 그날부터 오늘까지 일수(오늘 = 0). 없으면 둘 다 `null` |
+| `recentSets` | 오늘 포함 `recoveryDays`일 동안의 본세트 수 |
+| `recoveryDays` · `heavySets` | 판정에 쓴 값. 화면이 범례·상세 문구를 만들 때 쓴다 |
+
+**판정** (R = `recoveryDays`)
+
+| `state` | 조건 |
+|---|---|
+| `HIGH` | 마지막 운동이 오늘 포함 R일 안이고 `recentSets ≥ heavySets` |
+| `MEDIUM` | 마지막 운동이 오늘 포함 R일 안이고 `recentSets < heavySets` |
+| `LOW` | 마지막 운동이 정확히 R일 전 |
+| `RECOVERED` | 그보다 오래됐거나 4주 안에 기록 없음. R = 0이면 전부 |
+
+> 세트 조건은 8.2와 같다 — 워밍업 제외, `performed_on` 기준, 주동근만, `delt_region` 없는 어깨 종목 제외. `recoveryDays`·`heavySets`는 분석 설정이 아니라 **루틴 설정**(`app.routine.recovery-days`·`per-muscle-max-sets`)에서 읽는다. "회복 중"은 오늘의 루틴이 부위를 빼는 판정과 같은 함수다 — 지도가 회복됐다는 부위를 루틴이 빼는 일이 없게.
+
 ---
 
 ## 9. 미해결·후속 과제
@@ -2063,6 +2107,7 @@ LLM 설정은 `app.llm.*`(`enabled`, `model`, `timeout-ms`, `temperature`, `max-
 | `verdict` | `INSUFFICIENT`, `BELOW_RECOMMENDED`, `OPTIMAL`, `EXCESSIVE` |
 | `summaryBadge` | `ALL_OPTIMAL`, `PARTIAL_BELOW`, `PARTIAL_INSUFFICIENT`, `PARTIAL_EXCESSIVE`, `MIXED` |
 | `balance.verdict` | `BALANCED`, `IMBALANCED`, `INSUFFICIENT_DATA` |
+| `recovery.state` | `HIGH`, `MEDIUM`, `LOW`, `RECOVERED` (8.6) |
 | `routine.generatedBy` | `RULE`, `LLM` |
 | `routine.feedback.rating` | `GOOD`, `OKAY`, `BAD` |
 | `routine.feedback.reason` | `EXERCISE`, `TOO_MUCH`, `TOO_LITTLE`, `OTHER` |

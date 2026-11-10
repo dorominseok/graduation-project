@@ -1,8 +1,10 @@
 package com.fitness.backend.analysis.web;
 
 import com.fitness.backend.analysis.service.AnalysisService;
+import com.fitness.backend.analysis.service.RecoveryService;
 import com.fitness.backend.analysis.web.AnalysisDtos.BalanceResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.MuscleVolumeResponse;
+import com.fitness.backend.analysis.web.AnalysisDtos.RecoveryResponse;
 import com.fitness.backend.auth.jwt.JwtProvider;
 import com.fitness.backend.common.web.ApiV1Controller;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 /**
  * 약점 판정.
  *
- * <p>두 엔드포인트 모두 판정을 <b>완성해서</b> 내려준다 — 화면은 합산도 구간 분류도
+ * <p>모든 엔드포인트가 판정을 <b>완성해서</b> 내려준다 — 화면은 합산도 구간 분류도
  * 하지 않는다. 같은 판정이 서버와 화면 양쪽에 있으면 언젠가 둘이 어긋나고,
  * 그때 사용자에게 보인 숫자가 맞는지 확인할 방법이 없다.
  *
@@ -35,9 +37,11 @@ public class AnalysisController {
     private static final int MAX_WEEKS = 52;
 
     private final AnalysisService analysisService;
+    private final RecoveryService recoveryService;
 
-    public AnalysisController(AnalysisService analysisService) {
+    public AnalysisController(AnalysisService analysisService, RecoveryService recoveryService) {
         this.analysisService = analysisService;
+        this.recoveryService = recoveryService;
     }
 
     @Operation(summary = "부위별 볼륨·부족 판정",
@@ -70,5 +74,15 @@ public class AnalysisController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate referenceDate) {
 
         return analysisService.balance(principal.userId(), weeks, referenceDate);
+    }
+
+    @Operation(summary = "부위별 회복 상태",
+            description = "11개 부위의 회복 4단계. 회복 일수·많이 함 기준은 루틴 설정과 같다(「회복지도_설계서」)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "기록이 없어도 11개 부위가 모두 RECOVERED로 내려온다")
+    })
+    @GetMapping("/recovery")
+    public RecoveryResponse recovery(@AuthenticationPrincipal JwtProvider.AuthenticatedUser principal) {
+        return recoveryService.recovery(principal.userId());
     }
 }
