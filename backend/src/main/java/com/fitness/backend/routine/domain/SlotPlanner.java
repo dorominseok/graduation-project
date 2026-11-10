@@ -1,6 +1,7 @@
 package com.fitness.backend.routine.domain;
 
 import com.fitness.backend.analysis.domain.MuscleGroup;
+import com.fitness.backend.analysis.domain.RecoveryEvaluation;
 import com.fitness.backend.analysis.domain.VolumeVerdict;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -187,11 +188,12 @@ public final class SlotPlanner {
         }
     }
 
-    /** 오늘 포함 {@code recoveryDays}일 안에 한 부위. 48시간이면 오늘·어제 */
+    /**
+     * 오늘 포함 {@code recoveryDays}일 안에 한 부위. 48시간이면 오늘·어제.
+     * 분석 탭의 회복 지도와 같은 함수를 쓴다 — 두 화면이 회복 여부를 다르게 말하지 않게.
+     */
     static boolean recovering(MuscleState state, LocalDate today, RoutinePolicy policy) {
-        LocalDate last = state.lastTrained();
-        return last != null && policy.recoveryDays() > 0
-                && !last.isBefore(today.minusDays(policy.recoveryDays() - 1L));
+        return RecoveryEvaluation.recovering(state.lastTrained(), today, policy.recoveryDays());
     }
 
     /** 오래된 순. 한 번도 안 한 부위가 가장 오래된 것이다 */

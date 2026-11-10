@@ -5,6 +5,7 @@ import com.fitness.backend.analysis.domain.BalanceSide;
 import com.fitness.backend.analysis.domain.BalanceVerdict;
 import com.fitness.backend.analysis.domain.ConfidenceLevel;
 import com.fitness.backend.analysis.domain.MuscleGroup;
+import com.fitness.backend.analysis.domain.RecoveryState;
 import com.fitness.backend.analysis.domain.SummaryBadge;
 import com.fitness.backend.analysis.domain.TierGroup;
 import com.fitness.backend.analysis.domain.VolumeVerdict;
@@ -106,5 +107,24 @@ public final class AnalysisDtos {
             @Schema(description = "구성 부위의 주당 세트 합") BigDecimal weeklySets,
             @Schema(description = "부위당 주 평균 세트. 비율은 이 값끼리 맞댄다") BigDecimal perMuscleSets,
             @Schema(description = "합산에 쓴 판정 부위. 근거 표시용") List<MuscleGroup> components) {
+    }
+
+    /** 부위별 회복 상태(「회복지도_설계서」 4장). */
+    public record RecoveryResponse(
+            @Schema(description = "기준일(오늘)") LocalDate date,
+            @Schema(description = "오늘 포함 이 일수 안에 한 부위는 회복 중 — 루틴의 회복 제외와 같은 값") int recoveryDays,
+            @Schema(description = "회복 중 기간의 세트가 이 값 이상이면 HIGH — 루틴의 부위당 최대 세트") int heavySets,
+            @Schema(description = "11개 부위. MuscleGroup 순서로 항상 모두 온다") List<RecoveryMuscleResponse> muscles) {
+    }
+
+    public record RecoveryMuscleResponse(
+            MuscleGroup key,
+            String label,
+            @Schema(description = "부족 판정 대상인지. 종아리·전완은 false") boolean judged,
+            RecoveryState state,
+            String stateLabel,
+            @Schema(description = "최근 4주 안의 마지막 운동일. 없으면 null") LocalDate lastTrainedOn,
+            @Schema(description = "마지막 운동일부터 오늘까지 일수. 오늘 했으면 0, 없으면 null") Long daysSince,
+            @Schema(description = "오늘 포함 recoveryDays일 동안의 본세트 수") long recentSets) {
     }
 }
