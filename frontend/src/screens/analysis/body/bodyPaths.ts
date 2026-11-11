@@ -1,7 +1,8 @@
 /*
  * 인체 그림 경로(남성 앞·뒤). react-muscle-highlighter 1.2.0에서 가져왔다.
  * MIT License, Copyright (c) 2024 My Muscle Contributors — 전문은 같은 폴더의
- * LICENSE-react-muscle-highlighter.txt
+ * LICENSE-react-muscle-highlighter.txt. 빌드하면 이 주석이 지워지므로 배포본에는 같은 원문을
+ * public/licenses/react-muscle-highlighter.txt로 같이 내보내고 설정 › 오픈소스 라이선스에서 연다
  *
  * 패키지를 의존성으로 넣지 않고 경로만 옮겼다(「회복지도_설계서」 2장). 원본의 assets/bodyFront.js ·
  * bodyBack.js에서 영역(slug)별 경로를, components/SvgMaleWrapper.js에서 실루엣 테두리를 가져왔고,

@@ -1633,10 +1633,16 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
   "muscles": [
     { "key": "CHEST", "label": "가슴", "judged": true,
       "state": "HIGH", "stateLabel": "회복 중 · 많이 함",
-      "lastTrainedOn": "2026-11-09", "daysSince": 1, "recentSets": 7 },
+      "lastTrainedOn": "2026-11-09", "daysSince": 1, "recentSets": 7,
+      "routineExcluded": true, "routineExclusionReason": "SELF_RECOVERING", "routineExcludedBy": [] },
+    { "key": "TRICEPS", "label": "삼두", "judged": true,
+      "state": "RECOVERED", "stateLabel": "회복됨",
+      "lastTrainedOn": "2026-11-07", "daysSince": 3, "recentSets": 0,
+      "routineExcluded": true, "routineExclusionReason": "BUNDLE_RECOVERING", "routineExcludedBy": ["CHEST"] },
     { "key": "CORE", "label": "코어", "judged": true,
       "state": "RECOVERED", "stateLabel": "회복됨",
-      "lastTrainedOn": null, "daysSince": null, "recentSets": 0 }
+      "lastTrainedOn": null, "daysSince": null, "recentSets": 0,
+      "routineExcluded": false, "routineExclusionReason": null, "routineExcludedBy": [] }
   ]
 }
 ```
@@ -1648,6 +1654,9 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | `lastTrainedOn` · `daysSince` | 최근 4주(`app.analysis.weeks`) 안의 마지막 운동일과 그날부터 오늘까지 일수(오늘 = 0). 없으면 둘 다 `null` |
 | `recentSets` | 오늘 포함 `recoveryDays`일 동안의 본세트 수 |
 | `recoveryDays` · `heavySets` | 판정에 쓴 값. 화면이 범례·상세 문구를 만들 때 쓴다 |
+| `routineExcluded` | 회복 때문에 오늘 루틴에서 빠지는지. 표시 전용 부위(종아리·전완)는 루틴이 원래 고르지 않아 늘 `false` |
+| `routineExclusionReason` | `SELF_RECOVERING` 이 부위가 회복 중 / `BUNDLE_RECOVERING` 같은 묶음의 다른 부위가 회복 중. 안 빠지면 `null` |
+| `routineExcludedBy` | `BUNDLE_RECOVERING`일 때 같은 묶음에서 회복 중인 부위의 `key`(`MuscleGroup` 순서). 그 밖에는 빈 배열 |
 
 **판정** (R = `recoveryDays`)
 
@@ -1658,7 +1667,20 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | `LOW` | 마지막 운동이 정확히 R일 전 |
 | `RECOVERED` | 그보다 오래됐거나 4주 안에 기록 없음. R = 0이면 전부 |
 
-> 세트 조건은 8.2와 같다 — 워밍업 제외, `performed_on` 기준, 주동근만, `delt_region` 없는 어깨 종목 제외. `recoveryDays`·`heavySets`는 분석 설정이 아니라 **루틴 설정**(`app.routine.recovery-days`·`per-muscle-max-sets`)에서 읽는다. "회복 중"은 오늘의 루틴이 부위를 빼는 판정과 같은 함수다 — 지도가 회복됐다는 부위를 루틴이 빼는 일이 없게.
+> 세트 조건은 8.2와 같다 — 워밍업 제외, `performed_on` 기준, 주동근만, `delt_region` 없는 어깨 종목 제외. `recoveryDays`·`heavySets`는 분석 설정이 아니라 **루틴 설정**(`app.routine.recovery-days`·`per-muscle-max-sets`)에서 읽는다. "회복 중"은 오늘의 루틴이 부위를 빼는 판정과 같은 함수다.
+
+**오늘 루틴에서 빠지는지** (2026-11-12 추가)
+
+루틴은 회복 중인 부위뿐 아니라 그 부위의 묶음(하체·밀기·당기기 — 「루틴생성_로직_설계서」 2.2·2.4)을 통째로 뺀다. 그래서 회복된 삼두도 가슴이 회복 중이면 빠진다. 이 규칙을 `routine.domain.RoutineExclusion.of` 하나에 두고 루틴(`SlotPlanner`)과 이 API가 같이 부른다 — 지도가 회복됐다는 부위를 루틴이 말없이 빼는 일이 없게.
+
+| 부위 | `routineExcluded` | `routineExclusionReason` |
+|---|---|---|
+| 회복 중(`HIGH`·`MEDIUM`)인 판정 부위 | `true` | `SELF_RECOVERING` |
+| 회복 중이 아니지만 같은 묶음에 회복 중인 부위가 있다 | `true` | `BUNDLE_RECOVERING` — `routineExcludedBy`에 그 부위 |
+| 코어 | 코어가 회복 중일 때만 `true`. 묶음이 없다 | `SELF_RECOVERING` |
+| 종아리·전완 | 늘 `false`. 다른 부위를 빼지도 않는다 | `null` |
+
+> `routineExcluded`가 `false`라고 오늘 루틴에 들어간다는 뜻은 아니다. 회복 때문에 빠지지는 않는다는 것까지다 — 루틴은 남은 묶음 중 하나만 고른다.
 
 ---
 

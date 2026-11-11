@@ -9,6 +9,7 @@ import com.fitness.backend.analysis.web.AnalysisDtos.RecoveryMuscleResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.RecoveryResponse;
 import com.fitness.backend.common.config.AnalysisProperties;
 import com.fitness.backend.routine.RoutineProperties;
+import com.fitness.backend.routine.domain.RoutineExclusion;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -24,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>회복 일수와 "많이 함"의 기준은 <b>루틴 설정에서 받는다</b>({@code app.routine.recovery-days},
  * {@code per-muscle-max-sets}). 지도가 루틴과 다른 값을 쓰면 루틴이 빼는 부위를 지도는 회복됐다고 한다.
  * 마지막 운동일을 찾는 기간은 분석과 같은 {@code app.analysis.weeks}주다.
+ *
+ * <p>"오늘 루틴에서 빠지는지"도 루틴과 같은 함수({@link RoutineExclusion})로 정한다. 루틴은 회복 중인 부위의
+ * 묶음을 통째로 빼므로, 회복된 삼두도 가슴 때문에 빠질 수 있다.
  */
 @Service
 @Transactional(readOnly = true)
@@ -62,14 +66,19 @@ public class RecoveryService {
             });
         }
 
+        Map<MuscleGroup, RoutineExclusion.Excluded> excluded = RoutineExclusion.of(lastTrained, today, recoveryDays);
         List<RecoveryMuscleResponse> muscles = new ArrayList<>();
         for (MuscleGroup group : MuscleGroup.values()) {
             LocalDate last = lastTrained.get(group);
             long sets = recentSets.getOrDefault(group, 0L);
             RecoveryState state = RecoveryEvaluation.evaluate(last, sets, today, recoveryDays, heavySets);
+            RoutineExclusion.Excluded exclusion = excluded.get(group);
             muscles.add(new RecoveryMuscleResponse(
                     group, group.label(), group.judged(), state, state.label(), last,
-                    last == null ? null : RecoveryEvaluation.daysSince(last, today), sets));
+                    last == null ? null : RecoveryEvaluation.daysSince(last, today), sets,
+                    exclusion != null,
+                    exclusion == null ? null : exclusion.reason(),
+                    exclusion == null ? List.of() : exclusion.causes()));
         }
         return new RecoveryResponse(today, recoveryDays, heavySets, List.copyOf(muscles));
     }

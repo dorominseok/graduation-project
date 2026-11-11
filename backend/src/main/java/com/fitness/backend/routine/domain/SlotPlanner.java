@@ -1,17 +1,17 @@
 package com.fitness.backend.routine.domain;
 
 import com.fitness.backend.analysis.domain.MuscleGroup;
-import com.fitness.backend.analysis.domain.RecoveryEvaluation;
 import com.fitness.backend.analysis.domain.VolumeVerdict;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -21,7 +21,7 @@ import java.util.stream.Stream;
  * 고정한다 — 루틴이 무엇을 근거로 나왔는지를 이 클래스 하나로 설명할 수 있어야 한다.
  *
  * <pre>
- *   회복   = 오늘·어제 한 부위가 있는 묶음은 통째로 뺀다. 코어는 부위만
+ *   회복   = 오늘·어제 한 부위가 있는 묶음은 통째로 뺀다. 코어는 부위만 ({@link RoutineExclusion})
  *   후보   = 부족 · 권장 이하 (과다·최적 제외)
  *   정렬   = 판정 → 불균형 적은 쪽 → 모자란 양(큰 순) → 마지막 운동일(오래된 순) → 크기 순
  *   묶음   = 맨 앞 부위의 묶음(하체·밀기·당기기). 불균형이면 적은 쪽이 먼저, 많은 쪽은 마지막
@@ -59,15 +59,13 @@ public final class SlotPlanner {
         double base = policy.targetWeeklySets() * MuscleBundle.values().length / daysPerWeek;
         BigDecimal target = BigDecimal.valueOf(policy.targetWeeklySets());
 
-        // 어제 가슴만 했어도 오늘 삼두를 하면 미는 동작이 이틀 이어진다
-        Set<MuscleBundle> resting = states.stream()
-                .filter(s -> s.muscle().judged() && recovering(s, today, policy))
-                .flatMap(s -> MuscleBundle.of(s.muscle()).stream())
-                .collect(Collectors.toSet());
+        // 회복 중인 부위와 그 묶음은 뺀다. 분석 탭의 회복 지도가 같은 함수로 "오늘 루틴에서 빠진다"고 적는다
+        Map<MuscleGroup, LocalDate> lastTrained = new EnumMap<>(MuscleGroup.class);
+        states.forEach(s -> lastTrained.put(s.muscle(), s.lastTrained()));
+        Set<MuscleGroup> resting = RoutineExclusion.of(lastTrained, today, policy.recoveryDays()).keySet();
         List<MuscleState> judged = states.stream()
                 .filter(s -> s.muscle().judged())
-                .filter(s -> !recovering(s, today, policy))
-                .filter(s -> MuscleBundle.of(s.muscle()).filter(resting::contains).isEmpty())
+                .filter(s -> !resting.contains(s.muscle()))
                 .toList();
 
         List<MuscleState> lacking = judged.stream()
@@ -186,14 +184,6 @@ public final class SlotPlanner {
         List<RoutineSlot> slots() {
             return List.copyOf(slots);
         }
-    }
-
-    /**
-     * 오늘 포함 {@code recoveryDays}일 안에 한 부위. 48시간이면 오늘·어제.
-     * 분석 탭의 회복 지도와 같은 함수를 쓴다 — 두 화면이 회복 여부를 다르게 말하지 않게.
-     */
-    static boolean recovering(MuscleState state, LocalDate today, RoutinePolicy policy) {
-        return RecoveryEvaluation.recovering(state.lastTrained(), today, policy.recoveryDays());
     }
 
     /** 오래된 순. 한 번도 안 한 부위가 가장 오래된 것이다 */

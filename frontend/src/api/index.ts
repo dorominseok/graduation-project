@@ -53,6 +53,7 @@ export type {
   Routine,
   RoutineAlternative,
   RoutineAuthor,
+  RoutineExclusionReason,
   RoutineItem,
   FeedbackRating,
   FeedbackReason,

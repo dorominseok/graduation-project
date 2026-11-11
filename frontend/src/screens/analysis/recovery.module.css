@@ -223,6 +223,8 @@
   background: var(--chip-bg);
   font-size: var(--font-xs);
   font-weight: var(--weight-medium);
+  /* "…이 회복 중이라 오늘 루틴에서 같이 빠져요"는 좁은 화면에서 두 줄이 된다 */
+  line-height: 1.45;
   color: var(--text-primary);
 }
 

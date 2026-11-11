@@ -27,6 +27,7 @@ export const paths = {
   settings: '/settings',
   accountSettings: '/settings/account',
   personalInfo: '/settings/personal',
+  licenses: '/settings/licenses',
   feedback: '/feedback',
 
   // 친구 그룹. 그룹 탭 아래에 둬서 하단바의 "그룹"에 불이 켜진다

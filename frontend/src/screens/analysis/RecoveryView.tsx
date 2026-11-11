@@ -33,18 +33,35 @@ function agoLabel(daysSince: number): string {
   return `${daysSince}일 전`
 }
 
+/** 받침이 있으면 "이", 없으면 "가". "가슴이" · "삼두가" */
+function subjectParticle(word: string): string {
+  const code = word.charCodeAt(word.length - 1) - 0xac00
+  return code >= 0 && code <= 11171 && code % 28 !== 0 ? '이' : '가'
+}
+
 /**
  * 상세 카드의 한 줄 설명. 색이 칠해진 부위에는 늘 한 줄이 있다 — 아래 이름 단추로 부위를 바꿀 때
  * 카드 높이가 달라지면 단추가 손가락 밑에서 움직인다.
  *
- * <p>회복이 끝난 부위에 "오늘 루틴에 들어가요"라고 적지 않는다. 루틴은 같은 날 같이 하는 부위가
- * 회복 중이어도 빼기 때문에(가슴이 회복 중이면 삼두도) 여기서는 알 수 없다.
+ * <p>오늘 루틴에서 빠지는지는 서버가 루틴과 같은 함수로 정해 준다. 루틴은 회복 중인 부위와 같은 날 하는
+ * 부위를 함께 빼서, 회복된 삼두도 가슴 때문에 빠진다 — 그때는 누구 때문인지를 적는다.
+ *
+ * <p>빠지지 않는 부위에 "오늘 루틴에 들어가요"라고는 적지 않는다. 회복 때문에 빠지지 않는다는 것까지만
+ * 알고, 오늘 루틴이 어느 묶음을 고를지는 여기서 알 수 없다.
+ *
+ * @param labelOf 부위 이름. 서버가 준 라벨을 그대로 쓴다
  */
-function noteOf(muscle: RecoveryMuscle): string | null {
-  if (muscle.state === 'RECOVERED') return null
-  if (muscle.state === 'LOW') return '회복 기간이 막 끝났어요'
+function noteOf(muscle: RecoveryMuscle, labelOf: (key: MuscleGroupKey) => string): string | null {
+  const almost = muscle.state === 'LOW'
+  if (muscle.routineExclusionReason === 'SELF_RECOVERING') return '오늘 루틴에서 빠져요'
+  if (muscle.routineExclusionReason === 'BUNDLE_RECOVERING') {
+    const names = muscle.routineExcludedBy.map(labelOf)
+    const cause = `${names.join(', ')}${subjectParticle(names[names.length - 1])} 회복 중이라`
+    return `${almost ? '회복 기간은 끝났지만 ' : ''}${cause} 오늘 루틴에서 같이 빠져요`
+  }
   // 종아리·전완은 루틴이 원래 고르지 않는 부위라 "빠진다"고 하면 틀린 말이 된다
-  return muscle.judged ? '오늘 루틴에서 빠져요' : '루틴이 따로 고르지 않는 부위예요'
+  if (isRecovering(muscle) && !muscle.judged) return '루틴이 따로 고르지 않는 부위예요'
+  return almost ? '회복 기간이 막 끝났어요' : null
 }
 
 /** 처음 열었을 때 보여 줄 부위 — 가장 지친 부위. 색이 칠해진 부위가 없으면 고르지 않는다 */
@@ -64,8 +81,8 @@ function Swatch({ state }: { state: RecoveryState }) {
 /**
  * 회복 서브탭 — 부위별 회복 상태를 앞·뒤 그림으로.
  *
- * <p>상태는 서버가 정하고 화면은 칠하기만 한다. 회복 중 판정은 오늘의 루틴이 부위를 빼는
- * 판정과 같아서 "회복 중이면 오늘 루틴에서 빠진다"고 적을 수 있다.
+ * <p>상태도, 오늘 루틴에서 빠지는지도 서버가 정하고 화면은 칠하고 적기만 한다. 둘 다 오늘의 루틴이
+ * 쓰는 함수라 지도와 루틴이 다른 말을 하지 않는다.
  *
  * <p>그림의 팔 부위는 손가락보다 작다. 그래서 색이 칠해진 부위는 그림 아래에 이름으로도 두고,
  * 이름을 눌러도 같은 부위가 골라진다. 그림의 색을 글로 옮긴 것이기도 하다.
@@ -144,7 +161,7 @@ export function RecoveryView() {
   const selected = muscles.find((m) => m.key === selectedKey) ?? null
   const recovering = muscles.filter(isRecovering)
   const almost = muscles.filter((m) => m.state === 'LOW')
-  const note = selected && noteOf(selected)
+  const note = selected && noteOf(selected, (key) => muscles.find((m) => m.key === key)?.label ?? key)
 
   // 작은 화면에서는 상세가 그림 아래로 밀려 있어, 그림을 눌러도 바뀐 게 안 보인다.
   // 가려져 있을 때만 보이는 데까지 올린다
@@ -247,7 +264,8 @@ export function RecoveryView() {
 
       {recoveryDays > 0 && (
         <div className={styles.footnote}>
-          오늘 포함 {recoveryDays}일 안에 운동한 부위를 회복 중으로 봐요. 그동안 {heavySets}세트 이상 했으면 ‘많이 함’으로 표시해요
+          오늘 포함 {recoveryDays}일 안에 운동한 부위를 회복 중으로 봐요. 그동안 {heavySets}세트 이상 했으면 ‘많이 함’으로 표시해요.
+          루틴은 회복 중인 부위와 같은 날 하는 부위도 함께 빼요
         </div>
       )}
     </>

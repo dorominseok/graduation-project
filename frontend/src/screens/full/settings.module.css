@@ -1,5 +1,5 @@
 /*
- * 설정 계열 화면(프로필·설정·개인정보·계정) 공용 스타일. 네 화면이 섹션 카드 + 행 목록 + 폼으로
+ * 설정 계열 화면(프로필·설정·개인정보·계정·오픈소스 라이선스) 공용 스타일. 섹션 카드 + 행 목록 + 폼으로
  * 구조가 같다.
  */
 
@@ -101,6 +101,44 @@
 
 .rowDanger {
   color: var(--danger);
+}
+
+/* ---- 오픈소스 고지 한 건. 이름·라이선스·설명 아래에 원문·출처 행이 붙는다 ---- */
+
+.notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-16);
+  border-bottom: 1px solid var(--divider);
+  /* 영문 이름·주소가 길어도 카드 밖으로 나가지 않게 */
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.noticeName {
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.noticeLicense {
+  font-size: var(--font-xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+.noticeBody {
+  font-size: var(--font-xs);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* 새 창으로 여는 행. 앱 안으로 들어가는 ">"와 구분한다 */
+.external {
+  flex-shrink: 0;
+  font-size: var(--font-md);
+  color: var(--text-tertiary);
 }
 
 /* ---- 폼 ---- */
