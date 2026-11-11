@@ -71,6 +71,12 @@
   --fill-push: linear-gradient(270deg, oklch(72% 0.12 250), oklch(55% 0.17 258));
   --fill-pull: linear-gradient(90deg, oklch(76% 0.11 160), oklch(58% 0.14 165));
 
+  /* 회복 지도의 회색은 글자처럼 남색 쪽으로 기울인다. 빨강·주황·노랑은 기본과 같다 */
+  --recovery-none: oklch(86% 0.012 270);
+  --body-base: rgb(255 255 255 / 0.7);
+  --body-rest: oklch(93% 0.01 270);
+  --body-outline: oklch(72% 0.02 270);
+
   /* ---- 스테퍼 ---- */
   --stepper-bg: oklch(35% 0.04 270 / 0.08);
   --stepper-text: oklch(28% 0.03 270);

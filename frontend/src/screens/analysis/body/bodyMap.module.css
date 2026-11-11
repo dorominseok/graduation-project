@@ -1,0 +1,63 @@
+/*
+ * 인체 그림. 색은 토큰(tokens.css의 --recovery-* · --body-*)만 쓴다.
+ *
+ * 선 굵기는 그림 좌표 단위다(원본 칸 724 × 1448). 화면에서는 그림 폭에 맞춰 줄어든다.
+ */
+
+.figure {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* 고른 부위의 테두리가 그림 가장자리에서 잘리지 않게 */
+  overflow: visible;
+}
+
+/* 몸 전체의 바탕. 부위 사이 틈과 앱이 세지 않는 곳이 이 색으로 보인다 */
+.silhouette {
+  fill: var(--body-base);
+  stroke: var(--body-outline);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.rest {
+  fill: var(--body-rest);
+}
+
+.muscle {
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  /* 안 보이는 선으로 누르는 자리를 부위 사이 틈까지 넓힌다. 팔 부위는 폭 360 화면에서 10px 안팎이다 */
+  stroke: transparent;
+  stroke-width: 10;
+  transition: fill 0.2s;
+}
+
+.high {
+  fill: var(--recovery-high);
+}
+.medium {
+  fill: var(--recovery-medium);
+}
+.low {
+  fill: var(--recovery-low);
+}
+.recovered {
+  fill: var(--recovery-none);
+}
+
+.selection {
+  fill: none;
+  stroke: var(--text-primary);
+  stroke-width: 4;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+/* 키보드로 옮겨 다닐 때만 보인다 */
+.muscle:focus-visible {
+  stroke: var(--accent);
+  stroke-width: 9;
+  stroke-linejoin: round;
+}

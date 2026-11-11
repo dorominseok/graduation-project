@@ -56,6 +56,20 @@
   --fill-push: var(--push-color);
   --fill-pull: var(--pull-color);
 
+  /*
+   * 회복 지도. 빨강 → 주황 → 노랑 순으로 밝기도 함께 올라가서, 색을 가리기 어려워도
+   * 진한 쪽이 더 지친 쪽으로 읽힌다(검증기: 네 색 어느 둘을 맞대도 색각이상 ΔE 15 이상).
+   * 노랑·회색은 흰 바탕과 밝기가 비슷하다 — 그래서 범례·부위 이름을 늘 같이 둔다.
+   */
+  --recovery-high: oklch(57% 0.21 25);
+  --recovery-medium: oklch(72% 0.17 55);
+  --recovery-low: oklch(88% 0.16 95);
+  --recovery-none: oklch(86% 0.006 90);
+  /* 몸 바탕(부위 사이 틈) · 앱이 세지 않는 곳(머리·손·발 등) · 실루엣 선 */
+  --body-base: oklch(97% 0.003 90);
+  --body-rest: oklch(93% 0.005 90);
+  --body-outline: oklch(74% 0.008 90);
+
   /* ---- 스테퍼 ---- */
   --stepper-bg: oklch(93% 0.006 90);
   --stepper-text: oklch(28% 0.01 90);
