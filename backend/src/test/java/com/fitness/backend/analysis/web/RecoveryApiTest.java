@@ -31,12 +31,13 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.test.web.servlet.result.JsonPathResultMatchers;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 회복 상태 API. 4단계 경계는 {@code RecoveryEvaluationTest}가 덮고, 여기서는 기록이 판정에 제대로
- * 들어가는지(날짜·워밍업·사용자·4주 범위)와 응답 모양을 본다. 설정은 기본값(회복 2일, 많이 함 6세트).
+ * 들어가는지(날짜·워밍업·사용자·4주 범위)와 응답 모양을 본다. 루틴 제외의 경우 나누기는 {@code RoutineExclusionTest}가 덮는다. 설정은 기본값(회복 2일, 많이 함 6세트).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -71,6 +72,8 @@ class RecoveryApiTest {
                 .andExpect(jsonPath("$.muscles[*].key", contains(ORDER)))
                 .andExpect(jsonPath("$.muscles[*].state", everyItem(is("RECOVERED"))))
                 .andExpect(jsonPath("$.muscles[*].lastTrainedOn", everyItem(nullValue())))
+                .andExpect(jsonPath("$.muscles[*].routineExcluded", everyItem(is(false))))
+                .andExpect(jsonPath("$.muscles[*].routineExclusionReason", everyItem(nullValue())))
                 .andExpect(jsonPath("$.muscles[9].judged").value(false));
     }
 
@@ -109,6 +112,39 @@ class RecoveryApiTest {
     }
 
     @Test
+    @DisplayName("오늘 루틴에서 빠지는 부위와 이유 — 회복 중인 부위의 묶음은 회복된 부위까지, 코어·종아리는 그 부위만")
+    void routineExclusion() throws Exception {
+        sets(bearer, today.minusDays(1), exerciseIdOf("바벨 벤치프레스"), 4, false);   // 가슴: 어제
+        sets(bearer, today.minusDays(2), exerciseIdOf("케이블 푸시다운"), 3, false);    // 삼두: 그제(거의 회복)
+        sets(bearer, today.minusDays(2), exerciseIdOf("친업"), 4, false);              // 등: 그제 — 당기기는 회복 중인 부위가 없다
+        sets(bearer, today, exerciseIdOf("케이블 크런치"), 3, false);                    // 코어: 오늘
+        sets(bearer, today, exerciseIdOf("스탠딩 카프레이즈"), 3, false);                // 종아리: 오늘 — 루틴이 고르지 않는 부위
+
+        recovery()
+                .andExpect(muscle("CHEST", "routineExcluded").value(true))
+                .andExpect(muscle("CHEST", "routineExclusionReason").value("SELF_RECOVERING"))
+                .andExpect(muscle("CHEST", "routineExcludedBy", hasSize(0)))
+                // 삼두는 회복 기간이 지났고 어깨 전·측면은 기록이 없지만, 가슴과 같은 밀기 묶음이라 같이 빠진다
+                .andExpect(muscle("TRICEPS", "state").value("LOW"))
+                .andExpect(muscle("TRICEPS", "routineExcluded").value(true))
+                .andExpect(muscle("TRICEPS", "routineExclusionReason").value("BUNDLE_RECOVERING"))
+                .andExpect(muscle("TRICEPS", "routineExcludedBy", contains("CHEST")))
+                .andExpect(muscle("DELT_FRONT", "state").value("RECOVERED"))
+                .andExpect(muscle("DELT_FRONT", "routineExclusionReason").value("BUNDLE_RECOVERING"))
+                .andExpect(muscle("DELT_FRONT", "routineExcludedBy", contains("CHEST")))
+                .andExpect(muscle("BACK", "state").value("LOW"))
+                .andExpect(muscle("BACK", "routineExcluded").value(false))
+                .andExpect(muscle("BACK", "routineExclusionReason").value(nullValue()))
+                .andExpect(muscle("BICEPS", "routineExcluded").value(false))
+                .andExpect(muscle("QUADS", "routineExcluded").value(false))
+                .andExpect(muscle("CORE", "routineExclusionReason").value("SELF_RECOVERING"))
+                // 종아리는 회복 중이어도 빠진다고 하지 않는다
+                .andExpect(muscle("CALVES", "state").value("MEDIUM"))
+                .andExpect(muscle("CALVES", "routineExcluded").value(false))
+                .andExpect(muscle("CALVES", "routineExclusionReason").value(nullValue()));
+    }
+
+    @Test
     @DisplayName("로그인하지 않으면 401")
     void requiresAuth() throws Exception {
         mvc.perform(get("/api/v1/analysis/recovery")).andExpect(status().isUnauthorized());
@@ -121,6 +157,10 @@ class RecoveryApiTest {
 
     private static JsonPathResultMatchers muscle(String key, String field) {
         return jsonPath("$.muscles[" + Arrays.asList(ORDER).indexOf(key) + "]." + field);
+    }
+
+    private static ResultMatcher muscle(String key, String field, org.hamcrest.Matcher<?> matcher) {
+        return jsonPath("$.muscles[" + Arrays.asList(ORDER).indexOf(key) + "]." + field, matcher);
     }
 
     private String signUp() {

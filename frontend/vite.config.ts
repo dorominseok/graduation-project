@@ -28,6 +28,9 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    license: { fileName: 'licenses/npm-packages.txt' },
+  },
   server: {
     proxy: {
       '/api': {

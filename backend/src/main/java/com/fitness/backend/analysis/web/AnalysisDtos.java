@@ -9,6 +9,7 @@ import com.fitness.backend.analysis.domain.RecoveryState;
 import com.fitness.backend.analysis.domain.SummaryBadge;
 import com.fitness.backend.analysis.domain.TierGroup;
 import com.fitness.backend.analysis.domain.VolumeVerdict;
+import com.fitness.backend.routine.domain.RoutineExclusion;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -125,6 +126,12 @@ public final class AnalysisDtos {
             String stateLabel,
             @Schema(description = "최근 4주 안의 마지막 운동일. 없으면 null") LocalDate lastTrainedOn,
             @Schema(description = "마지막 운동일부터 오늘까지 일수. 오늘 했으면 0, 없으면 null") Long daysSince,
-            @Schema(description = "오늘 포함 recoveryDays일 동안의 본세트 수") long recentSets) {
+            @Schema(description = "오늘 포함 recoveryDays일 동안의 본세트 수") long recentSets,
+            @Schema(description = "회복 때문에 오늘 루틴에서 빠지는지. 루틴과 같은 함수로 정한다. 종아리·전완은 루틴이 원래 고르지 않아 늘 false")
+            boolean routineExcluded,
+            @Schema(description = "빠지는 이유. SELF_RECOVERING 이 부위가 회복 중 / BUNDLE_RECOVERING 같은 묶음의 다른 부위가 회복 중. 안 빠지면 null")
+            RoutineExclusion.Reason routineExclusionReason,
+            @Schema(description = "BUNDLE_RECOVERING일 때 같은 묶음에서 회복 중인 부위. 그 밖에는 빈 배열")
+            List<MuscleGroup> routineExcludedBy) {
     }
 }

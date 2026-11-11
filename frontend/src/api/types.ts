@@ -437,6 +437,9 @@ export interface Balance {
 
 export type RecoveryState = 'HIGH' | 'MEDIUM' | 'LOW' | 'RECOVERED'
 
+/** 회복 때문에 오늘 루틴에서 빠지는 이유 — 이 부위가 회복 중 / 같은 묶음의 다른 부위가 회복 중 */
+export type RoutineExclusionReason = 'SELF_RECOVERING' | 'BUNDLE_RECOVERING'
+
 /** 부위 하나의 회복 상태. */
 export interface RecoveryMuscle {
   key: MuscleGroupKey
@@ -451,12 +454,21 @@ export interface RecoveryMuscle {
   daysSince: number | null
   /** 오늘 포함 recoveryDays일 동안의 본세트 수 */
   recentSets: number
+  /**
+   * 회복 때문에 오늘 루틴에서 빠지는지. 루틴과 같은 함수로 정한 값이라 화면이 따로 따지지 않는다.
+   * 루틴은 회복 중인 부위의 묶음(밀기·당기기·하체)을 통째로 빼므로 회복된 부위도 true일 수 있다.
+   * 종아리·전완은 루틴이 원래 고르지 않아 늘 false
+   */
+  routineExcluded: boolean
+  routineExclusionReason: RoutineExclusionReason | null
+  /** BUNDLE_RECOVERING일 때 같은 묶음에서 회복 중인 부위. 그 밖에는 빈 배열 */
+  routineExcludedBy: MuscleGroupKey[]
 }
 
 /**
  * 부위별 회복 상태. 피로를 잰 값이 아니라 기록(날짜·세트 수)으로 짐작한 값이다.
  *
- * 상태는 서버가 정한다. 회복 중(HIGH·MEDIUM)은 오늘의 루틴이 부위를 빼는 판정과 같은 함수다.
+ * 상태도, 오늘 루틴에서 빠지는지도 서버가 정한다 — 둘 다 오늘의 루틴이 쓰는 함수다.
  */
 export interface Recovery {
   /** 기준일(오늘) */

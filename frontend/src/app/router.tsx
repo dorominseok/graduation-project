@@ -21,6 +21,7 @@ import { ExerciseHistoryScreen } from '../screens/full/ExerciseHistoryScreen'
 import { SettingsScreen } from '../screens/full/SettingsScreen'
 import { AccountSettingsScreen } from '../screens/full/AccountSettingsScreen'
 import { PersonalInfoScreen } from '../screens/full/PersonalInfoScreen'
+import { LicensesScreen } from '../screens/full/LicensesScreen'
 import { FeedbackScreen } from '../screens/full/FeedbackScreen'
 import { DevComponentsScreen } from '../screens/DevComponentsScreen'
 import { PrivacyScreen } from '../screens/full/PrivacyScreen'
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
           { path: paths.settings, element: <SettingsScreen /> },
           { path: paths.accountSettings, element: <AccountSettingsScreen /> },
           { path: paths.personalInfo, element: <PersonalInfoScreen /> },
+          { path: paths.licenses, element: <LicensesScreen /> },
           { path: paths.groupDetail(), element: <GroupDetailScreen /> },
           { path: paths.groupMember(), element: <MemberCalendarScreen /> },
           { path: paths.groupMemberDay(), element: <MemberDayScreen /> },
