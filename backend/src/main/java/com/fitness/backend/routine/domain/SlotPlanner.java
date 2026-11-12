@@ -50,12 +50,55 @@ public final class SlotPlanner {
     }
 
     /**
+     * 그날 묶음을 정한 단계. 앞 단계에 묶음이 있는 부위가 있으면 뒤 단계는 보지 않는다 —
+     * 불균형의 적은 쪽이 판정보다 먼저고, 많은 쪽에만 속한 부위는 마지막이다.
+     */
+    public enum Lead {
+        /** 불균형의 적은 쪽에만 속한 모자란 부위 */
+        LACKING_LESSER,
+        /** 불균형과 상관없는 모자란 부위 */
+        LACKING,
+        /** 적은 쪽에만 속한 최적 부위 — 오래 쉰 순 */
+        OPTIMAL_LESSER,
+        /** 불균형과 상관없는 최적 부위 — 오래 쉰 순 */
+        OPTIMAL,
+        /** 많은 쪽에만 속한 모자란 부위 */
+        LACKING_BIGGER,
+        /** 많은 쪽에만 속한 최적 부위 */
+        OPTIMAL_BIGGER
+    }
+
+    /**
+     * 루틴이 그렇게 나온 근거. 화면의 "왜 오늘 이 부위인지"({@link RoutineReason})가 이것만 보고 쓴다 —
+     * 규칙이 실제로 본 값이라 문장이 규칙과 어긋날 수 없다.
+     *
+     * @param bundle         그날 묶음. 묶음 부위가 모두 쉬거나 과다면 비어 있다
+     * @param lead           묶음을 정한 부위. 묶음이 없으면 null
+     * @param stage          그 부위를 고른 단계. 묶음이 없으면 null
+     * @param restingBundles 회복 때문에 통째로 쉬는 묶음 → 그 묶음을 마지막으로 운동한 날
+     * @param available      회복으로 빠지지 않은 판정 부위(오늘 담을 수 있는 후보 전부)
+     * @param trimmed        과다 경계(주당 평균 + 오늘 세트) 때문에 세트를 줄여 담은 최적 부위
+     */
+    public record Basis(Optional<MuscleBundle> bundle, MuscleState lead, Lead stage,
+                        Map<MuscleBundle, LocalDate> restingBundles, List<MuscleState> available,
+                        List<MuscleGroup> trimmed) {
+    }
+
+    public record Plan(List<RoutineSlot> slots, Basis basis) {
+    }
+
+    /**
      * @param states      판정 부위 9종의 상태. 판정하지 않는 부위(종아리·전완)는 무시한다
      * @param daysPerWeek 주당 운동 일수. 모르면 부르는 쪽이 기본값을 넘긴다
      * @param today       루틴 날짜. 회복 제외의 기준
      */
     public static List<RoutineSlot> plan(List<MuscleState> states, double daysPerWeek, LocalDate today,
                                          RoutinePolicy policy) {
+        return decide(states, daysPerWeek, today, policy).slots();
+    }
+
+    /** {@link #plan}과 같은 계산. 부위·세트와 함께 그렇게 정한 근거를 돌려준다 */
+    public static Plan decide(List<MuscleState> states, double daysPerWeek, LocalDate today, RoutinePolicy policy) {
         if (daysPerWeek <= 0) {
             throw new IllegalArgumentException("주당 운동 일수는 0보다 커야 한다: " + daysPerWeek);
         }
@@ -65,7 +108,9 @@ public final class SlotPlanner {
         // 회복 중인 부위와 그 묶음은 뺀다. 분석 탭의 회복 지도가 같은 함수로 "오늘 루틴에서 빠진다"고 적는다
         Map<MuscleGroup, LocalDate> lastTrained = new EnumMap<>(MuscleGroup.class);
         states.forEach(s -> lastTrained.put(s.muscle(), s.lastTrained()));
-        Set<MuscleGroup> resting = RoutineExclusion.of(lastTrained, today, policy.recoveryDays()).keySet();
+        Map<MuscleGroup, RoutineExclusion.Excluded> excluded =
+                RoutineExclusion.of(lastTrained, today, policy.recoveryDays());
+        Set<MuscleGroup> resting = excluded.keySet();
         List<MuscleState> judged = states.stream()
                 .filter(s -> s.muscle().judged())
                 .filter(s -> !resting.contains(s.muscle()))
@@ -88,7 +133,8 @@ public final class SlotPlanner {
                         .thenComparing(s -> SIZE_ORDER.indexOf(s.muscle())))
                 .toList();
 
-        Optional<MuscleBundle> bundle = todayBundle(lacking, optimal);
+        Optional<Leader> leader = leader(lacking, optimal);
+        Optional<MuscleBundle> bundle = leader.flatMap(l -> MuscleBundle.of(l.state().muscle()));
         Predicate<MuscleState> inBundle = s -> bundle.filter(b -> b.contains(s.muscle())).isPresent();
         Predicate<MuscleState> core = s -> s.muscle() == MuscleGroup.CORE;
         // 최적 부위도 주 목표를 유지할 만큼 담는다. 3세트로 줄이면 따라 하는 사람의 주당 평균이 다시 내려간다
@@ -113,26 +159,50 @@ public final class SlotPlanner {
             }
         });
         day.topUp();
-        return day.slots();
+        return new Plan(day.slots(), new Basis(bundle, leader.map(Leader::state).orElse(null),
+                leader.map(Leader::stage).orElse(null), restingBundles(excluded, lastTrained), judged,
+                day.trimmed()));
+    }
+
+    /** 회복 중인 부위가 있어 통째로 쉬는 묶음과, 그 묶음을 마지막으로 운동한 날 */
+    private static Map<MuscleBundle, LocalDate> restingBundles(Map<MuscleGroup, RoutineExclusion.Excluded> excluded,
+                                                              Map<MuscleGroup, LocalDate> lastTrained) {
+        Map<MuscleBundle, LocalDate> result = new EnumMap<>(MuscleBundle.class);
+        excluded.forEach((muscle, why) -> {
+            if (why.reason() == RoutineExclusion.Reason.SELF_RECOVERING) {
+                MuscleBundle.of(muscle).ifPresent(b ->
+                        result.merge(b, lastTrained.get(muscle), (x, y) -> x.isAfter(y) ? x : y));
+            }
+        });
+        return result;
+    }
+
+    private record Leader(MuscleState state, Lead stage) {
     }
 
     /**
-     * 그날 묶음. 불균형의 적은 쪽 부위가 판정보다 먼저고, 많은 쪽에만 속한 부위는 가장 나중이다 — 많은 쪽
-     * 묶음을 하면 불균형이 커진다(R3). 부족한 부위가 코어뿐이거나 없으면 가장 오래 쉰 최적 부위의 묶음이다.
+     * 그날 묶음을 정하는 부위. 불균형의 적은 쪽 부위가 판정보다 먼저고, 많은 쪽에만 속한 부위는 가장 나중이다 —
+     * 많은 쪽 묶음을 하면 불균형이 커진다(R3). 부족한 부위가 코어뿐이거나 없으면 가장 오래 쉰 최적 부위다.
+     * 코어는 묶음이 없어 건너뛴다.
      */
-    private static Optional<MuscleBundle> todayBundle(List<MuscleState> lacking, List<MuscleState> optimal) {
+    private static Optional<Leader> leader(List<MuscleState> lacking, List<MuscleState> optimal) {
         Predicate<MuscleState> neutral = s -> !s.lesserSide() && !s.biggerSide();
-        return Stream.of(
-                        lacking.stream().filter(MuscleState::lesserSide),
-                        lacking.stream().filter(neutral),
-                        optimal.stream().filter(MuscleState::lesserSide),
-                        optimal.stream().filter(neutral),
-                        lacking.stream().filter(MuscleState::biggerSide),
-                        optimal.stream().filter(MuscleState::biggerSide))
-                .flatMap(s -> s)
-                .map(s -> MuscleBundle.of(s.muscle()))
-                .flatMap(Optional::stream)
-                .findFirst();
+        Map<Lead, Stream<MuscleState>> stages = new EnumMap<>(Lead.class);
+        stages.put(Lead.LACKING_LESSER, lacking.stream().filter(MuscleState::lesserSide));
+        stages.put(Lead.LACKING, lacking.stream().filter(neutral));
+        stages.put(Lead.OPTIMAL_LESSER, optimal.stream().filter(MuscleState::lesserSide));
+        stages.put(Lead.OPTIMAL, optimal.stream().filter(neutral));
+        stages.put(Lead.LACKING_BIGGER, lacking.stream().filter(MuscleState::biggerSide));
+        stages.put(Lead.OPTIMAL_BIGGER, optimal.stream().filter(MuscleState::biggerSide));
+        for (Map.Entry<Lead, Stream<MuscleState>> stage : stages.entrySet()) {
+            Optional<MuscleState> first = stage.getValue()
+                    .filter(s -> MuscleBundle.of(s.muscle()).isPresent())
+                    .findFirst();
+            if (first.isPresent()) {
+                return Optional.of(new Leader(first.get(), stage.getKey()));
+            }
+        }
+        return Optional.empty();
     }
 
     /** 하루에 담은 부위. 하루 상한·하한과 과다 경계를 지키며 담는다 */
@@ -140,6 +210,7 @@ public final class SlotPlanner {
 
         private final RoutinePolicy policy;
         private final List<RoutineSlot> slots = new ArrayList<>();
+        private final List<MuscleGroup> trimmed = new ArrayList<>();
         private int total;
 
         Day(RoutinePolicy policy) {
@@ -160,7 +231,16 @@ public final class SlotPlanner {
          * 줄이고, 그게 부위당 최소에 못 미치면 {@link #add}가 담지 않는다.
          */
         void fill(MuscleState state, int sets) {
-            add(state, Math.min(sets, roomBeforeExcessive(state)), true);
+            int room = roomBeforeExcessive(state);
+            int before = slots.size();
+            add(state, Math.min(sets, room), true);
+            if (room < sets && slots.size() > before) {
+                trimmed.add(state.muscle());
+            }
+        }
+
+        List<MuscleGroup> trimmed() {
+            return List.copyOf(trimmed);
         }
 
         /** 과다 경계 안에서 부위당 최소라도 담을 수 있는 최적 부위인지 */

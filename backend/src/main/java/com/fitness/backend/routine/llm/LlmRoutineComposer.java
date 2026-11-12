@@ -63,10 +63,14 @@ public final class LlmRoutineComposer {
         }
     }
 
+    /**
+     * @param today 오늘 왜 이 묶음인지(숫자 없는 요약). 묶음이 없는 날은 null
+     */
     public Composition compose(List<RoutineSlot> slots,
                                Map<MuscleGroup, List<ExerciseOption>> candidates,
-                               Map<Long, String> names) {
-        LlmRoutineRequest request = LlmRoutineRequest.of(slots, candidates, names);
+                               Map<Long, String> names,
+                               LlmRoutineRequest.Today today) {
+        LlmRoutineRequest request = LlmRoutineRequest.of(slots, candidates, names, today);
         if (request.isEmpty()) {
             // 회복 중이거나 충분해서 할 부위가 없다. 물어볼 것이 없다
             return rule(slots, candidates, null, List.of());

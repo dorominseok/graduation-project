@@ -76,6 +76,8 @@ class RoutineApiTest {
                 .andExpect(jsonPath("$.routineDate").value(today.toString()))
                 .andExpect(jsonPath("$.referenceDate").value(today.minusDays(1).toString()))
                 .andExpect(jsonPath("$.generatedBy").value("RULE"))
+                // 왜 오늘 이 부위인지는 규칙이 쓴다 — 기록이 없으면 큰 근육 순서가 정했다고만 말한다
+                .andExpect(jsonPath("$.reason").value("아직 기록이 없어서 큰 근육부터 시작해요. 오늘은 밀기 날이에요."))
                 // 코어가 없는 날이라 코어를 말하지 않는다
                 .andExpect(jsonPath("$.comment").value("큰 근육부터 시작해서 작은 근육으로 마무리하는 순서예요."))
                 .andExpect(jsonPath("$.lowConfidence").value(true))
@@ -135,7 +137,10 @@ class RoutineApiTest {
         createToday()
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.items[*].muscleGroup").value(
-                        Matchers.contains("QUADS", "QUADS", "POSTERIOR", "POSTERIOR", "CORE")));
+                        Matchers.contains("QUADS", "QUADS", "POSTERIOR", "POSTERIOR", "CORE")))
+                // 이유 문장도 같은 근거를 적는다 — 어느 쪽이 적은지와 묶음을 정한 부위의 수치
+                .andExpect(jsonPath("$.reason").value(
+                        "상체에 비해 하체가 적고 앞허벅지가 주 0세트로 부족해서 오늘은 하체 날이에요."));
     }
 
     @Test

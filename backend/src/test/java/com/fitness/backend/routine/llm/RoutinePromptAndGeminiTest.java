@@ -29,10 +29,12 @@ class RoutinePromptAndGeminiTest {
 
     private static final JsonMapper JSON = JsonMapper.shared();
     private static final LlmRoutineRequest REQUEST = new LlmRoutineRequest(List.of(
-            new Slot(BACK, 4, false, List.of(
-                    new Candidate(20, "랫풀다운: 와이드 그립", CABLE, true, false, true),
-                    new Candidate(23, "바벨 로우", BARBELL, false, true, false))),
-            new Slot(BICEPS, 3, false, List.of(new Candidate(83, "덤벨 컬", DUMBBELL, false, true, true)))));
+            new Slot(BACK, VolumeVerdict.INSUFFICIENT, 4, false, List.of(
+                    new Candidate(20, "랫풀다운: 와이드 그립", CABLE, true, false, true, 5),
+                    new Candidate(23, "바벨 로우", BARBELL, false, true, false, 0))),
+            new Slot(BICEPS, VolumeVerdict.INSUFFICIENT, 3, false,
+                    List.of(new Candidate(83, "덤벨 컬", DUMBBELL, false, true, true, 0)))),
+            new LlmRoutineRequest.Today("당기기", "등이 부족"));
 
     @Test
     @DisplayName("스키마는 이번 요청의 슬롯·종목만 enum으로 받고, 숫자 필드가 하나도 없다")
@@ -50,10 +52,27 @@ class RoutinePromptAndGeminiTest {
     void userMessage() {
         String user = RoutinePrompt.user(REQUEST, List.of(), JSON);
 
-        assertTrue(user.contains("\"slot\":\"BACK\",\"label\":\"등\",\"sets\":4,\"split\":false"), user);
+        assertTrue(user.contains("\"slot\":\"BACK\",\"label\":\"등\",\"verdict\":\"부족\",\"sets\":4,\"split\":false"), user);
         assertTrue(user.contains("\"exerciseId\":\"20\",\"name\":\"랫풀다운: 와이드 그립\",\"equipment\":\"케이블\""), user);
         assertTrue(user.contains("\"favorite\":true"), user);
         assertFalse(user.contains("<이전응답의문제>"));
+    }
+
+    @Test
+    @DisplayName("오늘 왜 이 묶음인지를 먼저 주고, 해 본 정도는 날수 대신 말로 준다 — 입력에 숫자를 늘리지 않는다")
+    void userMessageCarriesReasonAndExperience() {
+        String user = RoutinePrompt.user(REQUEST, List.of(), JSON);
+
+        assertTrue(user.contains("{\"today\":{\"bundle\":\"당기기\",\"why\":\"등이 부족\"},\"slots\":["), user);
+        assertTrue(user.contains("\"favorite\":true,\"experience\":\"자주\""), user);
+        assertTrue(user.contains("\"favorite\":false,\"experience\":\"처음\""), user);
+        assertFalse(user.contains("firstTime") || user.contains("recentDays"), user);
+        assertEquals("가끔", new Candidate(1, "x", CABLE, false, false, false, 3).experience());
+        assertEquals("자주", new Candidate(1, "x", CABLE, false, false, false, 4).experience());
+
+        // 묶음이 없는 날(코어만)은 today 없이 간다
+        String withoutToday = RoutinePrompt.user(new LlmRoutineRequest(REQUEST.slots(), null), List.of(), JSON);
+        assertTrue(withoutToday.contains("{\"slots\":["), withoutToday);
     }
 
     @Test
@@ -73,7 +92,7 @@ class RoutinePromptAndGeminiTest {
         Map<Long, String> names = Map.of(47L, "바벨 스쿼트", 42L, "덤벨 런지", 46L, "레그 익스텐션", 40L, "레그프레스",
                 83L, "덤벨 컬", 93L, "해머컬");
 
-        LlmRoutineRequest request = LlmRoutineRequest.of(slots, Map.of(QUADS, quads, BICEPS, biceps), names);
+        LlmRoutineRequest request = LlmRoutineRequest.of(slots, Map.of(QUADS, quads, BICEPS, biceps), names, null);
 
         Slot quadsSlot = request.slot(QUADS).orElseThrow();
         assertTrue(quadsSlot.splittable());

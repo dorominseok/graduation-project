@@ -68,7 +68,7 @@ class LlmRoutineComposerTest {
     }
 
     private static Composition compose(ScriptedClient client) {
-        return new LlmRoutineComposer(client, JsonMapper.shared(), 2, 0.4).compose(SLOTS, CANDIDATES, NAMES);
+        return new LlmRoutineComposer(client, JsonMapper.shared(), 2, 0.4).compose(SLOTS, CANDIDATES, NAMES, null);
     }
 
     @Test
@@ -137,7 +137,7 @@ class LlmRoutineComposerTest {
         ScriptedClient client = new ScriptedClient();
 
         Composition result = new LlmRoutineComposer(client, JsonMapper.shared(), 2, 0.4)
-                .compose(List.of(), Map.of(), Map.of());
+                .compose(List.of(), Map.of(), Map.of(), null);
 
         assertTrue(result.items().isEmpty());
         assertEquals(RuleComposer.REST_COMMENT, result.comment());

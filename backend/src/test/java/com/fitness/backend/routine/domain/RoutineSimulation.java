@@ -51,11 +51,15 @@ final class RoutineSimulation {
     static final LocalDate START = LocalDate.of(2026, 9, 7);
 
     /** 하루 루틴. {@code newExercises}는 그날 처음 하는 종목 수 */
-    record Day(LocalDate date, int week, List<RoutineSlot> slots, List<PlannedItem> items, int newExercises,
-               int daysPerWeek) {
+    record Day(LocalDate date, int week, SlotPlanner.Plan plan, List<Imbalance> imbalances, List<PlannedItem> items,
+               int newExercises, int daysPerWeek) {
+
+        List<RoutineSlot> slots() {
+            return plan.slots();
+        }
 
         int sets() {
-            return slots.stream().mapToInt(RoutineSlot::sets).sum();
+            return slots().stream().mapToInt(RoutineSlot::sets).sum();
         }
 
         int exercises() {
@@ -63,11 +67,11 @@ final class RoutineSimulation {
         }
 
         boolean has(MuscleGroup muscle) {
-            return slots.stream().anyMatch(s -> s.muscle() == muscle);
+            return slots().stream().anyMatch(s -> s.muscle() == muscle);
         }
 
         int setsOf(MuscleGroup muscle) {
-            return slots.stream().filter(s -> s.muscle() == muscle).mapToInt(RoutineSlot::sets).sum();
+            return slots().stream().filter(s -> s.muscle() == muscle).mapToInt(RoutineSlot::sets).sum();
         }
     }
 
@@ -154,14 +158,15 @@ final class RoutineSimulation {
                     lesser.contains(muscle), bigger.contains(muscle)));
         }
         int daysPerWeek = daysPerWeek(reference);
-        List<RoutineSlot> slots = SlotPlanner.plan(states, daysPerWeek, today, policy);
+        SlotPlanner.Plan plan = SlotPlanner.decide(states, daysPerWeek, today, policy);
+        List<RoutineSlot> slots = plan.slots();
 
         Map<MuscleGroup, List<ExerciseOption>> candidates = new EnumMap<>(MuscleGroup.class);
         slots.forEach(slot -> candidates.put(slot.muscle(), candidates(slot.muscle(), today)));
         List<PlannedItem> items = RuleComposer.compose(slots, candidates);
         Set<Long> doneBefore = doneBefore(today);
         int fresh = (int) items.stream().filter(i -> !doneBefore.contains(i.exerciseId())).count();
-        return new Day(today, week, slots, items, fresh, daysPerWeek);
+        return new Day(today, week, plan, imbalances, items, fresh, daysPerWeek);
     }
 
     /** 기준일 시점의 부위별 주당 평균 — 분석 탭이 보여 주는 값 */

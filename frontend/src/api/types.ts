@@ -631,7 +631,12 @@ export interface Routine {
   routineDate: string
   referenceDate: string
   generatedBy: RoutineAuthor
-  /** 조합 설명 1~2문장 */
+  /**
+   * 왜 오늘 이 부위인지 — 규칙이 실제로 본 값(주당 세트·판정·쉰 날수·쉬는 묶음)으로 쓴 한 줄.
+   * 이 필드가 생기기 전에 만든 루틴은 null이다
+   */
+  reason: string | null
+  /** 종목·순서를 그렇게 고른 이유 한 문장. LLM이 쓰면 숫자가 없다 */
   comment: string
   /** 기록이 적어 판정 신뢰도가 낮다 */
   lowConfidence: boolean

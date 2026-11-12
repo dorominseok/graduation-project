@@ -9,6 +9,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 여섯 상황을 8주 시뮬레이션으로 찍는다. 규칙을 바꾸기 전·후에 같은 코드를 돌려 PR 본문의 표를 만들었다.
@@ -80,6 +81,10 @@ final class RoutineSimulationReport {
             System.out.printf("- 주 %d일: 8주 뒤 부위별 주당 평균 %s%n", weekdays.size(), range(weeklyAfter(weekdays)));
             summary(days);
         }
+
+        System.out.println("\n## 왜 오늘 이 부위인지 — 주 5일 첫 2주, 전 부위가 주 약 18세트인 사람의 첫 주");
+        Stream.concat(five.stream().limit(10), trainedUser(11).stream().limit(5)).forEach(day -> System.out.printf(
+                "- %s → %s%n", muscles(day), RoutineReason.of(day.plan(), day.imbalances(), day.date(), RoutinePolicy.DEFAULT)));
 
         System.out.println("\n## 전체 — 주 5일 8주");
         summary(five);

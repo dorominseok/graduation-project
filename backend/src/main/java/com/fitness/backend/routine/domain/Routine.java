@@ -60,6 +60,10 @@ public class Routine extends BaseCreatedEntity {
     @Column(columnDefinition = "TEXT")
     private String comment;
 
+    /** 왜 오늘 이 부위인지 — 규칙이 쓴 한 줄(V13). 그 전에 만든 루틴은 null */
+    @Column(columnDefinition = "TEXT")
+    private String reason;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "comment_by", nullable = false, length = 10)
     private Author commentBy;
