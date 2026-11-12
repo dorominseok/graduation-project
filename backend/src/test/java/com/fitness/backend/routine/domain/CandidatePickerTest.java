@@ -105,4 +105,23 @@ class CandidatePickerTest {
         assertEquals(5, CandidatePicker.pick(many, 5, 3).size());
         assertEquals(3, CandidatePicker.pick(few, 5, 3).size());
     }
+
+    @Test
+    @DisplayName("입문 대표 종목은 기구가 겹쳐도 새 종목의 맨 앞이다 — 랫풀다운 다음에 시티드 케이블 로우가 밀리지 않는다")
+    void startersComeFirstEvenWithSameEquipment() {
+        List<ExerciseOption> pool = List.of(
+                ex(1, "친업", BARBELL, false, 0),
+                ex(2, "로우", DUMBBELL, false, 0),
+                ex(3, "슈러그", MACHINE, false, 0),
+                new ExerciseOption(4L, "랫풀다운", CABLE, false, 0, true, 1),
+                new ExerciseOption(5L, "케이블 로우", CABLE, false, 0, true, 2));
+
+        assertEquals(List.of(4L, 5L, 1L, 2L, 3L), ids(CandidatePicker.pick(pool, 5, 3)));
+        // 해 본 종목이 자리를 차지하면 남은 자리만큼만
+        List<ExerciseOption> withHistory = List.of(
+                ex(1, "친업", BARBELL, false, 4), ex(2, "로우", DUMBBELL, false, 3),
+                new ExerciseOption(4L, "랫풀다운", CABLE, false, 0, true, 1),
+                new ExerciseOption(5L, "케이블 로우", CABLE, false, 0, true, 2));
+        assertEquals(List.of(1L, 2L, 4L), ids(CandidatePicker.pick(withHistory, 3, 3)));
+    }
 }

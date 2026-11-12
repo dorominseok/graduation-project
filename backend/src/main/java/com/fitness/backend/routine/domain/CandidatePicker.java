@@ -15,8 +15,8 @@ import java.util.Set;
  * <pre>
  *   1. 즐겨찾기
  *   2. 해 본 종목 — 최근에 자주 한 순, 최대 {@code historyMax}개
- *   3. 안 해 본 종목 — 계열이 겹치지 않는 것 먼저, 그 안에서 이미 들어간 후보와 기구가 다른 것 먼저.
- *      자리가 남으면 계열이 겹쳐도 채운다. 같은 조건이면 입문 대표 종목, 나머지는 시드 순서
+ *   3. 안 해 본 종목 — 입문 대표 종목(순위 순) 먼저. 그다음 계열이 겹치지 않는 것, 그 안에서 이미 들어간
+ *      후보와 기구가 다른 것 먼저. 자리가 남으면 계열이 겹쳐도 채운다. 나머지는 시드 순서
  *   모두 합쳐 최대 {@code limit}개
  * </pre>
  *
@@ -59,6 +59,13 @@ public final class CandidatePicker {
                 .filter(o -> o.recentDays() == 0 && !o.favorite())
                 .sorted(STARTER_FIRST)
                 .toList());
+        // 입문 대표 종목은 기구가 겹쳐도 넣는다. 해 본 종목이 없는 큰 근육을 이 둘로 나누는데(RuleComposer),
+        // 기구가 다른 것을 먼저 고르면 랫풀다운 다음의 시티드 케이블 로우(둘 다 케이블)가 후보에서 밀린다
+        fresh.stream().filter(o -> o.starterRank() != null).limit(Math.max(0, limit - chosen.size()))
+                .toList().forEach(o -> {
+                    chosen.add(o);
+                    fresh.remove(o);
+                });
         Set<String> usedGroups = new HashSet<>();
         Set<Equipment> usedEquipment = new HashSet<>();
         for (ExerciseOption o : chosen) {

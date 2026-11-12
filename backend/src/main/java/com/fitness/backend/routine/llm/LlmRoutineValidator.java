@@ -116,6 +116,10 @@ public final class LlmRoutineValidator {
                         + "개다. 모든 slot에 1~2개를 넣는다"));
             } else if (count == 2 && !slot.splittable()) {
                 failures.add(new Failure("L5", slot.muscle().name() + " slot은 split이 false라 종목을 1개만 넣는다"));
+            } else if (count == 2 && slot.untried() && !starterOrFavoriteOnly(slot, picks)) {
+                // 해 본 종목이 없는 부위를 아무 종목 둘로 나누면 첫날이 낯선 동작으로 찬다. 규칙 선택과 같은 범위다
+                failures.add(new Failure("L5", slot.muscle().name()
+                        + " slot은 해 본 종목이 없어 starter나 favorite이 true인 종목으로만 나눈다"));
             }
         }
 
@@ -123,6 +127,13 @@ public final class LlmRoutineValidator {
                 .or(() -> wrongBodyWord(parsed.get().comment(), request, picks))
                 .ifPresent(p -> failures.add(new Failure("L6", p)));
         return new Result(List.copyOf(picks), parsed.get().comment(), List.copyOf(failures));
+    }
+
+    private static boolean starterOrFavoriteOnly(Slot slot, List<Pick> picks) {
+        return picks.stream()
+                .filter(p -> p.slot() == slot.muscle())
+                .allMatch(p -> slot.candidates().stream()
+                        .anyMatch(c -> c.exerciseId() == p.exerciseId() && (c.starter() || c.favorite())));
     }
 
     /** 설명의 문제 하나. 없으면 비어 있다 */

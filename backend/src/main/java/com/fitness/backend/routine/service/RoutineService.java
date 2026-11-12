@@ -30,6 +30,7 @@ import com.fitness.backend.routine.domain.RoutinePolicy;
 import com.fitness.backend.routine.domain.RoutineSlot;
 import com.fitness.backend.routine.domain.RuleComposer;
 import com.fitness.backend.routine.domain.SlotPlanner;
+import com.fitness.backend.routine.domain.TrainingFrequency;
 import com.fitness.backend.routine.llm.LlmRoutineComposer;
 import com.fitness.backend.routine.llm.LlmRoutineComposer.Attempt;
 import com.fitness.backend.routine.llm.LlmRoutineComposer.Composition;
@@ -158,7 +159,7 @@ public class RoutineService {
                         lastTrained.get(c.key()), lesser.contains(c.key()), bigger.contains(c.key())))
                 .toList();
 
-        List<RoutineSlot> slots = SlotPlanner.plan(states, daysPerWeek(volume, policy), today, policy);
+        List<RoutineSlot> slots = SlotPlanner.plan(states, daysPerWeek(userId, volume, policy), today, policy);
 
         Map<Long, Exercise> exercises = allExercises();
         Map<MuscleGroup, List<ExerciseOption>> candidates = candidates(userId, today, slots, exercises);
@@ -254,15 +255,14 @@ public class RoutineService {
     }
 
     /**
-     * 주당 운동 일수. 운동한 날이 너무 적으면 모른다고 보고 기본값(5일)을 쓴다 —
-     * 첫 주의 하루 이틀만 보고 "주 1회"라고 단정하지 않는다.
+     * 주당 운동 일수. 기준일까지 꽉 찬 주 단위로 세고 반올림한다({@link TrainingFrequency}). 운동한 날이 너무
+     * 적으면 모른다고 보고 기본값(5일)을 쓴다.
      */
-    private static double daysPerWeek(MuscleVolumeResponse volume, RoutinePolicy policy) {
-        int days = volume.confidence().workoutDayCount();
-        if (days < policy.minKnownDays()) {
-            return policy.defaultDaysPerWeek();
-        }
-        return days * 7.0 / volume.basisDays();
+    private int daysPerWeek(Long userId, MuscleVolumeResponse volume, RoutinePolicy policy) {
+        int fullWeeks = TrainingFrequency.fullWeeks(volume.basisDays());
+        LocalDate to = volume.referenceDate();
+        int daysInFullWeeks = sessionRepository.countRecordedDays(userId, to.minusDays(fullWeeks * 7L - 1), to);
+        return TrainingFrequency.daysPerWeek(volume.confidence().workoutDayCount(), daysInFullWeeks, fullWeeks, policy);
     }
 
     /** 슬롯마다 후보. 종목 109개를 한 번 읽어 판정 부위로 나눈다 */

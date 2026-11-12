@@ -6,13 +6,18 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * 규칙으로 종목을 고른다. LLM이 꺼져 있거나 실패했을 때의 폴백이다. 항상 성공하고 검증이 필요 없다.
  *
  * <pre>
  *   슬롯마다 후보 1순위(즐겨찾기 → 자주 한 종목 → 새 종목)
- *   슬롯 세트가 6 이상이고 해 본 종목이 있고 계열이 다른 후보가 있으면 둘로 나눈다(앞 종목이 하나 더)
+ *   슬롯 세트가 6 이상이면 둘로 나눈다(앞 종목이 하나 더)
+ *     - 해 본 종목이 있는 부위: 계열이 다른 다음 후보와
+ *     - 해 본 종목이 없는 큰 근육(가슴·등·앞허벅지·뒤허벅지/둔근): 계열이 다른 입문 대표 종목과
+ *     - 해 본 종목이 없는 작은 근육·코어: 나누지 않는다
  *   순서는 큰 근육 → 작은 근육, 코어 마지막
  * </pre>
  */
@@ -42,12 +47,8 @@ public final class RuleComposer {
                 continue;
             }
             ExerciseOption first = options.get(0);
-            ExerciseOption second = splittable(slot.sets(), options)
-                    ? options.stream()
-                            .skip(1)
-                            .filter(o -> o.groupName() == null || !Objects.equals(o.groupName(), first.groupName()))
-                            .findFirst()
-                            .orElse(null)
+            ExerciseOption second = splittable(slot.muscle(), slot.sets(), options)
+                    ? partner(slot.muscle(), options).orElse(null)
                     : null;
             if (second == null) {
                 items.add(new PlannedItem(slot.muscle(), first.id(), slot.sets()));
@@ -61,11 +62,45 @@ public final class RuleComposer {
     }
 
     /**
-     * 두 종목으로 나눌 수 있는지. 해 본 종목이 하나도 없는 부위는 나누지 않는다 — 처음 하는 사람의 첫 루틴이
-     * 새 동작 여섯 개가 되면 동작마다 연습이 모자란다. LLM의 L5도 이걸 쓴다.
+     * 두 종목으로 나눌 수 있는지. LLM의 {@code split}과 L5도 이걸 쓴다.
+     *
+     * <p>해 본 종목이 하나도 없는 부위는 큰 근육만, 입문 대표 종목으로만 나눈다. 전부 나누면 처음 하는 사람의
+     * 첫 루틴이 새 동작 여섯 개가 되어 동작마다 연습이 모자라고, 하나도 안 나누면 세 종목을 여섯 세트씩 해서
+     * 루틴이 적어 보인다(실사용 설문). 큰 근육은 입문자가 먼저 익힐 종목이 둘씩 정해져 있다.
      */
-    public static boolean splittable(int sets, List<ExerciseOption> options) {
-        return sets >= SPLIT_FROM_SETS && options.stream().anyMatch(o -> !o.firstTime());
+    public static boolean splittable(MuscleGroup muscle, int sets, List<ExerciseOption> options) {
+        if (sets < SPLIT_FROM_SETS || options.isEmpty()) {
+            return false;
+        }
+        return tried(options) || partner(muscle, options).isPresent();
+    }
+
+    /** 해 본 종목이 하나라도 있는 부위인지 */
+    public static boolean tried(List<ExerciseOption> options) {
+        return options.stream().anyMatch(o -> !o.firstTime());
+    }
+
+    /** 큰 근육 — 가슴·등·앞허벅지·뒤허벅지/둔근 */
+    public static boolean big(MuscleGroup muscle) {
+        return rank(muscle) == 0;
+    }
+
+    /**
+     * 후보 1순위와 짝지을 두 번째 종목. 계열이 달라야 한다. 해 본 종목이 없는 부위에서는 큰 근육일 때만,
+     * 입문 대표 종목 중에서(순위 순) 고른다.
+     */
+    static Optional<ExerciseOption> partner(MuscleGroup muscle, List<ExerciseOption> options) {
+        ExerciseOption first = options.get(0);
+        Stream<ExerciseOption> rest = options.stream()
+                .skip(1)
+                .filter(o -> o.groupName() == null || !Objects.equals(o.groupName(), first.groupName()));
+        if (tried(options)) {
+            return rest.findFirst();
+        }
+        if (!big(muscle)) {
+            return Optional.empty();
+        }
+        return rest.filter(o -> o.starterRank() != null).min(Comparator.comparing(ExerciseOption::starterRank));
     }
 
     /**

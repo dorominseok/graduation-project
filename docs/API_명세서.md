@@ -1995,7 +1995,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
       "muscleGroup": "CHEST", "muscleLabel": "가슴",
       "exerciseId": 5, "exerciseName": "바벨 벤치프레스", "exerciseNameEn": "Barbell Bench Press - Medium Grip",
       "measureType": "WEIGHT_REPS", "equipment": "BARBELL",
-      "plannedSets": 6, "targetMin": 8, "targetMax": 12,
+      "plannedSets": 3, "targetMin": 8, "targetMax": 12,
       "firstTime": true,
       "basisWeeklySets": 0.0, "basisVerdict": "INSUFFICIENT", "basisVerdictLabel": "부족",
       "removed": false, "adjusted": false,
@@ -2014,7 +2014,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | `lowConfidence` | 기준일까지 4주 동안 운동한 날이 신뢰도 임계(8.5) 미만. 화면이 "기록이 쌓일수록…" 안내를 띄운다 |
 | `totalSets` | 빼지 않은 항목의 `plannedSets` 합 |
 | `doneSets` | 빼지 않은 항목마다 `min(그날 체크한 본세트, plannedSets)`의 합 — 진행 표시용. 계획보다 많이 해도 계획만큼만 센다 |
-| `items` | `position` 순. 큰 근육 → 작은 근육 → 코어. 뺀 항목도 `removed: true`로 내려온다 |
+| `items` | `position` 순. 큰 근육 → 작은 근육 → 코어. 뺀 항목도 `removed: true`로 내려온다. 한 부위가 두 종목(3+3세트)일 수 있다 — 기록이 없는 사람의 첫 루틴은 가슴 둘 · 어깨 전·측면 · 삼두, 네 항목 18세트다(설계서 2.6) |
 | `items[].targetMin`·`targetMax` | 반복 범위 — 측정 유형으로 고정. 중량 8~12회, 맨몸 10~15회, 시간 30~60**초**(설계서 9.1). 중량은 정하지 않는다 |
 | `items[].firstTime` | 루틴 날짜 전에 이 종목 세트가 하나도 없다. 화면이 [처음]과 "동작 보기"를 띄운다 |
 | `items[].basisWeeklySets`·`basisVerdict` | 근거 — 만든 날 기준 최근 4주 주당 평균 세트와 판정(8.2). "가슴 · 주 0세트(부족)" |
@@ -2101,10 +2101,9 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 |---|---|---|
 | `target-weekly-sets` | 10 | 부위당 주간 목표 세트 (권장 구간의 아래 끝) |
 | `per-muscle-min-sets` · `per-muscle-max-sets` | 3 · 6 | 하루 한 부위 세트 범위 |
-| `fill-max-sets` | 3 | 그날 묶음의 최적 부위로 채우는 세트 |
 | `daily-min-sets` · `daily-max-sets` | 12 · 18 | 하루 총 세트 범위 |
 | `recovery-days` | 2 | 이 날수 안에 한 부위는 뺀다 (오늘·어제) |
-| `default-days-per-week` | 5 | 기록이 적을 때 쓰는 주당 운동 일수 |
+| `default-days-per-week` | 5 | 기록이 적을 때 쓰는 주당 운동 일수. 기록이 있으면 꽉 찬 주 동안 운동한 날 ÷ 주 수를 반올림한다(설계서 1.2) |
 | `min-known-days` | 3 | 운동한 날이 이보다 적으면 주당 일수를 기본값으로 |
 | `candidates-per-muscle` | 5 | 부위당 후보 종목 |
 | `history-weeks` · `history-max-candidates` | 8 · 3 | 해 본 종목을 보는 기간과 후보 안의 최대 개수 |
