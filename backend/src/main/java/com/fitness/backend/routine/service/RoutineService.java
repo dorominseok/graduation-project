@@ -31,7 +31,6 @@ import com.fitness.backend.routine.domain.RoutineReason;
 import com.fitness.backend.routine.domain.RoutineSlot;
 import com.fitness.backend.routine.domain.RuleComposer;
 import com.fitness.backend.routine.domain.SlotPlanner;
-import com.fitness.backend.routine.domain.TrainingFrequency;
 import com.fitness.backend.routine.llm.LlmRoutineComposer;
 import com.fitness.backend.routine.llm.LlmRoutineComposer.Attempt;
 import com.fitness.backend.routine.llm.LlmRoutineComposer.Composition;
@@ -161,7 +160,7 @@ public class RoutineService {
                         lastTrained.get(c.key()), lesser.contains(c.key()), bigger.contains(c.key())))
                 .toList();
 
-        SlotPlanner.Plan plan = SlotPlanner.decide(states, daysPerWeek(userId, volume, policy), today, policy);
+        SlotPlanner.Plan plan = SlotPlanner.decide(states, volume.frequency().daysPerWeek(), today, policy);
         List<RoutineSlot> slots = plan.slots();
         // 왜 오늘 이 부위인지는 규칙이 쓴다 — LLM이 켜져 있어도. LLM의 설명은 종목을 그렇게 고른 이유뿐이다
         String reason = RoutineReason.of(plan, imbalances, today, policy);
@@ -263,16 +262,6 @@ public class RoutineService {
         return result;
     }
 
-    /**
-     * 주당 운동 일수. 기준일까지 꽉 찬 주 단위로 세고 반올림한다({@link TrainingFrequency}). 운동한 날이 너무
-     * 적으면 모른다고 보고 기본값(5일)을 쓴다.
-     */
-    private int daysPerWeek(Long userId, MuscleVolumeResponse volume, RoutinePolicy policy) {
-        int fullWeeks = TrainingFrequency.fullWeeks(volume.basisDays());
-        LocalDate to = volume.referenceDate();
-        int daysInFullWeeks = sessionRepository.countRecordedDays(userId, to.minusDays(fullWeeks * 7L - 1), to);
-        return TrainingFrequency.daysPerWeek(volume.confidence().workoutDayCount(), daysInFullWeeks, fullWeeks, policy);
-    }
 
     /** 슬롯마다 후보. 종목 109개를 한 번 읽어 판정 부위로 나눈다 */
     private Map<MuscleGroup, List<ExerciseOption>> candidates(Long userId, LocalDate today, List<RoutineSlot> slots,

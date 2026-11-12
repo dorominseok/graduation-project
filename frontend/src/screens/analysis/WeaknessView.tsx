@@ -136,9 +136,31 @@ export function WeaknessView({ volume, balance }: WeaknessViewProps) {
     )
   }
 
+  // 주 3~4일이면 루틴을 다 따라도 부위당 주 목표(10세트)에 못 닿는다 — 하루 상한(18세트) 때문이다.
+  // "권장 이하"가 이어지는 게 노력이 모자라서가 아니라는 걸 그 판정이 보일 때만 적는다
+  const { frequency } = volume
+  const lacking = volume.tiers.some((t) =>
+    t.children.some((c) => c.verdict === 'INSUFFICIENT' || c.verdict === 'BELOW_RECOMMENDED'),
+  )
+  const frequencyLimited =
+    frequency.known && frequency.maxWeeklySetsPerMuscle < frequency.targetWeeklySets && lacking
+
   return (
     <>
       {period}
+
+      {frequencyLimited && (
+        <div className={styles.note} role="note">
+          <span className={styles.keep}>주 {frequency.daysPerWeek}일</span> 운동하고 있어요. 루틴은 하루{' '}
+          {frequency.dailyMaxSets}세트까지라, <span className={styles.keep}>주 {frequency.daysPerWeek}일이면</span> 부위당{' '}
+          <span className={styles.keep}>주 평균 {frequency.maxWeeklySetsPerMuscle}세트</span> 정도가 최대예요. 그래서{' '}
+          <span className={styles.keep}>‘권장 이하’가</span> 이어질 수 있어요.
+          <span className={styles.noteSub}>
+            <span className={styles.keep}>주 {frequency.daysForTarget}일이면</span> 모든 부위를{' '}
+            <span className={styles.keep}>주 {frequency.targetWeeklySets}세트</span> 이상 채울 수 있어요
+          </span>
+        </div>
+      )}
 
       {volume.confidence.level === 'LOW' && volume.confidence.message && (
         <div className={styles.banner} role="note">

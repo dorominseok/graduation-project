@@ -74,6 +74,29 @@
   font-weight: 500;
 }
 
+/* ── 주당 일수 안내 — 주의가 아니라 설명이라 경고색을 쓰지 않는다 */
+
+.note {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-12) var(--space-14);
+  font-size: var(--font-xs);
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+/* 다음 줄로 따로 떨어지면 안 되는 묶음 — "주 3일", "‘권장 이하’가" */
+.keep {
+  white-space: nowrap;
+}
+
+.noteSub {
+  display: block;
+  margin-top: var(--space-4);
+  color: var(--text-secondary);
+}
+
 /* ── 부위 목록 */
 
 .tiers,
@@ -430,6 +453,10 @@ button.tierHead {
 
 .banner {
   composes: g-tint-warn from global;
+}
+
+.note {
+  composes: g-card from global;
 }
 
 .tiers {

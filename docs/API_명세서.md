@@ -1480,7 +1480,11 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
   "displayOnly": [
     { "key": "CALVES",   "label": "종아리", "weeklySets": 2.0, "totalSets": 8 },
     { "key": "FOREARMS", "label": "전완",   "weeklySets": 0.0, "totalSets": 0 }
-  ]
+  ],
+  "frequency": {
+    "known": true, "daysPerWeek": 3, "dailyMaxSets": 18,
+    "maxWeeklySetsPerMuscle": 6.0, "targetWeeklySets": 10, "daysForTarget": 5
+  }
 }
 ```
 
@@ -1504,6 +1508,10 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | `tiers[].summaryBadge` | **하위가 2개일 때만** 값. 하위 중 가장 나쁜 상태 요약 (아래 표) |
 | `tiers[].children[]` | **하위 9종**. 각 항목에 `verdict` 항상 존재. 이것이 실제 판정 단위 |
 | `displayOnly[]` | 종아리·전완. `verdict` 없음 |
+| `frequency.daysPerWeek` | 주당 운동 일수. 기준일까지 꽉 찬 주 단위로 세어 반올림(루틴 설계서 1.2). **오늘의 루틴도 이 값으로 부위당 세트를 정한다** (2026-11-13) |
+| `frequency.known` | 집계 구간에 운동한 날이 `min-known-days`(3) 미만이면 `false` — 그때 `daysPerWeek`는 기본값(5) |
+| `frequency.maxWeeklySetsPerMuscle` | `daysPerWeek × dailyMaxSets ÷ 9`(판정 부위). 루틴을 다 따라도 부위당 주 평균이 이 이상 오르지 않는다. 소수 1자리 |
+| `frequency.daysForTarget` | 모든 판정 부위가 `targetWeeklySets`에 닿는 주당 일수(`⌈10 × 9 ÷ 18⌉ = 5`). 화면은 `known`이고 `maxWeeklySetsPerMuscle < targetWeeklySets`이며 부족·권장 이하 부위가 있을 때 "주 N일이면 부위당 주 M세트가 최대"를 적는다 |
 
 **`summaryBadge` enum** (서버가 하위 상태로 결정)
 

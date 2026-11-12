@@ -1,5 +1,10 @@
 package com.fitness.backend.routine.domain;
 
+import com.fitness.backend.analysis.domain.MuscleGroup;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Arrays;
+
 /**
  * 주당 운동 일수. 부위당 세트(주 목표 ÷ 묶음이 돌아오는 횟수)의 분모다.
  *
@@ -36,5 +41,24 @@ public final class TrainingFrequency {
             return policy.defaultDaysPerWeek();
         }
         return Math.max(1, Math.round((float) daysInFullWeeks / fullWeeks));
+    }
+
+    /** 판정 부위 수 — 루틴이 일주일 동안 나눠 담는 부위(종아리·전완은 루틴이 고르지 않는다) */
+    private static final int JUDGED_MUSCLES = (int) Arrays.stream(MuscleGroup.values()).filter(MuscleGroup::judged).count();
+
+    /**
+     * 루틴을 그대로 따를 때 부위당 주 평균 세트의 최대. 일주일 총량(주당 일수 × 하루 상한)을 판정 부위가 나눈다.
+     *
+     * <p>하루 상한이 막고 있어서, 나누는 방식(하루 한 묶음·전신·상하체)을 바꿔도 이 값은 그대로다. 주 3일이면
+     * 54세트 ÷ 9부위 = 6세트라 주 목표(10)에 닿지 않는다 — 분석 탭이 "권장 이하"가 이어지는 이유로 이 값을 보여 준다.
+     */
+    public static BigDecimal maxWeeklySetsPerMuscle(int daysPerWeek, RoutinePolicy policy) {
+        return BigDecimal.valueOf((long) daysPerWeek * policy.dailyMaxSets())
+                .divide(BigDecimal.valueOf(JUDGED_MUSCLES), 1, RoundingMode.HALF_UP);
+    }
+
+    /** 모든 판정 부위가 주 목표에 닿으려면 필요한 주당 일수. 기본 설정이면 10 × 9 ÷ 18 = 5일 */
+    public static int daysForTarget(RoutinePolicy policy) {
+        return Math.ceilDiv(policy.targetWeeklySets() * JUDGED_MUSCLES, policy.dailyMaxSets());
     }
 }

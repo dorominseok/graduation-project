@@ -64,6 +64,40 @@ class AnalysisApiTest {
     // ── 부위별 볼륨
 
     @Test
+    @DisplayName("운동한 날이 적으면 주당 일수를 모른다 — 루틴과 같은 기본값 5일, 부위당 최대 10세트")
+    void frequencyUnknownWithFewDays() throws Exception {
+        LocalDate ref = LocalDate.now().minusDays(1);
+        doneSession(ref, benchPress, 3);
+        doneSession(ref.minusDays(2), squat, 3);
+
+        volume(null, ref)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.frequency.known").value(false))
+                .andExpect(jsonPath("$.frequency.daysPerWeek").value(5))
+                .andExpect(jsonPath("$.frequency.maxWeeklySetsPerMuscle").value(10.0))
+                .andExpect(jsonPath("$.frequency.daysForTarget").value(5));
+    }
+
+    @Test
+    @DisplayName("주 3일 하는 사람 — 하루 상한 18세트라 부위당 주 6세트가 최대고, 모든 부위를 채우려면 주 5일")
+    void frequencyThreeDaysCapsWeeklySets() throws Exception {
+        LocalDate ref = LocalDate.now().minusDays(1);
+        // 첫 기록이 18일 전 → 분모 19일 → 꽉 찬 2주(14일) 동안 6일 → 주 3일
+        for (int daysAgo : new int[] {0, 2, 4, 7, 9, 11, 14, 16, 18}) {
+            doneSession(ref.minusDays(daysAgo), benchPress, 1);
+        }
+
+        volume(null, ref)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.frequency.known").value(true))
+                .andExpect(jsonPath("$.frequency.daysPerWeek").value(3))
+                .andExpect(jsonPath("$.frequency.dailyMaxSets").value(18))
+                .andExpect(jsonPath("$.frequency.maxWeeklySetsPerMuscle").value(6.0))
+                .andExpect(jsonPath("$.frequency.targetWeeklySets").value(10))
+                .andExpect(jsonPath("$.frequency.daysForTarget").value(5));
+    }
+
+    @Test
     @DisplayName("기록이 없어도 상위 6개 부위가 모두 0세트로 내려온다")
     void alwaysReturnsSixTiers() throws Exception {
         volume(null, null)

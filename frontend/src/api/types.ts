@@ -396,6 +396,21 @@ export interface MuscleVolume {
   }[]
   /** 종아리·전완. 판정하지 않는다 */
   displayOnly: { key: MuscleGroupKey; label: string; weeklySets: number; totalSets: number }[]
+  /**
+   * 주당 운동 일수. 오늘의 루틴도 이 값으로 부위당 세트를 정한다. 루틴은 하루 dailyMaxSets세트까지라
+   * 일주일에 담을 수 있는 양이 일수에 묶인다 — 주 3일이면 부위당 주 6세트가 최대다
+   */
+  frequency: {
+    /** 운동한 날이 적어 모르면 false. 그때 daysPerWeek는 기본값이다 */
+    known: boolean
+    daysPerWeek: number
+    dailyMaxSets: number
+    /** 주당 일수 × 하루 상한 ÷ 판정 부위 9개 */
+    maxWeeklySetsPerMuscle: number
+    targetWeeklySets: number
+    /** 모든 판정 부위가 주 목표에 닿는 주당 일수 */
+    daysForTarget: number
+  }
 }
 
 export type BalanceVerdict = 'BALANCED' | 'IMBALANCED' | 'INSUFFICIENT_DATA'
