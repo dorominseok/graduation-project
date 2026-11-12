@@ -155,8 +155,10 @@ export function RoutineScreen() {
 
       <div className={styles.screen}>
         <div className={styles.page}>
+          {/* 위는 왜 오늘 이 부위인지(규칙이 쓴 근거), 아래는 종목을 그렇게 고른 이유. 예전 루틴은 아래 문장뿐이다 */}
           <div className={styles.comment}>
-            <div className={styles.commentText}>{routine.comment}</div>
+            {routine.reason && <div className={styles.commentText}>{routine.reason}</div>}
+            <div className={routine.reason ? styles.commentSub : styles.commentText}>{routine.comment}</div>
             {active.length > 0 && (
               <div className={styles.commentMeta}>
                 {active.length}종목 · {routine.totalSets}세트
@@ -166,7 +168,7 @@ export function RoutineScreen() {
           </div>
 
           {routine.lowConfidence && (
-            <div className={styles.notice}>아직 기록이 적어 큰 근육부터 고르게 짰어요. 기록이 쌓일수록 내 운동에 맞춰져요</div>
+            <div className={styles.notice}>아직 기록이 적어서 판정은 참고용이에요. 기록이 쌓일수록 내 운동에 맞춰져요</div>
           )}
 
           <ol className={styles.items}>

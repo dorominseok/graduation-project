@@ -27,6 +27,7 @@ import com.fitness.backend.routine.domain.RoutineEnums.Author;
 import com.fitness.backend.routine.domain.RoutineEnums.FallbackReason;
 import com.fitness.backend.routine.domain.RoutineItem;
 import com.fitness.backend.routine.domain.RoutinePolicy;
+import com.fitness.backend.routine.domain.RoutineReason;
 import com.fitness.backend.routine.domain.RoutineSlot;
 import com.fitness.backend.routine.domain.RuleComposer;
 import com.fitness.backend.routine.domain.SlotPlanner;
@@ -34,6 +35,7 @@ import com.fitness.backend.routine.domain.TrainingFrequency;
 import com.fitness.backend.routine.llm.LlmRoutineComposer;
 import com.fitness.backend.routine.llm.LlmRoutineComposer.Attempt;
 import com.fitness.backend.routine.llm.LlmRoutineComposer.Composition;
+import com.fitness.backend.routine.llm.LlmRoutineRequest;
 import com.fitness.backend.routine.repository.ExerciseDaysRow;
 import com.fitness.backend.routine.repository.LastTrainedRow;
 import com.fitness.backend.routine.repository.RoutineItemRepository;
@@ -159,16 +161,22 @@ public class RoutineService {
                         lastTrained.get(c.key()), lesser.contains(c.key()), bigger.contains(c.key())))
                 .toList();
 
-        List<RoutineSlot> slots = SlotPlanner.plan(states, daysPerWeek(userId, volume, policy), today, policy);
+        SlotPlanner.Plan plan = SlotPlanner.decide(states, daysPerWeek(userId, volume, policy), today, policy);
+        List<RoutineSlot> slots = plan.slots();
+        // 왜 오늘 이 부위인지는 규칙이 쓴다 — LLM이 켜져 있어도. LLM의 설명은 종목을 그렇게 고른 이유뿐이다
+        String reason = RoutineReason.of(plan, imbalances, today, policy);
 
         Map<Long, Exercise> exercises = allExercises();
         Map<MuscleGroup, List<ExerciseOption>> candidates = candidates(userId, today, slots, exercises);
-        Composition composition = compose(slots, candidates, exercises);
+        LlmRoutineRequest.Today todayWhy = RoutineReason.brief(plan, imbalances)
+                .map(why -> new LlmRoutineRequest.Today(plan.basis().bundle().orElseThrow().label(), why))
+                .orElse(null);
+        Composition composition = compose(slots, candidates, exercises, todayWhy);
         List<String> failures = RoutineCheck.check(slots, composition.items(), imbalances,
                 candidateIds(candidates), policy);
 
         return transactions.execute(status ->
-                save(userId, today, referenceDate, slots, exercises, composition, failures));
+                save(userId, today, referenceDate, slots, exercises, composition, reason, failures));
     }
 
     /**
@@ -176,7 +184,7 @@ public class RoutineService {
      * 꺼져 있으면 부르지 않는다({@code LLM_DISABLED}).
      */
     private Composition compose(List<RoutineSlot> slots, Map<MuscleGroup, List<ExerciseOption>> candidates,
-                                Map<Long, Exercise> exercises) {
+                                Map<Long, Exercise> exercises, LlmRoutineRequest.Today today) {
         if (llm.isEmpty()) {
             List<PlannedItem> items = RuleComposer.compose(slots, candidates);
             return new Composition(items, RuleComposer.comment(items), Author.RULE, Author.RULE,
@@ -184,7 +192,7 @@ public class RoutineService {
         }
         Map<Long, String> names = exercises.values().stream()
                 .collect(Collectors.toMap(Exercise::getId, Exercise::getNameKo));
-        Composition result = llm.get().compose(slots, candidates, names);
+        Composition result = llm.get().compose(slots, candidates, names, today);
         if (result.fallbackReason() != null) {
             // 운영에서 폴백이 얼마나 나는지 본다. 사용자 기록은 남기지 않고 사유만
             log.warn("루틴 LLM 폴백 {} — 시도 {}회, {}", result.fallbackReason(), result.llmAttempts(),
@@ -199,11 +207,12 @@ public class RoutineService {
     }
 
     private CreateResult save(Long userId, LocalDate today, LocalDate referenceDate, List<RoutineSlot> slots,
-                              Map<Long, Exercise> exercises, Composition composition, List<String> failures) {
+                              Map<Long, Exercise> exercises, Composition composition, String reason,
+                              List<String> failures) {
         int inserted = routineRepository.insertIfAbsent(userId, today, referenceDate,
                 composition.generatedBy().name(), composition.llmAttempts(),
                 composition.fallbackReason() == null ? null : composition.fallbackReason().name(),
-                composition.comment(), composition.commentBy().name(),
+                composition.comment(), composition.commentBy().name(), reason,
                 failures.isEmpty(), failures.isEmpty() ? null : String.join(",", failures));
         Routine routine = routineRepository.findByUserIdAndRoutineDate(userId, today)
                 .orElseThrow(() -> new IllegalStateException("방금 만든 루틴이 없다"));
@@ -492,7 +501,8 @@ public class RoutineService {
                 && trainedRoutineMuscle(routine.getUserId(), routine.getRoutineDate(), items, exercises);
 
         return new RoutineResponse(routine.getId(), routine.getRoutineDate(), routine.getReferenceDate(),
-                routine.getGeneratedBy(), routine.getComment(), lowConfidence(routine), totalSets, doneSets,
+                routine.getGeneratedBy(), routine.getReason(), routine.getComment(), lowConfidence(routine), totalSets,
+                doneSets,
                 itemResponses,
                 new FeedbackState(routine.getFeedbackRating(), routine.getFeedbackReason(), routine.isFeedbackSkipped()),
                 askFeedback);

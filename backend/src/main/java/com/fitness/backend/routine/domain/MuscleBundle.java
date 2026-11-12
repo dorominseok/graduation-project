@@ -18,10 +18,17 @@ public enum MuscleBundle {
     PUSH(BalanceSide.PUSH),
     PULL(BalanceSide.PULL);
 
+    private final String label;
     private final List<MuscleGroup> muscles;
 
     MuscleBundle(BalanceSide side) {
+        this.label = side.label();
         this.muscles = side.components().stream().filter(MuscleGroup::judged).toList();
+    }
+
+    /** 화면 표기 — 불균형 판정의 쪽 이름과 같다(하체·밀기·당기기) */
+    public String label() {
+        return label;
     }
 
     public boolean contains(MuscleGroup muscle) {

@@ -1704,6 +1704,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | ~~`routines` FK~~ | `V10`에서 `workout_sessions.routine_id → routines(id)` FK를 걸었다(`ON DELETE SET NULL`) | 완료 (LOG-40) |
 | `V10__routines.sql` · `V11__exercise_starter_rank.sql` | 루틴 `routines`·`routine_items`, 입문 대표 종목 `exercises.starter_rank` (11.9) | 완료 (10월 4주) |
 | `V12__drop_user_goal.sql` | `users.goal` 컬럼과 `ck_users_goal` 제약 삭제 (4.6, LOG-46) | 완료 (11월 1주) |
+| `V13__routine_reason.sql` | `routines.reason` — 왜 오늘 이 부위인지, 규칙이 쓴 한 줄 (11.4) | 완료 (11월 2주) |
 | 요약 배지 문안 | `summaryBadge` label 및 `MIXED` 표기 확정 (8.2). enum `key`는 고정 | 완료 (8.2 표 그대로) |
 | QUADS 화면 명칭 | `abductors`·`adductors` 포함이라 "앞허벅지"가 부정확 (LOG-10 한계) | "앞허벅지" 유지 — 시드 109종 중 QUADS 11종은 `quadriceps` 10 + `abductors` 1이고 `adductors`는 없다. 대부분이 대퇴사두라 이름을 바꾸지 않았다 |
 | 우선순위 산출 | 여러 부위 동시 부족·불균형 시 보완 순서 (분석 8장) | 완료 — 「루틴생성_로직_설계서」 2장 |
@@ -1964,7 +1965,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 
 만들 때 **그날 기록을 열어(6.2) `routineId`를 채운다.** 기록 화면은 그 값으로 루틴을 찾아 남은 계획을 붙인다.
 
-오늘 할 부위가 없으면(전부 회복 중이거나 충분) `items`가 빈 루틴이 만들어지고 `comment`가 쉬어 가라는 문장이다. 버튼을 막지 않는다 — 기록이 없는 사람도 기본값(주 5회, 큰 근육부터)으로 루틴을 받는다 — 첫날은 밀기 묶음(설계서 2.6).
+오늘 할 부위가 없으면(전부 회복 중이거나 충분) `items`가 빈 루틴이 만들어지고, `reason`이 왜 없는지를 말하고 `comment`가 쉬어 가라는 문장이다. 버튼을 막지 않는다 — 기록이 없는 사람도 기본값(주 5회, 큰 근육부터)으로 루틴을 받는다 — 첫날은 밀기 묶음(설계서 2.6).
 
 ### 11.3 GET /routines/today · GET /routines/feedback-pending
 
@@ -1985,6 +1986,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
   "routineDate": "2026-10-24",
   "referenceDate": "2026-10-23",
   "generatedBy": "RULE",
+  "reason": "아직 기록이 없어서 큰 근육부터 시작해요. 오늘은 밀기 날이에요.",
   "comment": "큰 근육부터 시작해서 작은 근육으로 마무리하는 순서예요.",
   "lowConfidence": true,
   "totalSets": 18,
@@ -2010,7 +2012,8 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | 필드 | 규칙 |
 |---|---|
 | `generatedBy` | `RULE` / `LLM`. LLM이 꺼져 있거나 호출·검사에 실패하면 `RULE` |
-| `comment` | 조합 설명 1~2문장. 종목·순서의 이유만 말하고 숫자는 쓰지 않는다. 규칙 문장은 그날 담긴 부위(큰 근육·작은 근육·코어)로 고른다(설계서 7.2) |
+| `reason` | **왜 오늘 이 부위인지** 한 줄(2026-11-13). LLM이 켜져 있어도 규칙이 쓴다 — 묶음을 정한 부위의 주당 세트 · 판정 · 쉰 날수, 회복으로 쉬는 묶음, 과다 경계 때문에 줄여 담은 부위처럼 규칙이 실제로 본 값만 적는다. 예: "어제 한 밀기는 쉬고, 어깨 후면이 주 3세트로 부족해서 오늘은 당기기 날이에요." 담은 부위가 없으면 왜 없는지를 말한다. 이 필드가 생기기 전에 만든 루틴은 `null`(설계서 7.3) |
+| `comment` | 종목을 그렇게 고른 이유 한 문장. 숫자는 쓰지 않는다. LLM이 쓰면 그 루틴의 구성(익숙한 종목과 처음인 종목, 나눈 두 종목의 차이, 부족한 부위를 채운 종목)을 말하고, 규칙 문장은 그날 담긴 부위(큰 근육·작은 근육·코어)로 고른다(설계서 5.2 · 7.2) |
 | `lowConfidence` | 기준일까지 4주 동안 운동한 날이 신뢰도 임계(8.5) 미만. 화면이 "기록이 쌓일수록…" 안내를 띄운다 |
 | `totalSets` | 빼지 않은 항목의 `plannedSets` 합 |
 | `doneSets` | 빼지 않은 항목마다 `min(그날 체크한 본세트, plannedSets)`의 합 — 진행 표시용. 계획보다 많이 해도 계획만큼만 센다 |
@@ -2088,7 +2091,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 
 | 테이블 | 컬럼 | 제약·인덱스 |
 |---|---|---|
-| `routines` | `id`, `user_id`, `routine_date`, `reference_date`, `generated_by`, `llm_attempts`, `fallback_reason`, `comment`, `comment_by`, `final_check_passed`, `final_check_failures`, `feedback_rating`, `feedback_reason`, `feedback_skipped`, `feedback_at`, `created_at` | `(user_id, routine_date)` UNIQUE, `user_id` FK 연쇄 삭제, 열거값 CHECK |
+| `routines` | `id`, `user_id`, `routine_date`, `reference_date`, `generated_by`, `llm_attempts`, `fallback_reason`, `comment`, `comment_by`, `reason`, `final_check_passed`, `final_check_failures`, `feedback_rating`, `feedback_reason`, `feedback_skipped`, `feedback_at`, `created_at` | `(user_id, routine_date)` UNIQUE, `user_id` FK 연쇄 삭제, 열거값 CHECK |
 | `routine_items` | `id`, `routine_id`, `position`, `muscle_group`, `exercise_id`, `planned_sets`, `target_min`, `target_max`, `first_time`, `basis_weekly_sets`, `basis_verdict`, `original_exercise_id`, `original_sets`, `removed` | `routine_id` FK 연쇄 삭제 + 인덱스, `exercise_id` FK, `planned_sets` 1~10 |
 | `workout_sessions` | `routine_id` → `routines(id)` | FK `ON DELETE SET NULL` (V10) |
 | `exercises` | `starter_rank SMALLINT NULL` | 입문 대표 종목 순위(V11, 설계서 4.1). 값은 종목 CSV → 반복 마이그레이션 |

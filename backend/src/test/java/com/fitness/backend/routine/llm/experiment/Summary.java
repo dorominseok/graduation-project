@@ -21,7 +21,7 @@ final class Summary {
     private Summary() {
     }
 
-    static String render(Options o, Map<String, CaseStats> stats, Pool pool, int rateLimited) {
+    static String render(Options o, Map<String, CaseStats> stats, Pool pool, int rateLimited, int resent) {
         StringBuilder md = new StringBuilder();
         md.append("# 루틴 조합 LLM 실험 — ")
                 .append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))).append("\n\n")
@@ -30,6 +30,9 @@ final class Summary {
                 .append("| 프롬프트 | ").append(RoutinePrompt.VERSION).append(" |\n")
                 .append("| temperature | ").append(o.temperature).append(" |\n")
                 .append("| 재요청 | 최대 ").append(o.retries).append("회 |\n")
+                .append("| 타임아웃 | ").append(o.timeoutS).append("초 |\n")
+                .append("| 답 없는 호출 다시 보냄 | ").append(resent).append("회 (최대 ").append(o.resend)
+                .append("회씩, 실험에서만) |\n")
                 .append("| 실행 | 케이스당 ").append(o.runs).append("회 |\n")
                 .append("| 429 대기 | ").append(rateLimited).append("회 (실험에서만 한 번 기다렸다 다시 부름) |\n\n");
 
@@ -65,6 +68,9 @@ final class Summary {
             }
             md.append(s.rFailures.isEmpty() ? "—" : s.rFailures.toString()).append(" |\n");
         }
+
+        md.append("\n## 설명 지표 (LLM이 쓴 설명 전체)\n\n").append(CommentMetrics.render(
+                stats.values().stream().flatMap(s -> s.samples.stream()).toList()));
 
         md.append("\n## 케이스 입력과 규칙 선택\n");
         for (CaseStats s : stats.values()) {

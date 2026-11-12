@@ -30,9 +30,10 @@ public interface RoutineRepository extends JpaRepository<Routine, Long> {
     @Modifying
     @Query(value = """
             insert into routines (user_id, routine_date, reference_date, generated_by, llm_attempts,
-                                  fallback_reason, comment, comment_by, final_check_passed, final_check_failures)
+                                  fallback_reason, comment, comment_by, reason, final_check_passed,
+                                  final_check_failures)
             values (:userId, :routineDate, :referenceDate, :generatedBy, :llmAttempts,
-                    :fallbackReason, :comment, :commentBy, :finalCheckPassed, :finalCheckFailures)
+                    :fallbackReason, :comment, :commentBy, :reason, :finalCheckPassed, :finalCheckFailures)
             on conflict (user_id, routine_date) do nothing
             """, nativeQuery = true)
     int insertIfAbsent(@Param("userId") Long userId,
@@ -43,6 +44,7 @@ public interface RoutineRepository extends JpaRepository<Routine, Long> {
                        @Param("fallbackReason") String fallbackReason,
                        @Param("comment") String comment,
                        @Param("commentBy") String commentBy,
+                       @Param("reason") String reason,
                        @Param("finalCheckPassed") boolean finalCheckPassed,
                        @Param("finalCheckFailures") String finalCheckFailures);
 

@@ -357,12 +357,12 @@ function TodayRoutine({ routine, answering, onRecord, onOpen, onAnswer }: TodayR
   const items = activeItems(routine)
   const answered = routine.feedback.rating !== null
 
-  // 회복할 부위만 남아 쉬어 가는 날. 설명만 두고 직접 기록하는 길을 남긴다
+  // 담을 부위가 없어 쉬어 가는 날. 왜 없는지(회복 중인지, 이미 많이 했는지)를 두고 직접 기록하는 길을 남긴다
   if (items.length === 0) {
     return (
       <>
         <div className={styles.heroTitle}>오늘 루틴</div>
-        <div className={styles.heroSub}>{routine.comment}</div>
+        <div className={styles.heroSub}>{routine.reason ?? routine.comment}</div>
         <button type="button" className={styles.start} onClick={onRecord}>
           직접 기록하기
         </button>

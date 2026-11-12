@@ -22,6 +22,8 @@ public final class RoutineDtos {
     /**
      * 하루 루틴.
      *
+     * @param reason        왜 오늘 이 부위인지 — 규칙이 실제로 본 값으로 쓴 한 줄. 2026-11-12 전에 만든 루틴은 null
+     * @param comment       종목·순서를 그렇게 고른 이유. LLM이 쓰거나(숫자 없음) 규칙 문장
      * @param lowConfidence 기록이 적어 판정 신뢰도가 낮다 — 화면이 "기록이 쌓일수록…" 안내를 띄운다
      * @param totalSets     빼지 않은 항목의 계획 세트 합
      * @param doneSets      빼지 않은 항목마다 min(그날 체크한 세트, 계획)의 합 — 진행 표시용
@@ -31,6 +33,7 @@ public final class RoutineDtos {
                                   LocalDate routineDate,
                                   LocalDate referenceDate,
                                   Author generatedBy,
+                                  String reason,
                                   String comment,
                                   boolean lowConfidence,
                                   int totalSets,

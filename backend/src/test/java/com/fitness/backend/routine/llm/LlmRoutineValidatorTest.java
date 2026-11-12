@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fitness.backend.analysis.domain.VolumeVerdict;
 import com.fitness.backend.routine.llm.LlmRoutineRequest.Candidate;
 import com.fitness.backend.routine.llm.LlmRoutineRequest.Slot;
 import com.fitness.backend.routine.llm.LlmRoutineValidator.Pick;
@@ -26,10 +27,11 @@ class LlmRoutineValidatorTest {
 
     /** 등 6세트(나눌 수 있음, 후보 20·23), 이두 3세트(후보 83) */
     private static final LlmRoutineRequest REQUEST = new LlmRoutineRequest(List.of(
-            new Slot(BACK, 6, true, List.of(
-                    new Candidate(20, "랫풀다운: 와이드 그립", CABLE, false, false, true),
-                    new Candidate(23, "바벨 로우", BARBELL, false, true, false))),
-            new Slot(BICEPS, 3, false, List.of(new Candidate(83, "덤벨 컬", DUMBBELL, false, false, true)))));
+            new Slot(BACK, VolumeVerdict.INSUFFICIENT, 6, true, List.of(
+                    new Candidate(20, "랫풀다운: 와이드 그립", CABLE, false, false, true, 5),
+                    new Candidate(23, "바벨 로우", BARBELL, false, true, false, 0))),
+            new Slot(BICEPS, VolumeVerdict.INSUFFICIENT, 3, false,
+                    List.of(new Candidate(83, "덤벨 컬", DUMBBELL, false, false, true, 5)))), null);
 
     private static final String GOOD_COMMENT = "등은 케이블과 바벨로 당기는 방향을 바꿔 가며 하고, 덤벨 컬로 팔을 마무리하는 순서예요.";
 
@@ -88,7 +90,7 @@ class LlmRoutineValidatorTest {
     @DisplayName("L5 — 나눌 수 없는 슬롯(split false)을 두 종목으로 나눔")
     void l5() {
         LlmRoutineRequest notSplittable = new LlmRoutineRequest(List.of(
-                new Slot(BACK, 6, false, REQUEST.slots().get(0).candidates())));
+                new Slot(BACK, VolumeVerdict.INSUFFICIENT, 6, false, REQUEST.slots().get(0).candidates())), null);
 
         Result result = LlmRoutineValidator.validate(notSplittable,
                 "{\"items\":[" + pick("BACK", "20") + "," + pick("BACK", "23") + "],\"comment\":\"" + GOOD_COMMENT + "\"}",
@@ -100,11 +102,11 @@ class LlmRoutineValidatorTest {
     @Test
     @DisplayName("L5 — 해 본 종목이 없는 슬롯은 입문 대표 종목이나 즐겨찾기로만 나눈다")
     void l5UntriedSlotSplitsIntoStartersOnly() {
-        LlmRoutineRequest untried = new LlmRoutineRequest(List.of(new Slot(BACK, 6, true, List.of(
-                new Candidate(20, "랫풀다운: 와이드 그립", CABLE, false, true, true),
-                new Candidate(24, "시티드 케이블 로우", CABLE, false, true, true),
-                new Candidate(23, "바벨 로우", BARBELL, false, true, false),
-                new Candidate(25, "티바 로우", BARBELL, true, true, false)))));
+        LlmRoutineRequest untried = new LlmRoutineRequest(List.of(new Slot(BACK, VolumeVerdict.INSUFFICIENT, 6, true, List.of(
+                new Candidate(20, "랫풀다운: 와이드 그립", CABLE, false, true, true, 0),
+                new Candidate(24, "시티드 케이블 로우", CABLE, false, true, true, 0),
+                new Candidate(23, "바벨 로우", BARBELL, false, true, false, 0),
+                new Candidate(25, "티바 로우", BARBELL, true, true, false, 0)))), null);
 
         assertTrue(validateOn(untried, pick("BACK", "20") + "," + pick("BACK", "24")).failures().isEmpty());
         assertTrue(validateOn(untried, pick("BACK", "25") + "," + pick("BACK", "20")).failures().isEmpty(), "즐겨찾기 + 대표 종목");

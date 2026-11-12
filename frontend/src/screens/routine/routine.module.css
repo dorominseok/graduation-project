@@ -47,6 +47,14 @@
   color: var(--text-primary);
 }
 
+/* 이유 문장 아래의 종목 설명. 한 단계 낮춰 둘이 다른 이야기임을 보인다 */
+.commentSub {
+  margin-top: var(--space-6);
+  font-size: var(--font-sm);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
 .commentMeta {
   margin-top: var(--space-6);
   font-size: var(--font-xs);

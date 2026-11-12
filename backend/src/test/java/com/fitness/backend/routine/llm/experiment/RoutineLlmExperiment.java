@@ -8,6 +8,7 @@ import com.fitness.backend.routine.domain.ExerciseOption;
 import com.fitness.backend.routine.domain.PlannedItem;
 import com.fitness.backend.routine.domain.RoutineCheck;
 import com.fitness.backend.routine.domain.RoutinePolicy;
+import com.fitness.backend.routine.domain.RoutineReason;
 import com.fitness.backend.routine.domain.RoutineSlot;
 import com.fitness.backend.routine.domain.RuleComposer;
 import com.fitness.backend.routine.domain.SlotPlanner;
@@ -48,7 +49,12 @@ import tools.jackson.databind.json.JsonMapper;
  *   ./gradlew llmExperiment                                  # 8케이스 × 10회
  *   ./gradlew llmExperiment --args="--runs 3 --cases 01,02"
  *   ./gradlew llmExperiment --args="--dry-run"               # 호출 없이 입력만
- *   옵션: --model gemini-3.5-flash-lite  --temperature 0.4  --retries 2  --interval-ms 4500
+ *   ./gradlew llmExperiment --args="--analyze routine_2026-11-12_1232_gemini-3.5-flash-lite_r3"
+ *                                                            # 지난 회차의 설명 지표만 다시 낸다(호출 없음)
+ *   옵션: --model gemini-3.5-flash-lite  --temperature 0.4  --retries 2  --interval-ms 4500  --timeout-s 8
+ *        (--timeout-s는 무료 티어가 느린 날 설명만이라도 받아 보려고 늘린다. 그 회차의 지연 수치는 비교에 쓰지 않는다)
+ *        --resend 0  답이 오지 않은 호출(타임아웃·연결 실패·5xx)을 그만큼 다시 보낸다. 서비스가 불안정한 날에도
+ *        같은 횟수의 답을 모으려고 둔다. 앱은 다시 보내지 않으므로 이 회차의 "폴백 오류" 수치는 앱과 다르다
  * </pre>
  *
  * <p>운영과 같은 부품(LlmRoutineComposer·GeminiClient·RoutinePrompt·검증기)을 그대로 쓴다. 실험한 코드가
@@ -70,6 +76,10 @@ public final class RoutineLlmExperiment {
     public static void main(String[] args) throws IOException {
         Options options = Options.parse(args);
         Path root = repoRoot();
+        if (options.analyze != null) {
+            analyze(root.resolve("scripts/llm-experiment/runs").resolve(options.analyze));
+            return;
+        }
         Pool pool = Pool.load(root.resolve("backend/src/main/resources/data/exercises.csv"));
         LocalDate today = LocalDate.now();
         List<Case> cases = ExperimentCases.all(today).stream()
@@ -82,8 +92,8 @@ public final class RoutineLlmExperiment {
         Files.createDirectories(out);
 
         PacedClient client = options.dryRun ? null
-                : new PacedClient(new GeminiClient(JSON, options.model, apiKey(root), Duration.ofSeconds(8), 1024),
-                        options.intervalMs);
+                : new PacedClient(new GeminiClient(JSON, options.model, apiKey(root), Duration.ofSeconds(options.timeoutS), 1024),
+                        options.intervalMs, options.resend);
         LlmRoutineComposer composer = options.dryRun ? null
                 : new LlmRoutineComposer(client, JSON, options.retries, options.temperature);
 
@@ -103,7 +113,7 @@ public final class RoutineLlmExperiment {
             CaseStats cs = new CaseStats(c, p);
             stats.put(c.id(), cs);
             for (int run = 1; run <= options.runs; run++) {
-                Composition result = composer.compose(p.slots, p.candidates, pool.names);
+                Composition result = composer.compose(p.slots, p.candidates, pool.names, p.request.today());
                 Map<String, Object> record = cs.add(result, pool);
                 record.put("case", c.id());
                 record.put("run", run);
@@ -116,10 +126,30 @@ public final class RoutineLlmExperiment {
         Files.writeString(out.resolve("prompt.txt"), promptLog, StandardCharsets.UTF_8);
         if (!options.dryRun) {
             Files.write(out.resolve("raw.jsonl"), raw, StandardCharsets.UTF_8);
-            Files.writeString(out.resolve("summary.md"), Summary.render(options, stats, pool, client.rateLimited),
+            Files.writeString(out.resolve("summary.md"), Summary.render(options, stats, pool, client.rateLimited, client.resent),
                     StandardCharsets.UTF_8);
         }
         System.out.println("\n결과: " + root.relativize(out));
+    }
+
+    /** 지난 회차의 raw.jsonl에서 LLM이 쓴 설명만 모아 지표를 낸다. 프롬프트 사이의 비교를 같은 코드로 하려고 둔다 */
+    private static void analyze(Path run) throws IOException {
+        List<CommentMetrics.Sample> samples = new ArrayList<>();
+        for (String line : Files.readAllLines(run.resolve("raw.jsonl"), StandardCharsets.UTF_8)) {
+            if (line.isBlank()) {
+                continue;
+            }
+            var record = JSON.readTree(line);
+            if (!"LLM".equals(record.path("commentBy").asString(""))) {
+                continue;
+            }
+            List<String> items = new ArrayList<>();
+            record.path("items").forEach(item -> items.add(item.asString()));
+            samples.add(CommentMetrics.fromRecord(record.path("case").asString(), items, record.path("comment").asString()));
+        }
+        String report = "# 설명 지표 — " + run.getFileName() + "\n\n" + CommentMetrics.render(samples);
+        Files.writeString(run.resolve("comment-metrics.md"), report, StandardCharsets.UTF_8);
+        System.out.println(report);
     }
 
     // ── 케이스 → 운영과 같은 길로 슬롯·후보
@@ -129,7 +159,12 @@ public final class RoutineLlmExperiment {
     }
 
     static Prepared prepare(Case c, Pool pool, LocalDate today) {
-        List<RoutineSlot> slots = SlotPlanner.plan(c.states(), c.daysPerWeek(), today, POLICY);
+        SlotPlanner.Plan plan = SlotPlanner.decide(c.states(), c.daysPerWeek(), today, POLICY);
+        List<RoutineSlot> slots = plan.slots();
+        // 운영(RoutineService)과 같은 길 — 규칙이 정한 이유를 숫자 없이 요약해 준다
+        LlmRoutineRequest.Today why = RoutineReason.brief(plan, c.imbalances())
+                .map(text -> new LlmRoutineRequest.Today(plan.basis().bundle().orElseThrow().label(), text))
+                .orElse(null);
         Map<MuscleGroup, List<ExerciseOption>> candidates = new EnumMap<>(MuscleGroup.class);
         Map<Long, Boolean> firstTime = new HashMap<>();
         for (RoutineSlot slot : slots) {
@@ -148,7 +183,7 @@ public final class RoutineLlmExperiment {
             pool.require(name);
         }
         c.favorites().forEach(pool::require);
-        return new Prepared(slots, candidates, LlmRoutineRequest.of(slots, candidates, pool.names),
+        return new Prepared(slots, candidates, LlmRoutineRequest.of(slots, candidates, pool.names, why),
                 RuleComposer.compose(slots, candidates), firstTime);
     }
 
@@ -176,6 +211,7 @@ public final class RoutineLlmExperiment {
         final List<Integer> outputTokens = new ArrayList<>();
         final Set<String> combos = new HashSet<>();
         final List<String> comments = new ArrayList<>();
+        final List<CommentMetrics.Sample> samples = new ArrayList<>();
         final List<String> errors = new ArrayList<>();
 
         CaseStats(Case c, Prepared p) {
@@ -193,6 +229,9 @@ public final class RoutineLlmExperiment {
             if (r.commentBy().name().equals("LLM")) {
                 llmComment++;
                 comments.add(r.comment());
+                samples.add(new CommentMetrics.Sample(c.id(),
+                        r.items().stream().map(i -> i.muscle().name()).distinct().toList(),
+                        r.items().stream().map(i -> pool.names.get(i.exerciseId())).toList(), r.comment()));
             }
             if (r.fallbackReason() != null) {
                 switch (r.fallbackReason()) {
@@ -355,17 +394,36 @@ public final class RoutineLlmExperiment {
     static final class PacedClient implements LlmClient {
         private final LlmClient inner;
         private final long intervalMs;
+        private final int resend;
         private long lastCall;
         int rateLimited;
+        int resent;
 
-        PacedClient(LlmClient inner, long intervalMs) {
+        PacedClient(LlmClient inner, long intervalMs, int resend) {
             this.inner = inner;
             this.intervalMs = intervalMs;
+            this.resend = resend;
         }
 
         @Override
         public Response generate(Prompt prompt) {
-            sleep(lastCall + intervalMs - System.currentTimeMillis());
+            for (int sent = 0; ; sent++) {
+                sleep(lastCall + intervalMs - System.currentTimeMillis());
+                try {
+                    return once(prompt);
+                } catch (LlmCallException e) {
+                    if (sent >= resend || !noAnswer(e)) {
+                        throw e;
+                    }
+                    resent++;
+                    System.out.println("    · " + e.getMessage() + " → 다시 보냄");
+                } finally {
+                    lastCall = System.currentTimeMillis();
+                }
+            }
+        }
+
+        private Response once(Prompt prompt) {
             try {
                 return inner.generate(prompt);
             } catch (LlmCallException e) {
@@ -376,9 +434,16 @@ public final class RoutineLlmExperiment {
                 System.out.println("    · HTTP 429 → 40초 쉬고 한 번 더");
                 sleep(40_000);
                 return inner.generate(prompt);
-            } finally {
-                lastCall = System.currentTimeMillis();
             }
+        }
+
+        /** 답이 오지 않은 경우(타임아웃·연결 실패·5xx). 답의 내용과 무관해서 다시 보내도 검증 결과를 흐리지 않는다 */
+        private static boolean noAnswer(LlmCallException e) {
+            return switch (e.kind()) {
+                case TIMEOUT, NETWORK -> true;
+                case HTTP -> e.getMessage().startsWith("HTTP 5");
+                default -> false;
+            };
         }
 
         private static void sleep(long ms) {
@@ -399,7 +464,10 @@ public final class RoutineLlmExperiment {
         int retries = 2;
         int runs = 10;
         long intervalMs = 4500;
+        int timeoutS = 8;
+        int resend;
         boolean dryRun;
+        String analyze;
         List<String> cases = List.of();
 
         static Options parse(String[] args) {
@@ -411,8 +479,11 @@ public final class RoutineLlmExperiment {
                     case "--retries" -> o.retries = Integer.parseInt(args[++i]);
                     case "--runs" -> o.runs = Integer.parseInt(args[++i]);
                     case "--interval-ms" -> o.intervalMs = Long.parseLong(args[++i]);
+                    case "--timeout-s" -> o.timeoutS = Integer.parseInt(args[++i]);
+                    case "--resend" -> o.resend = Integer.parseInt(args[++i]);
                     case "--cases" -> o.cases = List.of(args[++i].split(","));
                     case "--dry-run" -> o.dryRun = true;
+                    case "--analyze" -> o.analyze = args[++i];
                     default -> throw new IllegalArgumentException("모르는 옵션: " + args[i]);
                 }
             }

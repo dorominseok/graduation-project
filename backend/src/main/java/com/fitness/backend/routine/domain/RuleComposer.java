@@ -26,8 +26,11 @@ public final class RuleComposer {
     /** 큰 근육 → 작은 근육 순서가 아닐 때(LLM이 순서를 바꿨는데 설명이 검증에 걸린 경우)의 설명 */
     static final String NEUTRAL_COMMENT = "요즘 덜 한 부위를 채우는 구성이에요.";
 
-    /** 오늘 할 부위가 없을 때 — 전부 회복 중이거나 이미 충분하다 */
-    public static final String REST_COMMENT = "최근에 운동한 부위가 회복 중이라 오늘은 쉬어 가도 좋아요.";
+    /**
+     * 오늘 할 부위가 없을 때. 왜 없는지(회복 중인지, 과다 경계인지)는 {@link RoutineReason}이 따로 말한다 —
+     * 여기서 "회복 중이라"고 하면 과다 경계 때문에 빈 날에는 틀린 말이 된다
+     */
+    public static final String REST_COMMENT = "오늘은 쉬어 가도 좋아요.";
 
     /** 슬롯 세트가 이 값 이상일 때만 두 종목으로 나눈다 — 나눠도 종목마다 3세트는 남는다 */
     public static final int SPLIT_FROM_SETS = 6;
