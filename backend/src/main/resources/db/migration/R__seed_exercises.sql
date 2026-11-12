@@ -56,7 +56,7 @@ VALUES
     ('덤벨 런지', 'Dumbbell Lunges', 'LEGS', 'quadriceps', 'PUSH', 'WEIGHT_REPS', 'DUMBBELL', NULL, '런지', '2'),
     ('스미스머신 스플릿 스쿼트', 'Smith Single-Leg Split Squat', 'LEGS', 'quadriceps', 'PUSH', 'WEIGHT_REPS', 'MACHINE', NULL, '스쿼트', NULL),
     ('글루트 햄 레이즈', 'Natural Glute Ham Raise', 'LEGS', 'hamstrings', 'PULL', 'BODYWEIGHT_REPS', 'BODYWEIGHT', NULL, '레그컬', NULL),
-    ('라잉 레그컬', 'Lying Leg Curls', 'LEGS', 'hamstrings', 'PULL', 'WEIGHT_REPS', 'MACHINE', NULL, '레그컬', NULL),
+    ('라잉 레그컬', 'Lying Leg Curls', 'LEGS', 'hamstrings', 'PULL', 'WEIGHT_REPS', 'MACHINE', NULL, '레그컬', '2'),
     ('레그 익스텐션', 'Leg Extensions', 'LEGS', 'quadriceps', 'PUSH', 'WEIGHT_REPS', 'MACHINE', NULL, '레그 익스텐션', NULL),
     ('바벨 스쿼트', 'Barbell Squat', 'LEGS', 'quadriceps', 'PUSH', 'WEIGHT_REPS', 'BARBELL', NULL, '스쿼트', '1'),
     ('맨몸 스쿼트', 'Bodyweight Squat', 'LEGS', 'quadriceps', 'PUSH', 'BODYWEIGHT_REPS', 'BODYWEIGHT', NULL, '스쿼트', NULL),

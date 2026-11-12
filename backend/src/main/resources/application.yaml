@@ -80,7 +80,6 @@ app:
     target-weekly-sets: 10        # 부위당 주 목표 = 최적 하한
     per-muscle-min-sets: 3        # 부위당 한 번에 최소·최대
     per-muscle-max-sets: 6
-    fill-max-sets: 3              # 묶음을 채우는 최적 부위의 최대 세트
     daily-min-sets: 12            # 하루 총량 (약 40~60분)
     daily-max-sets: 18
     recovery-days: 2              # 오늘·어제 한 부위는 뺀다 (48시간)

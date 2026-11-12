@@ -45,7 +45,7 @@ final class ExperimentCases {
 
     static List<Case> all(LocalDate today) {
         return List.of(
-                new Case("01-no-history", "기록 없음 — 첫날 루틴, 기본 주 5회(설계서 2.6)", 5,
+                new Case("01-no-history", "기록 없음 — 첫날 루틴, 기본 주 5회. 큰 근육(가슴)만 입문 대표 종목 둘로", 5,
                         states(today, VolumeVerdict.INSUFFICIENT, "0", null), List.of(), Set.of(), Map.of()),
 
                 new Case("02-push-heavy", "밀기 편중 — 당기기(등·어깨 후면·이두) 보정, R3", 4,
@@ -82,7 +82,7 @@ final class ExperimentCases {
                         Map.of("바벨 벤치프레스", 8, "바벨 로우", 6, "바벨 스쿼트", 6, "루마니안 데드리프트", 5,
                                 "밀리터리 프레스", 5, "이지바 스컬크러셔", 4, "바벨 컬", 4, "플랭크", 4)),
 
-                new Case("05-twice-a-week", "주 2회 — 부위당 6세트, 해 본 종목이 있는 부위만 둘로 나눔", 2,
+                new Case("05-twice-a-week", "주 2회 — 부위당 6세트, 해 본 종목이 없는 뒤허벅지는 입문 대표 종목 둘·코어는 한 종목", 2,
                         states(today, VolumeVerdict.BELOW_RECOMMENDED, "6", -7,
                                 s(CHEST, "2", VolumeVerdict.INSUFFICIENT, today, -7),
                                 s(BACK, "2", VolumeVerdict.INSUFFICIENT, today, -7),
@@ -91,7 +91,7 @@ final class ExperimentCases {
                         Map.of("덤벨 벤치프레스", 3, "머신 체스트프레스", 2, "랫풀다운: 와이드 그립", 3,
                                 "원암 덤벨 로우", 2, "레그 익스텐션", 2)),
 
-                new Case("06-five-a-week", "주 5회 — 부위당 6세트, 처음 종목뿐인 부위는 한 종목", 5,
+                new Case("06-five-a-week", "주 5회 — 부위당 6세트, 해 본 종목이 없는 작은 근육(어깨·삼두)은 한 종목", 5,
                         states(today, VolumeVerdict.INSUFFICIENT, "2", -5), List.of(), Set.of(),
                         Map.of("바벨 벤치프레스", 3, "랫풀다운: 와이드 그립", 3, "바벨 스쿼트", 2)),
 

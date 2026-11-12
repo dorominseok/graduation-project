@@ -27,9 +27,9 @@ class LlmRoutineValidatorTest {
     /** 등 6세트(나눌 수 있음, 후보 20·23), 이두 3세트(후보 83) */
     private static final LlmRoutineRequest REQUEST = new LlmRoutineRequest(List.of(
             new Slot(BACK, 6, true, List.of(
-                    new Candidate(20, "랫풀다운: 와이드 그립", CABLE, false, true),
-                    new Candidate(23, "바벨 로우", BARBELL, false, true))),
-            new Slot(BICEPS, 3, false, List.of(new Candidate(83, "덤벨 컬", DUMBBELL, false, false)))));
+                    new Candidate(20, "랫풀다운: 와이드 그립", CABLE, false, false, true),
+                    new Candidate(23, "바벨 로우", BARBELL, false, true, false))),
+            new Slot(BICEPS, 3, false, List.of(new Candidate(83, "덤벨 컬", DUMBBELL, false, false, true)))));
 
     private static final String GOOD_COMMENT = "등은 케이블과 바벨로 당기는 방향을 바꿔 가며 하고, 덤벨 컬로 팔을 마무리하는 순서예요.";
 
@@ -95,6 +95,25 @@ class LlmRoutineValidatorTest {
                 JSON);
 
         assertEquals(Set.of("L5"), result.codes());
+    }
+
+    @Test
+    @DisplayName("L5 — 해 본 종목이 없는 슬롯은 입문 대표 종목이나 즐겨찾기로만 나눈다")
+    void l5UntriedSlotSplitsIntoStartersOnly() {
+        LlmRoutineRequest untried = new LlmRoutineRequest(List.of(new Slot(BACK, 6, true, List.of(
+                new Candidate(20, "랫풀다운: 와이드 그립", CABLE, false, true, true),
+                new Candidate(24, "시티드 케이블 로우", CABLE, false, true, true),
+                new Candidate(23, "바벨 로우", BARBELL, false, true, false),
+                new Candidate(25, "티바 로우", BARBELL, true, true, false)))));
+
+        assertTrue(validateOn(untried, pick("BACK", "20") + "," + pick("BACK", "24")).failures().isEmpty());
+        assertTrue(validateOn(untried, pick("BACK", "25") + "," + pick("BACK", "20")).failures().isEmpty(), "즐겨찾기 + 대표 종목");
+        assertEquals(Set.of("L5"), validateOn(untried, pick("BACK", "20") + "," + pick("BACK", "23")).codes());
+        assertTrue(validateOn(untried, pick("BACK", "23")).failures().isEmpty(), "한 종목이면 무엇이든 된다");
+    }
+
+    private static Result validateOn(LlmRoutineRequest request, String items) {
+        return LlmRoutineValidator.validate(request, "{\"items\":[" + items + "],\"comment\":\"" + GOOD_COMMENT + "\"}", JSON);
     }
 
     @Test

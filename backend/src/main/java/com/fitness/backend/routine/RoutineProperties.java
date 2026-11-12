@@ -18,7 +18,6 @@ public record RoutineProperties(
         @Min(1) int targetWeeklySets,
         @Min(1) int perMuscleMinSets,
         @Min(1) int perMuscleMaxSets,
-        @Min(1) int fillMaxSets,
         @Min(1) int dailyMinSets,
         @Min(1) int dailyMaxSets,
         @Min(0) int recoveryDays,
@@ -32,7 +31,7 @@ public record RoutineProperties(
 
     /** 과다 경계는 분석 설정에서 받는다 — 판정과 루틴 검증(R2)이 같은 값을 써야 한다 */
     public RoutinePolicy policy(BigDecimal optimalThrough) {
-        return new RoutinePolicy(targetWeeklySets, perMuscleMinSets, perMuscleMaxSets, fillMaxSets,
+        return new RoutinePolicy(targetWeeklySets, perMuscleMinSets, perMuscleMaxSets,
                 dailyMinSets, dailyMaxSets, recoveryDays, defaultDaysPerWeek, minKnownDays, optimalThrough);
     }
 }

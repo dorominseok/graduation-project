@@ -62,13 +62,55 @@ class RuleComposerAndCheckTest {
         assertArrayEquals(new int[] {4, 3}, RuleComposer.split(7, 2));
     }
 
+    private static ExerciseOption starter(long id, String group, int rank) {
+        return new ExerciseOption(id, group, BARBELL, false, 0, true, rank);
+    }
+
     @Test
-    @DisplayName("처음 하는 종목만 있는 부위는 6세트여도 나누지 않는다 — 첫날 새 동작이 두 배가 되지 않게")
-    void firstTimeOnlySlotsStayWhole() {
-        Map<MuscleGroup, List<ExerciseOption>> candidates = Map.of(CHEST, List.of(ex(10, "벤치"), ex(12, "플라이")));
+    @DisplayName("해 본 종목이 없는 큰 근육은 입문 대표 종목 둘로 나눈다 — 대표 종목이 아닌 후보는 건너뛴다")
+    void untriedBigMuscleSplitsIntoStarters() {
+        Map<MuscleGroup, List<ExerciseOption>> candidates = Map.of(
+                CHEST, List.of(starter(10, "벤치", 1), ex(11, "플라이"), starter(12, "푸시업", 2)));
+
+        assertEquals(List.of(new PlannedItem(CHEST, 10L, 3), new PlannedItem(CHEST, 12L, 3)),
+                RuleComposer.compose(List.of(slot(CHEST, 6, "0")), candidates));
+        assertTrue(RuleComposer.splittable(CHEST, 6, candidates.get(CHEST)));
+        assertEquals(List.of(new PlannedItem(CHEST, 10L, 5)),
+                RuleComposer.compose(List.of(slot(CHEST, 5, "0")), candidates), "5세트는 나누지 않는다");
+    }
+
+    @Test
+    @DisplayName("해 본 종목이 없는 큰 근육도 짝지을 입문 대표 종목이 없으면 나누지 않는다 — 계열이 같아도 안 된다")
+    void untriedBigMuscleNeedsStarterPartner() {
+        List<ExerciseOption> noStarter = List.of(ex(10, "벤치"), ex(12, "플라이"));
+        List<ExerciseOption> sameGroup = List.of(starter(10, "벤치", 1), starter(11, "벤치", 2), ex(12, "플라이"));
 
         assertEquals(List.of(new PlannedItem(CHEST, 10L, 6)),
-                RuleComposer.compose(List.of(slot(CHEST, 6, "0")), candidates));
+                RuleComposer.compose(List.of(slot(CHEST, 6, "0")), Map.of(CHEST, noStarter)));
+        assertEquals(List.of(new PlannedItem(CHEST, 10L, 6)),
+                RuleComposer.compose(List.of(slot(CHEST, 6, "0")), Map.of(CHEST, sameGroup)));
+    }
+
+    @Test
+    @DisplayName("해 본 종목이 없는 작은 근육·코어는 대표 종목이 둘이어도 나누지 않는다 — 첫날 새 동작을 늘리지 않게")
+    void untriedSmallMuscleStaysWhole() {
+        List<ExerciseOption> options = List.of(starter(20, "푸시다운", 1), starter(21, "익스텐션", 2));
+
+        assertEquals(List.of(new PlannedItem(TRICEPS, 20L, 6)),
+                RuleComposer.compose(List.of(slot(TRICEPS, 6, "0")), Map.of(TRICEPS, options)));
+        assertEquals(List.of(new PlannedItem(CORE, 20L, 6)),
+                RuleComposer.compose(List.of(slot(CORE, 6, "0")), Map.of(CORE, options)));
+        assertTrue(!RuleComposer.splittable(TRICEPS, 6, options));
+    }
+
+    @Test
+    @DisplayName("즐겨찾기가 1순위인 해 본 적 없는 큰 근육은 즐겨찾기 + 입문 대표 종목으로 나눈다")
+    void untriedFavoritePairsWithStarter() {
+        ExerciseOption favorite = new ExerciseOption(15L, "디클라인", CABLE, true, 0, true, null);
+        List<ExerciseOption> options = List.of(favorite, starter(10, "벤치", 1), starter(12, "푸시업", 2));
+
+        assertEquals(List.of(new PlannedItem(CHEST, 15L, 3), new PlannedItem(CHEST, 10L, 3)),
+                RuleComposer.compose(List.of(slot(CHEST, 6, "0")), Map.of(CHEST, options)));
     }
 
     @Test

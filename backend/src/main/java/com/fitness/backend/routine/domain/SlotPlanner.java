@@ -3,6 +3,7 @@ package com.fitness.backend.routine.domain;
 import com.fitness.backend.analysis.domain.MuscleGroup;
 import com.fitness.backend.analysis.domain.VolumeVerdict;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -25,8 +26,10 @@ import java.util.stream.Stream;
  *   후보   = 부족 · 권장 이하 (과다·최적 제외)
  *   정렬   = 판정 → 불균형 적은 쪽 → 모자란 양(큰 순) → 마지막 운동일(오래된 순) → 크기 순
  *   묶음   = 맨 앞 부위의 묶음(하체·밀기·당기기). 불균형이면 적은 쪽이 먼저, 많은 쪽은 마지막
- *   세트   = 주 목표 ÷ 묶음이 돌아오는 주당 횟수(주당 일수 ÷ 묶음 수). 부족은 올림, 권장 이하는 내림, 3~6으로 자름
- *   담기   = 묶음의 부족 부위 → 코어 → 묶음의 최적 부위(3세트씩). 하루 상한(18)을 넘으면 남은 만큼만
+ *   세트   = 주 목표 ÷ 묶음이 돌아오는 주당 횟수(주당 일수 ÷ 묶음 수). 부족은 올림, 권장 이하·최적은 내림, 3~6으로 자름
+ *   담기   = 묶음의 부족 부위 → 코어 → 묶음의 최적 부위. 하루 상한(18)을 넘으면 남은 만큼만
+ *   최적   = 같은 세트를 담되 과다 경계(주당 평균 + 오늘 세트 ≤ 20)를 넘지 않는 만큼만. 3세트도 못 담으면 뺀다
+ *   코어   = 부족하면 어느 날이든, 최적이면 하체 날에(하체 묶음은 부위가 둘이라 자리가 난다)
  *   채우기 = 그래도 하한(12)에 못 미치면 최적인 코어, 그다음 담은 부위의 세트를 하나씩 올린다
  * </pre>
  *
@@ -88,7 +91,9 @@ public final class SlotPlanner {
         Optional<MuscleBundle> bundle = todayBundle(lacking, optimal);
         Predicate<MuscleState> inBundle = s -> bundle.filter(b -> b.contains(s.muscle())).isPresent();
         Predicate<MuscleState> core = s -> s.muscle() == MuscleGroup.CORE;
-        int fillSets = clamp(Math.min((int) Math.floor(base + 1e-9), policy.fillMaxSets()), policy);
+        // 최적 부위도 주 목표를 유지할 만큼 담는다. 3세트로 줄이면 따라 하는 사람의 주당 평균이 다시 내려간다
+        int fillSets = clamp((int) Math.floor(base + 1e-9), policy);
+        boolean lowerDay = bundle.filter(b -> b == MuscleBundle.LOWER).isPresent();
 
         Day day = new Day(policy);
         Stream.concat(lacking.stream().filter(inBundle), lacking.stream().filter(core)).forEach(state -> {
@@ -97,9 +102,13 @@ public final class SlotPlanner {
                     : clamp((int) Math.floor(base + 1e-9), policy);
             day.add(state, sets, false);
         });
-        optimal.stream().filter(inBundle).forEach(state -> day.fill(state, fillSets));
+        // 남은 자리는 묶음의 최적 부위끼리 고르게 나눈다. 앞 부위가 다 가져가면 등 6 · 이두 0이 된다
+        List<MuscleState> fillers = optimal.stream().filter(inBundle).filter(day::fillable).toList();
+        for (int i = 0; i < fillers.size(); i++) {
+            day.fill(fillers.get(i), Math.min(fillSets, day.share(fillers.size() - i)));
+        }
         optimal.stream().filter(core).forEach(state -> {
-            if (day.belowMin()) {
+            if (lowerDay || day.belowMin()) {
                 day.fill(state, fillSets);
             }
         });
@@ -146,11 +155,26 @@ public final class SlotPlanner {
             }
         }
 
-        /** 이미 최적인 부위는 과다 경계를 넘기지 않을 때만 넣는다(R2) */
+        /**
+         * 이미 최적인 부위는 과다 경계까지만 담는다(R2). 주당 평균 + 오늘 세트가 경계를 넘으면 넘지 않는 만큼으로
+         * 줄이고, 그게 부위당 최소에 못 미치면 {@link #add}가 담지 않는다.
+         */
         void fill(MuscleState state, int sets) {
-            if (withinOptimal(state.weeklySets(), sets)) {
-                add(state, sets, true);
-            }
+            add(state, Math.min(sets, roomBeforeExcessive(state)), true);
+        }
+
+        /** 과다 경계 안에서 부위당 최소라도 담을 수 있는 최적 부위인지 */
+        boolean fillable(MuscleState state) {
+            return roomBeforeExcessive(state) >= policy.perMuscleMinSets();
+        }
+
+        /** 하루 상한까지 남은 자리를 {@code parts}부위가 나눌 때 한 부위의 몫. 부위당 최소보다 작게 주지는 않는다 */
+        int share(int parts) {
+            return Math.max(policy.perMuscleMinSets(), (policy.dailyMaxSets() - total) / parts);
+        }
+
+        private int roomBeforeExcessive(MuscleState state) {
+            return policy.optimalThrough().subtract(state.weeklySets()).setScale(0, RoundingMode.FLOOR).intValue();
         }
 
         boolean belowMin() {

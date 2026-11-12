@@ -97,7 +97,7 @@ class SlotPlannerTest {
     }
 
     @Test
-    @DisplayName("부족한 부위가 여러 묶음에 흩어져 있으면 맨 앞 부위의 묶음만 하고, 같은 묶음의 최적 부위로 채운다")
+    @DisplayName("부족한 부위가 여러 묶음에 흩어져 있으면 맨 앞 부위의 묶음만 하고, 남은 자리는 같은 묶음의 최적 부위가 고르게 나눈다")
     void oneBundlePerDay() {
         List<MuscleState> states = all(OPTIMAL, "12", TODAY.minusDays(3),
                 state(POSTERIOR, "2.1", INSUFFICIENT, TODAY.minusDays(5)),
@@ -112,25 +112,60 @@ class SlotPlannerTest {
     }
 
     @Test
-    @DisplayName("뒤허벅지를 하는 날은 앞허벅지를 같이 채우고, 그래도 12에 못 미치면 최적인 코어로 채운다")
-    void fillWithinBundleThenCore() {
+    @DisplayName("뒤허벅지를 하는 날은 최적인 앞허벅지도 같은 세트로 채우고, 하체 날이라 최적인 코어도 붙는다")
+    void fillWithinBundleAndCoreOnLowerDay() {
         List<MuscleState> states = all(OPTIMAL, "12", TODAY.minusDays(3),
                 state(POSTERIOR, "2", INSUFFICIENT, TODAY.minusDays(5)));
 
         List<RoutineSlot> slots = SlotPlanner.plan(states, 5, TODAY, POLICY);
 
-        assertEquals(Map.of(POSTERIOR, 6, QUADS, 3, CORE, 3), sets(slots));
-        assertEquals(12, total(slots));
+        assertEquals(Map.of(POSTERIOR, 6, QUADS, 6, CORE, 6), sets(slots));
+        assertEquals(List.of(QUADS, CORE), muscles(slots.stream().filter(RoutineSlot::fill).toList()));
     }
 
     @Test
-    @DisplayName("채우는 3세트로 과다 경계(20)를 넘는 최적 부위는 채우지 않는다 (R2)")
+    @DisplayName("전 부위가 최적이어도 그날 묶음을 주 목표를 유지할 만큼 담는다 — 18세트")
+    void optimalMusclesKeepFullSets() {
+        List<RoutineSlot> slots = SlotPlanner.plan(all(OPTIMAL, "12", TODAY.minusDays(3)), 5, TODAY, POLICY);
+
+        assertEquals(Map.of(CHEST, 6, DELT_FRONT, 6, TRICEPS, 6), sets(slots));
+        assertTrue(slots.stream().allMatch(RoutineSlot::fill));
+    }
+
+    @Test
+    @DisplayName("최적 부위는 과다 경계(주당 평균 + 오늘 세트 ≤ 20)까지만 — 넘으면 줄여 담고, 3세트도 못 담으면 뺀다 (R2)")
+    void fillStopsAtExcessiveBoundary() {
+        assertEquals(Map.of(CHEST, 5, DELT_FRONT, 5, TRICEPS, 5),
+                sets(SlotPlanner.plan(all(OPTIMAL, "15", TODAY.minusDays(3)), 5, TODAY, POLICY)), "15 + 5 = 20");
+        // 세 부위 9세트로는 하한(12)에 못 미쳐 최적인 코어까지 채운다
+        assertEquals(Map.of(CHEST, 3, DELT_FRONT, 3, TRICEPS, 3, CORE, 3),
+                sets(SlotPlanner.plan(all(OPTIMAL, "17", TODAY.minusDays(3)), 5, TODAY, POLICY)), "17 + 3 = 20");
+        assertTrue(SlotPlanner.plan(all(OPTIMAL, "17.5", TODAY.minusDays(3)), 5, TODAY, POLICY).isEmpty(),
+                "남은 2.5세트로는 부위당 최소 3세트를 못 담는다");
+        assertTrue(SlotPlanner.plan(all(OPTIMAL, "20", TODAY.minusDays(3)), 5, TODAY, POLICY).isEmpty());
+    }
+
+    @Test
+    @DisplayName("과다 경계에 걸린 최적 부위는 빠지고, 그 자리는 같은 묶음의 다른 부위가 쓴다")
     void fillNeverOverloads() {
         List<MuscleState> states = all(OPTIMAL, "12", TODAY.minusDays(3),
                 state(POSTERIOR, "2", INSUFFICIENT, TODAY.minusDays(5)),
                 state(QUADS, "19", OPTIMAL, TODAY.minusDays(3)));
 
-        assertFalse(sets(SlotPlanner.plan(states, 5, TODAY, POLICY)).containsKey(QUADS));
+        assertEquals(Map.of(POSTERIOR, 6, CORE, 6), sets(SlotPlanner.plan(states, 5, TODAY, POLICY)));
+    }
+
+    @Test
+    @DisplayName("최적인 코어는 하체 날에만 붙는다 — 밀기·당기기 날은 세 부위로 자리가 차고, 모자라도 끌어오지 않는다")
+    void optimalCoreOnlyOnLowerDay() {
+        // 주 6회면 부위당 5세트라 밀기 날이 15세트다. 자리가 남아도 최적인 코어는 붙이지 않는다
+        List<RoutineSlot> push = SlotPlanner.plan(all(OPTIMAL, "12", TODAY.minusDays(3)), 6, TODAY, POLICY);
+        List<RoutineSlot> lower = SlotPlanner.plan(all(OPTIMAL, "12", TODAY.minusDays(3),
+                state(CHEST, "12", OPTIMAL, TODAY.minusDays(1)), state(BACK, "12", OPTIMAL, TODAY.minusDays(1))),
+                6, TODAY, POLICY);
+
+        assertEquals(Map.of(CHEST, 5, DELT_FRONT, 5, TRICEPS, 5), sets(push));
+        assertEquals(Map.of(QUADS, 5, POSTERIOR, 5, CORE, 5), sets(lower));
     }
 
     @Test
@@ -211,7 +246,7 @@ class SlotPlannerTest {
                 state(POSTERIOR, "5", BELOW_RECOMMENDED, TODAY.minusDays(3)),
                 state(CORE, "19", OPTIMAL, TODAY.minusDays(3)));
 
-        // 주 7회면 권장 이하는 4세트씩 = 8. 코어는 채우면 과다라 못 넣고, 두 부위를 6세트까지 올린다
+        // 주 7회면 권장 이하는 4세트씩 = 8. 코어는 과다 경계까지 1세트뿐이라 못 넣고, 두 부위를 6세트까지 올린다
         List<RoutineSlot> slots = SlotPlanner.plan(states, 7, TODAY, POLICY);
 
         assertEquals(Map.of(QUADS, 6, POSTERIOR, 6), sets(slots));
