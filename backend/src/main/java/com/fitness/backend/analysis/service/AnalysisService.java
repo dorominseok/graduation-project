@@ -15,11 +15,15 @@ import com.fitness.backend.analysis.web.AnalysisDtos.BalanceResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.ChildResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.ConfidenceResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.DisplayOnlyResponse;
+import com.fitness.backend.analysis.web.AnalysisDtos.FrequencyResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.MuscleVolumeResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.PairResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.SideResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.TierResponse;
 import com.fitness.backend.common.config.AnalysisProperties;
+import com.fitness.backend.routine.RoutineProperties;
+import com.fitness.backend.routine.domain.RoutinePolicy;
+import com.fitness.backend.routine.domain.TrainingFrequency;
 import com.fitness.backend.common.error.ApiException;
 import com.fitness.backend.common.error.ErrorCode;
 import com.fitness.backend.workout.repository.WorkoutSessionRepository;
@@ -48,15 +52,18 @@ public class AnalysisService {
     private final MuscleVolumeRepository volumeRepository;
     private final WorkoutSessionRepository sessionRepository;
     private final AnalysisProperties properties;
+    private final RoutineProperties routineProperties;
     private final Clock clock;
 
     public AnalysisService(MuscleVolumeRepository volumeRepository,
                            WorkoutSessionRepository sessionRepository,
                            AnalysisProperties properties,
+                           RoutineProperties routineProperties,
                            Clock clock) {
         this.volumeRepository = volumeRepository;
         this.sessionRepository = sessionRepository;
         this.properties = properties;
+        this.routineProperties = routineProperties;
         this.clock = clock;
     }
 
@@ -79,11 +86,30 @@ public class AnalysisService {
             }
         }
 
+        ConfidenceResponse confidence = confidence(userId, period);
         return new MuscleVolumeResponse(
                 period.referenceDate(), period.weeks(), period.from(), period.to(),
                 period.basisDays(), period.to().minusDays(period.basisDays() - 1L),
-                aggregate.shoulderSplitResolved(), confidence(userId, period),
-                List.copyOf(tiers), List.copyOf(displayOnly));
+                aggregate.shoulderSplitResolved(), confidence,
+                List.copyOf(tiers), List.copyOf(displayOnly),
+                frequency(userId, period, confidence.workoutDayCount()));
+    }
+
+    /**
+     * 주당 운동 일수({@link TrainingFrequency} — 기준일까지 꽉 찬 주 단위로 세고 반올림). 오늘의 루틴이 이 값을
+     * 그대로 받아 부위당 세트를 정하므로, 화면에 적는 일수와 루틴이 쓰는 일수가 같다.
+     *
+     * @param knownDays 집계 구간에서 운동한 날. 너무 적으면 모른다고 보고 기본값을 쓴다
+     */
+    private FrequencyResponse frequency(Long userId, Period period, int knownDays) {
+        RoutinePolicy policy = routineProperties.policy(properties.volume().optimalThrough());
+        int fullWeeks = TrainingFrequency.fullWeeks(period.basisDays());
+        int daysInFullWeeks = sessionRepository.countRecordedDays(
+                userId, period.to().minusDays(fullWeeks * 7L - 1), period.to());
+        int daysPerWeek = TrainingFrequency.daysPerWeek(knownDays, daysInFullWeeks, fullWeeks, policy);
+        return new FrequencyResponse(knownDays >= policy.minKnownDays(), daysPerWeek, policy.dailyMaxSets(),
+                TrainingFrequency.maxWeeklySetsPerMuscle(daysPerWeek, policy), policy.targetWeeklySets(),
+                TrainingFrequency.daysForTarget(policy));
     }
 
     /** 균형 판정. 계산 재료는 부위별 볼륨과 같은 주당 평균 세트다. */

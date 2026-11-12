@@ -2,6 +2,8 @@ package com.fitness.backend.routine.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.math.BigDecimal;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -41,5 +43,20 @@ class TrainingFrequencyTest {
         assertEquals(5, TrainingFrequency.daysPerWeek(2, 2, 1, POLICY));
         assertEquals(3, TrainingFrequency.daysPerWeek(3, 3, 1, POLICY));
         assertEquals(1, TrainingFrequency.daysPerWeek(3, 1, 4, POLICY));
+    }
+
+    @Test
+    @DisplayName("부위당 주 최대 세트 = 주당 일수 × 하루 상한(18) ÷ 판정 부위 9개 — 주 3일 6, 4일 8, 5일 10")
+    void maxWeeklySetsPerMuscle() {
+        assertEquals(new BigDecimal("6.0"), TrainingFrequency.maxWeeklySetsPerMuscle(3, POLICY));
+        assertEquals(new BigDecimal("8.0"), TrainingFrequency.maxWeeklySetsPerMuscle(4, POLICY));
+        assertEquals(new BigDecimal("10.0"), TrainingFrequency.maxWeeklySetsPerMuscle(5, POLICY));
+        assertEquals(new BigDecimal("2.0"), TrainingFrequency.maxWeeklySetsPerMuscle(1, POLICY));
+    }
+
+    @Test
+    @DisplayName("모든 부위가 주 10세트에 닿는 주당 일수 — 10 × 9 ÷ 18 = 5일")
+    void daysForTarget() {
+        assertEquals(5, TrainingFrequency.daysForTarget(POLICY));
     }
 }

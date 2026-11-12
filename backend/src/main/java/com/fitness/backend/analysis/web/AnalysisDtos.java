@@ -38,7 +38,23 @@ public final class AnalysisDtos {
             boolean shoulderSplitResolved,
             ConfidenceResponse confidence,
             @Schema(description = "상위 6종. 항상 6개, 고정 순서") List<TierResponse> tiers,
-            @Schema(description = "종아리·전완. 판정하지 않고 세트 수만 준다") List<DisplayOnlyResponse> displayOnly) {
+            @Schema(description = "종아리·전완. 판정하지 않고 세트 수만 준다") List<DisplayOnlyResponse> displayOnly,
+            @Schema(description = "주당 운동 일수와, 루틴을 따를 때 부위당 채울 수 있는 주 세트의 최대") FrequencyResponse frequency) {
+    }
+
+    /**
+     * 주당 운동 일수. 오늘의 루틴도 이 값으로 부위당 세트를 정한다.
+     *
+     * <p>루틴은 하루 {@code dailyMaxSets}세트까지라 일주일에 담을 수 있는 양이 주당 일수에 묶인다. 주 3일이면
+     * 부위당 주 평균 6세트가 최대라 주 목표(10)에 못 닿고 판정이 "권장 이하"에 머문다 — 화면이 그 이유를 적는다.
+     */
+    public record FrequencyResponse(
+            @Schema(description = "운동한 날이 적어 주당 일수를 모르면 false. 그때 daysPerWeek는 기본값(5)이다") boolean known,
+            int daysPerWeek,
+            @Schema(description = "루틴의 하루 상한") int dailyMaxSets,
+            @Schema(description = "주당 일수 × 하루 상한 ÷ 판정 부위 9개. 소수 1자리") BigDecimal maxWeeklySetsPerMuscle,
+            @Schema(description = "부위당 주 목표(최적 하한)") int targetWeeklySets,
+            @Schema(description = "모든 판정 부위가 주 목표에 닿는 주당 일수") int daysForTarget) {
     }
 
     public record ConfidenceResponse(
