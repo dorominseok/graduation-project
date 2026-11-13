@@ -87,7 +87,6 @@ export function HomeScreen() {
   const [analysis, setAnalysis] = useState<{ volume: MuscleVolume; balance: Balance } | null>(null)
   // undefined는 아직 읽는 중, null은 오늘 루틴을 받지 않음
   const [routine, setRoutine] = useState<Routine | null | undefined>(undefined)
-  const [creating, setCreating] = useState(false)
   // 다음 방문에 한 번 묻는 지난 루틴
   const [pending, setPending] = useState<Routine | null>(null)
   const [answering, setAnswering] = useState(false)
@@ -156,20 +155,6 @@ export function HomeScreen() {
     }
   }, [fail])
 
-  const createRoutine = async () => {
-    if (creating) return
-    setCreating(true)
-    try {
-      const created = await routineApi.createToday()
-      setRoutine(created)
-      navigate(paths.routineDetail(created.id))
-    } catch (err) {
-      fail(err)
-    } finally {
-      setCreating(false)
-    }
-  }
-
   const answerToday = async (rating: FeedbackRating, reason?: FeedbackReason) => {
     if (!routine || answering) return
     setAnswering(true)
@@ -224,13 +209,9 @@ export function HomeScreen() {
                   ? `${todayRecord.exerciseCount}종목 · ${todayRecord.setCount}세트 기록했어요`
                   : restLine(counts.recent[0], today)}
               </div>
-              <button
-                type="button"
-                className={styles.start}
-                disabled={creating}
-                onClick={() => void createRoutine()}
-              >
-                {creating ? '루틴 짜는 중…' : '오늘 루틴 추천받기'}
+              {/* 만드는 동안은 따로 화면을 둔다 — LLM이면 몇 초 걸린다 */}
+              <button type="button" className={styles.start} onClick={() => navigate(paths.routineCreating)}>
+                오늘 루틴 추천받기
               </button>
               <button type="button" className={styles.heroSecondary} onClick={() => navigate(paths.session)}>
                 {todayRecord ? '이어서 기록' : '직접 기록하기'}
