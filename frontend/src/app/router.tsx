@@ -14,6 +14,7 @@ import { GroupScreen } from '../screens/tabs/GroupScreen'
 import { ProfileScreen } from '../screens/tabs/ProfileScreen'
 
 import { SessionScreen } from '../screens/full/SessionScreen'
+import { RoutineCreatingScreen } from '../screens/routine/RoutineCreatingScreen'
 import { RoutineScreen } from '../screens/routine/RoutineScreen'
 import { ExerciseListScreen } from '../screens/full/ExerciseListScreen'
 import { ExerciseDetailScreen } from '../screens/full/ExerciseDetailScreen'
@@ -84,6 +85,8 @@ export const router = createBrowserRouter([
         children: [
           { path: paths.session, element: <SessionScreen /> },
           { path: paths.sessionDetail(), element: <SessionScreen /> },
+          // /routines/new는 고정 경로라 /routines/:routineId보다 먼저 맞춰진다
+          { path: paths.routineCreating, element: <RoutineCreatingScreen /> },
           { path: paths.routineDetail(), element: <RoutineScreen /> },
           { path: paths.feedback, element: <FeedbackScreen /> },
         ],
