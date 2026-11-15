@@ -6,6 +6,7 @@ import type { Exercise, MeasureType, MuscleGroupKey, Routine, SessionIntensity, 
 import { useAuth } from '../../auth'
 import { formatDuration, formatRest } from '../../app/dates'
 import { paths } from '../../app/paths'
+import { primeSound } from '../../app/restAlert'
 import { ExercisePicker } from './ExercisePicker'
 import type { PickerStep } from './ExercisePicker'
 import { NumberField } from './NumberField'
@@ -325,6 +326,9 @@ export function SessionScreen() {
       return
     }
 
+    // 체크를 누른 이 순간에 소리를 깨워 둔다. 아이폰은 누르는 순간이 아니면 소리를 켤 수 없는데,
+    // 휴식은 저장이 끝난 뒤에 시작한다
+    primeSound()
     setBusy(true)
     try {
       const target = await ensureSession()

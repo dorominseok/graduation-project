@@ -5,6 +5,16 @@ import { useAuth } from '../../auth'
 import { paths } from '../../app/paths'
 import { TINTS, getTint, setTint } from '../../app/theme'
 import type { Tint } from '../../app/theme'
+import {
+  canKeepScreenOn,
+  canVibrate,
+  getRestAlert,
+  previewSound,
+  previewVibration,
+  setRestAlert,
+} from '../../app/restAlert'
+import type { RestAlertSettings } from '../../app/restAlert'
+import { SwitchRow } from './SwitchRow'
 import styles from './settings.module.css'
 
 const TINT_LABEL: Record<Tint, string> = {
@@ -16,7 +26,7 @@ const TINT_LABEL: Record<Tint, string> = {
   aurora: '오로라',
 }
 
-/** 설정. 계정 관련 진입과 약관·고지, 알림, 유리 색감, 로그아웃을 둔다. 화면 스타일은 유리 하나라 고르지 않는다 */
+/** 설정. 계정 관련 진입과 약관·고지, 알림, 휴식 타이머, 유리 색감, 로그아웃을 둔다. 화면 스타일은 유리 하나라 고르지 않는다 */
 export function SettingsScreen() {
   const navigate = useNavigate()
   const { logout } = useAuth()
@@ -24,9 +34,20 @@ export function SettingsScreen() {
   const [leaving, setLeaving] = useState(false)
   const [tint, setTintState] = useState<Tint>(getTint)
 
+  const [restAlert, setRestAlertState] = useState<RestAlertSettings>(getRestAlert)
+
   const changeTint = (next: Tint) => {
     setTint(next)
     setTintState(next)
+  }
+
+  /** 휴식 타이머 소리·진동·화면 켜 두기. 소리·진동은 켤 때 한 번 들려준다 */
+  const changeRestAlert = (patch: Partial<RestAlertSettings>) => {
+    const next = { ...restAlert, ...patch }
+    setRestAlert(next)
+    setRestAlertState(next)
+    if (patch.sound) previewSound()
+    if (patch.vibrate) previewVibration()
   }
 
   /**
@@ -83,6 +104,37 @@ export function SettingsScreen() {
               <Chevron />
             </Link>
           </div>
+        </div>
+
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>휴식 타이머</div>
+          <div className={styles.card}>
+            <SwitchRow
+              label="끝나면 소리"
+              on={restAlert.sound}
+              onToggle={() => changeRestAlert({ sound: !restAlert.sound })}
+            />
+            {canVibrate() && (
+              <SwitchRow
+                label="끝나면 진동"
+                on={restAlert.vibrate}
+                onToggle={() => changeRestAlert({ vibrate: !restAlert.vibrate })}
+              />
+            )}
+            {canKeepScreenOn() && (
+              <SwitchRow
+                label="쉬는 동안 화면 켜 두기"
+                on={restAlert.keepScreenOn}
+                onToggle={() => changeRestAlert({ keepScreenOn: !restAlert.keepScreenOn })}
+              />
+            )}
+          </div>
+          <p className={styles.hint}>
+            {canKeepScreenOn()
+              ? '앱 화면이 켜져 있을 때만 알릴 수 있어요. 쉬는 동안은 화면이 저절로 꺼지지 않고, 전원 버튼으로는 언제든 끌 수 있어요.'
+              : '앱 화면이 켜져 있을 때만 알릴 수 있어요. 화면이 꺼지면 휴식이 끝나도 울리지 않아요.'}{' '}
+            무음 모드에서는 소리가 나지 않을 수 있어요.
+          </p>
         </div>
 
         <div className={styles.section}>
