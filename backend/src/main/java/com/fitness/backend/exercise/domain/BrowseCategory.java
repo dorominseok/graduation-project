@@ -32,7 +32,8 @@ public enum BrowseCategory {
     ABS("복부", "abdominals"),
     LOWER_BACK("허리", "lower back"),
     GLUTES("엉덩이", "glutes", "abductors"),
-    LEGS("하체", "quadriceps", "hamstrings"),
+    // 내전근(이너타이 머신·케이블 힙 어덕션)은 허벅지 안쪽이라 하체에 둔다. 판정도 앞허벅지로 센다
+    LEGS("하체", "quadriceps", "hamstrings", "adductors"),
     CALVES("종아리", "calves");
 
     private final String label;

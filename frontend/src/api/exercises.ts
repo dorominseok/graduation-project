@@ -58,7 +58,7 @@ export function search(query: ExerciseQuery = {}): Promise<Page<Exercise>> {
 /**
  * 부위 그리드. 종목 선택 1단계.
  *
- * 109종을 한 목록에 늘어놓으면 검색 말고는 찾을 길이 없어서, 부위에서 계열로,
+ * 260종이 넘는 종목을 한 목록에 늘어놓으면 검색 말고는 찾을 길이 없어서, 부위에서 계열로,
  * 계열에서 변형으로 좁혀 들어간다.
  */
 export function categories(): Promise<CategoryCount[]> {

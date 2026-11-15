@@ -61,5 +61,6 @@ export const PRIMARY_MUSCLE_LABEL: Record<string, string> = {
   hamstrings: '뒤허벅지',
   glutes: '엉덩이',
   abductors: '엉덩이 바깥',
+  adductors: '허벅지 안쪽',
   calves: '종아리',
 }

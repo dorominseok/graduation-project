@@ -5,7 +5,8 @@
 free-exercise-db의 사진으로 메운다.
 
     pip install pillow
-    python scripts/fetch_exercise_images.py
+    python scripts/fetch_exercise_images.py          # 그림이 없는 종목만
+    python scripts/fetch_exercise_images.py --all    # 전부 다시
 
 선화를 앞세우는 것은 목록이 2열 그리드라 한 화면에 열 몇 장이 깔리기 때문이다.
 체육관 실사는 장마다 배경·조명·인물이 달라 목록이 산만해진다. 흰 바탕 선화는
@@ -62,6 +63,40 @@ MANUAL = {
     "Reverse Flyes": "Lying Rear Lateral Raise",
     "Parallel Bar Dip": "Chest Dips",
     "Bodyweight Squat": "Squats: Dumbbells",
+    # 2026-11-16 추가분
+    "Hyperextensions (Back Extensions)": "Hyperextensions",
+    "Seated Calf Raise": "Seated Calf Raise using Machine",
+    "Preacher Curl": "Preacher Curl: Barbell",
+    # free-exercise-db에 없는 변형 — 동작이 같은 원래 종목의 선화를 같이 쓴다
+    "Weighted Hyperextensions": "Hyperextensions",
+    "Weighted Dips": "Triceps Dips: Body Weight",
+    "Dumbbell Romanian Deadlift": "Dead Lifts: Dumbbell",
+}
+
+# 어디에도 맞는 그림이 없는 변형 — 이미 받아 둔 원래 종목의 그림 파일을 복사한다.
+# everkinetic의 "Chin Ups"는 그림 파일이 비어 있다.
+SAME_AS = {"Weighted Chin-Up": "Chin-Up"}
+
+# 자동 대조가 엉뚱한 선화를 고르는 종목. 선화를 건너뛰고 사진으로 간다(사진도 없으면 그림 없음).
+# 2026-11-16 추가분을 눈으로 확인해 골랐다 — 클로즈그립 랫풀다운에 벤치프레스, 원암 랫풀다운에
+# 스내치가 붙는 식이다. 이름이 비슷한 다른 동작이거나 기구·각도가 다른 그림이다.
+NO_DRAWING = {
+    "Dumbbell Bench Press with Neutral Grip", "Standing Cable Chest Press", "Low Cable Crossover",
+    "Single-Arm Cable Crossover", "V-Bar Pullup", "Close-Grip Front Lat Pulldown", "One Arm Lat Pulldown",
+    "Rope Straight-Arm Pulldown", "Bent-Arm Barbell Pullover", "Incline Bench Pull", "Bent Over Two-Dumbbell Row",
+    "Dumbbell Incline Row", "Seated One-arm Cable Pulley Rows", "One-Arm Long Bar Row",
+    "Smith Machine Bent Over Row", "Plie Dumbbell Squat", "Split Squat with Dumbbells", "Single-Leg Leg Extension",
+    "Stiff-Legged Barbell Deadlift", "Smith Machine Stiff-Legged Deadlift", "Single Leg Glute Bridge",
+    "Smith Machine Calf Raise", "Smith Machine Overhead Shoulder Press", "Seated Side Lateral Raise",
+    "One-Arm Incline Lateral Raise", "Reverse Machine Flyes", "Cable Rear Delt Fly",
+    "Seated Bent-Over Rear Delt Raise", "Cable Rope Rear-Delt Rows", "Incline Hammer Curls",
+    "Cable Rope Overhead Triceps Extension", "Palms-Down Dumbbell Wrist Curl Over A Bench", "Oblique Crunches",
+    "Hanging Leg Raise", "Standing Cable Wood Chop",
+    # free-exercise-db에 없는 종목 — 맞는 선화가 없다
+    "Low Row Machine", "Back Extension Machine", "V Squat Machine", "Belt Squat Machine",
+    "Pendulum Squat Machine", "Dumbbell Bulgarian Split Squat", "Smith Machine Hip Thrust",
+    "Machine Lateral Raise", "Assisted Dip Machine", "Assisted Pull-Up Machine", "Front Pulldown Machine",
+    "Hip Thrust Machine", "Glute Kickback Machine", "Landmine Press",
 }
 
 # 띄어쓰기가 갈리는 동작어를 하나로 붙인다. everkinetic은 "Dead Lift"로 띄어 쓴다.
@@ -128,6 +163,7 @@ def photo_path(name_en: str) -> str:
 
 
 def main() -> None:
+    redo_all = "--all" in sys.argv[1:]
     with CSV_PATH.open(newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -136,7 +172,7 @@ def main() -> None:
     by_title = {e["title"]: e for e in ever}
     candidates = [(tokens(e["title"]), e) for e in ever]
 
-    drawn, shot, missing, total = 0, 0, [], 0
+    drawn, shot, kept, missing, total = 0, 0, 0, [], 0
     seen: dict[str, str] = {}
 
     for row in rows:
@@ -146,9 +182,26 @@ def main() -> None:
             sys.exit(f"슬러그 충돌: {name_en!r} 와 {seen[key]!r} 가 모두 {key!r}")
         seen[key] = name_en
 
+        # 이미 받은 그림은 그대로 둔다. 새로 받으면 원본이 바뀐 경우 기존 그림까지 조용히 달라진다
+        if not redo_all and (OUT_DIR / f"{key}-1.webp").exists():
+            kept += 1
+            continue
+
+        if name_en in SAME_AS:
+            source = slug(SAME_AS[name_en])
+            for index in (1, 2):
+                original = OUT_DIR / f"{source}-{index}.webp"
+                if original.exists():
+                    copy = OUT_DIR / f"{key}-{index}.webp"
+                    copy.write_bytes(original.read_bytes())
+                    total += copy.stat().st_size
+            drawn += 1
+            print(f"  복사  {row['name_ko']}  <-  {SAME_AS[name_en]}", flush=True)
+            continue
+
         # ── 1순위: everkinetic 선화
         best = by_title.get(MANUAL.get(name_en, ""))
-        if best is None:
+        if best is None and name_en not in NO_DRAWING:
             ours = tokens(name_en)
             score = 0.0
             for theirs, exercise in candidates:
@@ -161,6 +214,9 @@ def main() -> None:
                     best, score = exercise, s
             if score < THRESHOLD:
                 best = None
+        # 그림 파일이 빈 항목도 있다(everkinetic "Chin Ups"). 그러면 사진으로 간다
+        if best is not None and not best["png"]:
+            best = None
 
         if best is not None:
             for index, png in enumerate(best["png"][:2]):
@@ -185,7 +241,7 @@ def main() -> None:
             missing.append(row["name_ko"])
 
     print()
-    print(f"종목 {len(rows)}개 — 선화 {drawn} / 사진 {shot} / 없음 {len(missing)}")
+    print(f"종목 {len(rows)}개 — 있던 그림 {kept} / 선화 {drawn} / 사진 {shot} / 없음 {len(missing)}")
     print(f"합계 {total / 1024 / 1024:.1f} MB  ({OUT_DIR.relative_to(ROOT)})")
     if missing:
         print("\n그림이 없는 종목:")

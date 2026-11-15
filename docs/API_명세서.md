@@ -735,7 +735,7 @@ Authorization: Bearer {accessToken}
 | 필드 | 설명 |
 |---|---|
 | `deltRegion` | `FRONT` \| `REAR` \| `null`. `primaryMuscle`가 `shoulders`인 종목만 값(8.1). 화면 종목 분류엔 쓰지 않고, 분석 판정 참고용 |
-| `groupName` | 같은 동작의 변형 묶음 (`V6`, LOG-24). 109종 전부 값을 갖는다 |
+| `groupName` | 같은 동작의 변형 묶음 (`V6`, LOG-24). 모든 종목(261종)이 값을 갖는다 |
 | `isFavorite` | 내 즐겨찾기 여부. **인증된 요청에만** 포함하고, 비인증 요청에선 키 생략 |
 
 **종목 목록의 세 탭 (목업)**
@@ -884,7 +884,7 @@ Authorization: Bearer {accessToken}
 
 > 동작 그림은 백엔드를 거치지 않는다. `exercises`에 `image_url` 컬럼을 두지 않고 프론트의 정적 파일로 두었다 — 사용자가 올리는 것이 아니라 제품에 딸려오는 고정 자산이라 코드와 같이 버전이 매겨지는 편이 맞고, 컬럼을 두면 그림이 없는 종목까지 채워야 한다. 출처와 라이선스는 `frontend/public/exercises/CREDITS.md`에 있다.
 
-> 계열은 109종 전부가 값을 가지며 40개다. `primary_muscle`이 "어느 근육을 쓰는가"(판정용)인 반면 `group_name`은 "어떤 동작인가"(탐색용)다 — 벤치프레스와 체스트프레스는 같은 근육을 쓰지만 고를 때는 다른 동작이다(LOG-24).
+> 계열은 모든 종목이 값을 가진다. 109종일 때 40개였고, 2026-11-16 종목을 261종으로 늘린 뒤 49개다. `primary_muscle`이 "어느 근육을 쓰는가"(판정용)인 반면 `group_name`은 "어떤 동작인가"(탐색용)다 — 벤치프레스와 체스트프레스는 같은 근육을 쓰지만 고를 때는 다른 동작이다(LOG-24).
 
 ### 5.8 GET /exercises/{id}/history
 
@@ -1723,7 +1723,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | `V12__drop_user_goal.sql` | `users.goal` 컬럼과 `ck_users_goal` 제약 삭제 (4.6, LOG-46) | 완료 (11월 1주) |
 | `V13__routine_reason.sql` | `routines.reason` — 왜 오늘 이 부위인지, 규칙이 쓴 한 줄 (11.4) | 완료 (11월 2주) |
 | 요약 배지 문안 | `summaryBadge` label 및 `MIXED` 표기 확정 (8.2). enum `key`는 고정 | 완료 (8.2 표 그대로) |
-| QUADS 화면 명칭 | `abductors`·`adductors` 포함이라 "앞허벅지"가 부정확 (LOG-10 한계) | "앞허벅지" 유지 — 시드 109종 중 QUADS 11종은 `quadriceps` 10 + `abductors` 1이고 `adductors`는 없다. 대부분이 대퇴사두라 이름을 바꾸지 않았다 |
+| QUADS 화면 명칭 | `abductors`·`adductors` 포함이라 "앞허벅지"가 부정확 (LOG-10 한계) | "앞허벅지" 유지 — 시드 109종 중 QUADS 11종은 `quadriceps` 10 + `abductors` 1이고 `adductors`는 없다. 대부분이 대퇴사두라 이름을 바꾸지 않았다. 261종(2026-11-16)에서도 QUADS 34종 중 32종이 `quadriceps`다(`abductors`·`adductors` 각 1) |
 | 우선순위 산출 | 여러 부위 동시 부족·불균형 시 보완 순서 (분석 8장) | 완료 — 「루틴생성_로직_설계서」 2장 |
 | 부위별 볼륨 **주간 추이** 엔드포인트 | 8장에 시계열 경로가 없다. 2026-10-03에 `GET /analysis/weekly-volume`(월~일 주마다 부위별 세트, 판정 없음)을 만들었으나 화면에 붙일 방식이 정해지지 않아 **엔드포인트까지 걷어냈다**(LOG-30). 보여줄 방식이 정해지면 다시 만든다 | 미정 |
 | 비밀번호 **변경** API | **9월 범위에 추가** (4.8) — 스키마·의존성 추가 없이 엔드포인트 1개 | LOG-21 |

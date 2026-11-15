@@ -28,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 운동 종목 조회·즐겨찾기.
  *
- * <p>종목 데이터는 {@code R__seed_exercises.sql}로 들어간 109종을 그대로 쓴다.
+ * <p>종목 데이터는 {@code R__seed_exercises.sql}로 들어간 261종을 그대로 쓴다.
  * 시드가 바뀌어도 깨지지 않도록, 개수를 못박는 대신 관계와 형태를 검사한다.
  */
 @SpringBootTest
@@ -347,7 +347,7 @@ class ExerciseApiTest {
     void muscleGroupSplitsShoulders() throws Exception {
         mvc.perform(get("/api/v1/exercises").param("muscleGroup", "DELT_REAR").param("size", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.page.totalElements").value(3))
+                .andExpect(jsonPath("$.page.totalElements").value(9))
                 .andExpect(jsonPath("$.content[*].deltRegion")
                         .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is("REAR"))));
     }
@@ -357,7 +357,7 @@ class ExerciseApiTest {
     void muscleGroupSpansCategories() throws Exception {
         mvc.perform(get("/api/v1/exercises").param("muscleGroup", "POSTERIOR").param("size", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.page.totalElements").value(7))
+                .andExpect(jsonPath("$.page.totalElements").value(24))
                 .andExpect(jsonPath("$.content[*].primaryMuscle").value(org.hamcrest.Matchers.everyItem(
                         org.hamcrest.Matchers.isOneOf("hamstrings", "glutes"))));
     }
@@ -377,15 +377,15 @@ class ExerciseApiTest {
     }
 
     @Test
-    @DisplayName("어깨는 탐색에서도 전면 10종·후면 3종으로 나뉜다 — 약점의 '어깨 후면'과 같은 단위다")
+    @DisplayName("어깨는 탐색에서도 전면 20종·후면 9종으로 나뉜다 — 약점의 '어깨 후면'과 같은 단위다")
     void shoulderCategoriesSplitByDeltRegion() throws Exception {
         String categories = getBody("/api/v1/exercises/categories");
-        assertThat(categories).contains("\"category\":\"SHOULDERS_FRONT\",\"label\":\"어깨 전·측면\",\"count\":10");
-        assertThat(categories).contains("\"category\":\"SHOULDERS_REAR\",\"label\":\"어깨 후면\",\"count\":3");
+        assertThat(categories).contains("\"category\":\"SHOULDERS_FRONT\",\"label\":\"어깨 전·측면\",\"count\":20");
+        assertThat(categories).contains("\"category\":\"SHOULDERS_REAR\",\"label\":\"어깨 후면\",\"count\":9");
 
         mvc.perform(get("/api/v1/exercises").param("category", "SHOULDERS_REAR").param("size", "100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.page.totalElements").value(3))
+                .andExpect(jsonPath("$.page.totalElements").value(9))
                 .andExpect(jsonPath("$.content[*].deltRegion")
                         .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is("REAR"))));
     }
@@ -401,6 +401,6 @@ class ExerciseApiTest {
         mvc.perform(get("/api/v1/exercises")
                         .param("category", "SHOULDERS_REAR").param("muscleGroup", "DELT_REAR"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.page.totalElements").value(3));
+                .andExpect(jsonPath("$.page.totalElements").value(9));
     }
 }
