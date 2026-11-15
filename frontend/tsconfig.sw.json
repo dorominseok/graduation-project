@@ -1,0 +1,24 @@
+{
+  // 알림 전용 서비스워커(src/sw.ts). 전역이 window가 아니라 ServiceWorkerGlobalScope라 화면과 따로 검사한다
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.sw.tsbuildinfo",
+    "target": "ES2022",
+    "lib": ["ES2022", "WebWorker"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    /* Linting */
+    "strict": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": ["src/sw.ts"]
+}

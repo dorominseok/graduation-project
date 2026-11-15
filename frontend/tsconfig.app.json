@@ -23,5 +23,7 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // 서비스워커는 화면과 전역(window ↔ self)이 달라 tsconfig.sw.json이 따로 검사한다
+  "exclude": ["src/sw.ts"]
 }

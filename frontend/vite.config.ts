@@ -7,9 +7,19 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // 서비스워커는 11월이다(구축 기록 11.2). 빌드가 sw.js를 만들어도 등록하지 않는다 —
-      // 등록되면 배포한 새 화면이 캐시에 막혀 사용자에게 늦게 보인다.
+      // 서비스워커는 알림 전용(src/sw.ts, 「알림_설계서」 4.1). 요청을 가로채지 않고 캐시도 없다 —
+      // 캐시가 배포한 새 화면을 막던 문제(구축 기록 11.2)를 다시 만들지 않는다. 그래서 workbox가 만드는
+      // 서비스워커(generateSW) 대신 직접 쓴 파일을 빌드만 하고(injectManifest), 미리 받아 둘 파일 목록은
+      // 넣지 않는다(injectionPoint 없음). 등록도 자동으로 하지 않고 설정 › 알림에서 켤 때만 한다(app/push.ts).
       // manifest와 아이콘만으로 홈 화면 설치는 된다.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
+        injectionPoint: undefined,
+        // 일반 스크립트로 등록한다(모듈 서비스워커는 브라우저마다 지원이 다르다)
+        rollupFormat: 'iife',
+      },
       injectRegister: false,
       manifest: {
         name: '밸런스핏',

@@ -16,7 +16,7 @@ const TINT_LABEL: Record<Tint, string> = {
   aurora: '오로라',
 }
 
-/** 설정. 계정 관련 진입과 약관·고지, 유리 색감, 로그아웃을 둔다. 화면 스타일은 유리 하나라 고르지 않는다 */
+/** 설정. 계정 관련 진입과 약관·고지, 알림, 유리 색감, 로그아웃을 둔다. 화면 스타일은 유리 하나라 고르지 않는다 */
 export function SettingsScreen() {
   const navigate = useNavigate()
   const { logout } = useAuth()
@@ -70,6 +70,16 @@ export function SettingsScreen() {
             </Link>
             <Link to={paths.licenses} className={styles.row}>
               <span className={styles.rowLabel}>오픈소스 라이선스</span>
+              <Chevron />
+            </Link>
+          </div>
+        </div>
+
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>알림</div>
+          <div className={styles.card}>
+            <Link to={paths.notificationSettings} className={styles.row}>
+              <span className={styles.rowLabel}>운동 알림</span>
               <Chevron />
             </Link>
           </div>

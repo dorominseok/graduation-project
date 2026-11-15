@@ -30,6 +30,8 @@ export const paths = {
   accountSettings: '/settings/account',
   personalInfo: '/settings/personal',
   licenses: '/settings/licenses',
+  /** 알림 설정. 알림의 주소가 아니라 설정 화면이다 */
+  notificationSettings: '/settings/notifications',
   feedback: '/feedback',
 
   // 친구 그룹. 그룹 탭 아래에 둬서 하단바의 "그룹"에 불이 켜진다
