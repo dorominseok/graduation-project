@@ -4,6 +4,7 @@ import com.fitness.backend.common.error.ApiException;
 import com.fitness.backend.common.error.ErrorCode;
 import com.fitness.backend.exercise.domain.Exercise;
 import com.fitness.backend.exercise.repository.ExerciseRepository;
+import com.fitness.backend.group.event.GroupEvents;
 import com.fitness.backend.group.domain.FriendGroup;
 import com.fitness.backend.group.domain.GroupMember;
 import com.fitness.backend.group.domain.InviteCode;
@@ -50,6 +51,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -80,6 +82,7 @@ public class GroupService {
     private final WorkoutSessionRepository sessionRepository;
     private final WorkoutService workoutService;
     private final ExerciseRepository exerciseRepository;
+    private final ApplicationEventPublisher events;
     private final Clock clock;
 
     public GroupService(FriendGroupRepository groupRepository,
@@ -89,6 +92,7 @@ public class GroupService {
                         WorkoutSessionRepository sessionRepository,
                         WorkoutService workoutService,
                         ExerciseRepository exerciseRepository,
+                        ApplicationEventPublisher events,
                         Clock clock) {
         this.groupRepository = groupRepository;
         this.memberRepository = memberRepository;
@@ -97,6 +101,7 @@ public class GroupService {
         this.sessionRepository = sessionRepository;
         this.workoutService = workoutService;
         this.exerciseRepository = exerciseRepository;
+        this.events = events;
         this.clock = clock;
     }
 
@@ -250,6 +255,7 @@ public class GroupService {
         }
         ensureCanJoinMore(userId);
         memberRepository.save(GroupMember.join(group.getId(), userId, OffsetDateTime.now(clock)));
+        events.publishEvent(new GroupEvents.MemberJoined(group.getId(), group.getName(), group.getOwnerId(), userId));
         return new JoinResponse(group.getId(), group.getName(), false);
     }
 
@@ -308,6 +314,7 @@ public class GroupService {
             return false;
         }
         group.transferOwnership(successor.get().getUserId());
+        events.publishEvent(new GroupEvents.OwnershipTransferred(group.getId(), group.getName(), successor.get().getUserId()));
         return true;
     }
 
@@ -351,7 +358,9 @@ public class GroupService {
         if (session.getUserId().equals(userId)) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "내 운동에는 응원할 수 없습니다.");
         }
-        cheerRepository.insertIfAbsent(sessionId, userId);
+        if (cheerRepository.insertIfAbsent(sessionId, userId) > 0) {
+            events.publishEvent(new GroupEvents.CheerAdded(groupId, session.getUserId(), userId, session.getPerformedOn()));
+        }
         return new CheerResponse((int) cheerRepository.countBySessionId(sessionId), true);
     }
 

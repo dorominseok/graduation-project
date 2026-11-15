@@ -373,6 +373,15 @@ Authorization: Bearer {accessToken}
 | GET | `/routines/{routineId}/items/{itemId}/alternatives` | 교체 후보 | ✔ |
 | PUT | `/routines/{routineId}/feedback` | 만족도 답하기·건너뛰기 | ✔ |
 
+### 3.8 알림 (12장, 2026-11-15)
+
+| 메서드 | 경로 | 설명 | 인증 |
+|---|---|---|---|
+| GET | `/users/me/notification-settings` | 알림 설정 + 서버 공개키 (저장 전이면 기본값) | ✔ |
+| PUT | `/users/me/notification-settings` | 알림 설정 저장 | ✔ |
+| POST | `/users/me/push-subscriptions` | 기기 등록(푸시 구독) | ✔ |
+| DELETE | `/users/me/push-subscriptions` | 기기 등록 해제 | ✔ |
+
 ---
 
 ## 4. 인증·프로필 API
@@ -1414,7 +1423,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | `10 ≤ x ≤ 20` | `OPTIMAL` | 최적 |
 | `x > 20` | `EXCESSIVE` | 과다 |
 
-> **경계값은 위 부등호가 확정이다.** `weeklySets`가 소수 1자리이므로 정확히 `4.0` / `10.0` / `20.0`이 흔하게 나온다(4주 40세트 = 10.0). ACSM 권고(주 10세트 이상, 주 약 18~20세트 이후 증가 폭 감소)를 최적 10~20세트로 구간화하고 **`10`과 `20`은 최적에 포함**한다. 4세트 경계는 ACSM이 아니라 본 작품이 둔 경계다(분석 2.2, LOG-44). 목업은 `20`을 과다로 처리하므로 수정 대상이다(대조 평가 C-29).
+> **경계값은 위 부등호가 확정이다.** `weeklySets`가 소수 1자리이므로 정확히 `4.0` / `10.0` / `20.0`이 흔하게 나온다(4주 40세트 = 10.0). ACSM 권고(주 10세트 이상, 주 약 18\~20세트 이후 증가 폭 감소)를 최적 10\~20세트로 구간화하고 **`10`과 `20`은 최적에 포함**한다. 4세트 경계는 ACSM이 아니라 본 작품이 둔 경계다(분석 2.2, LOG-44). 목업은 `20`을 과다로 처리하므로 수정 대상이다(대조 평가 C-29).
 
 **응답 `200 OK`**
 
@@ -2026,7 +2035,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | `totalSets` | 빼지 않은 항목의 `plannedSets` 합 |
 | `doneSets` | 빼지 않은 항목마다 `min(그날 체크한 본세트, plannedSets)`의 합 — 진행 표시용. 계획보다 많이 해도 계획만큼만 센다 |
 | `items` | `position` 순. 큰 근육 → 작은 근육 → 코어. 뺀 항목도 `removed: true`로 내려온다. 한 부위가 두 종목(3+3세트)일 수 있다 — 기록이 없는 사람의 첫 루틴은 가슴 둘 · 어깨 전·측면 · 삼두, 네 항목 18세트다(설계서 2.6) |
-| `items[].targetMin`·`targetMax` | 반복 범위 — 측정 유형으로 고정. 중량 8~12회, 맨몸 10~15회, 시간 30~60**초**(설계서 9.1). 중량은 정하지 않는다 |
+| `items[].targetMin`·`targetMax` | 반복 범위 — 측정 유형으로 고정. 중량 8\~12회, 맨몸 10\~15회, 시간 30\~60**초**(설계서 9.1). 중량은 정하지 않는다 |
 | `items[].firstTime` | 루틴 날짜 전에 이 종목 세트가 하나도 없다. 화면이 [처음]과 "동작 보기"를 띄운다 |
 | `items[].basisWeeklySets`·`basisVerdict` | 근거 — 만든 날 기준 최근 4주 주당 평균 세트와 판정(8.2). "가슴 · 주 0세트(부족)" |
 | `items[].adjusted` | 교체·세트 조정·빼기 중 하나라도 했다 |
@@ -2121,6 +2130,72 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | `feedback-lookback-days` | 7 | 만족도를 물을 지난 루틴을 찾는 기간 |
 
 LLM 설정은 `app.llm.*`(`enabled`, `model`, `timeout-ms`, `temperature`, `max-retries`, `max-output-tokens`)에 따로 있다 — 「루틴생성_로직_설계서」 13장.
+
+---
+
+## 12. 알림 API
+
+> 2026-11-15 신설. 「알림_설계서」. 엔드포인트 4개 — 전체 54→58개.
+
+웹 푸시(VAPID) 알림 네 종류 — 운동 리마인더, 주간 요약, 응원 받음, 그룹 소식. 알림을 보내는 쪽은 API가 아니라 서버의 예약 작업(30분마다)과 그룹 일(응원·참여·방장 위임)이다. 여기 있는 API는 설정과 기기 등록뿐이다.
+
+### 12.1 GET /users/me/notification-settings
+
+**응답 `200 OK`**
+
+```json
+{
+  "pushAvailable": true,
+  "vapidPublicKey": "BOr...",
+  "subscriptionCount": 1,
+  "saved": true,
+  "reminder": { "enabled": true, "days": ["MONDAY", "WEDNESDAY", "FRIDAY"], "time": "19:00" },
+  "summary":  { "enabled": true, "day": "SUNDAY", "time": "20:00" },
+  "cheer": true,
+  "group": true
+}
+```
+
+| 필드 | 설명 |
+|---|---|
+| `pushAvailable` · `vapidPublicKey` | 서버에 VAPID 키가 있어 보낼 수 있는지와, 브라우저가 구독할 때 쓰는 공개키(base64url). 키가 없으면(로컬 기본) `false` · `null` — 화면은 알림 켜기를 막는다 |
+| `subscriptionCount` | 이 계정에 등록된 기기 수. 0이면 아무것도 받지 않는다 |
+| `saved` | 저장된 설정인지. `false`면 기본값이고 `reminder.days`는 최근 4주에 두 번 이상 운동한 요일(없으면 월·수·금) |
+| `reminder` | 운동 리마인더. 고른 요일·시각에, 그날 기록이 없고 루틴이 비지 않을 때만 보낸다. 본문은 루틴의 "왜 오늘 이 부위인지"(11장 `reason`) |
+| `summary` | 주간 요약. 고른 요일·시각에 주 1회 |
+| `cheer` · `group` | 응원 받음 · 그룹 소식(새 멤버 → 방장에게, 방장 위임 → 새 방장에게). 일이 생긴 즉시, 조용한 시간(22:00\~08:00)이면 보내지 않는다 |
+
+### 12.2 PUT /users/me/notification-settings
+
+**요청** — 12.1의 `reminder` · `summary` · `cheer` · `group`과 같은 모양.
+
+| 상황 | 응답 |
+|---|---|
+| 저장 | `200 OK` — 12.1과 같은 응답(`saved: true`) |
+| 시각이 08:00\~21:30이 아니거나 30분 단위가 아님 | `400 VALIDATION_ERROR` — 조용한 시간과 겹치지 않게 |
+| 리마인더를 켰는데 요일이 없음 | `400 VALIDATION_ERROR` |
+
+### 12.3 POST /users/me/push-subscriptions
+
+**요청** — 브라우저 `PushSubscription.toJSON()` 그대로.
+
+```json
+{ "endpoint": "https://fcm.googleapis.com/fcm/send/…", "keys": { "p256dh": "BNc…", "auth": "tBH…" } }
+```
+
+| 상황 | 응답 |
+|---|---|
+| 등록 | `200 OK` — 12.1과 같은 응답. 처음 켜는 사람이면 설정을 기본값으로 저장한다 |
+| 같은 `endpoint`가 이미 있음 | `200 OK` — 주인과 키만 바꾼다(같은 브라우저로 다른 계정에 로그인한 경우) |
+| `endpoint`가 https가 아님, `p256dh`가 P-256 공개키(65바이트)가 아님, `auth`가 16바이트가 아님 | `400 VALIDATION_ERROR` |
+
+### 12.4 DELETE /users/me/push-subscriptions
+
+**요청** `{ "endpoint": "…" }` → `204 No Content`. 내 기기가 아니거나 없으면 아무 일도 하지 않는다(로그아웃·권한 해제가 겹쳐 두 번 와도 된다).
+
+> 푸시 서버가 "구독이 없다"(404·410)고 답하면 서버가 그 기기를 지운다. 회원 탈퇴 시 기기와 설정도 함께 지운다(연쇄 삭제, V14).
+
+**서버 설정** — `app.push.public-key` · `private-key`(환경변수 `VAPID_PUBLIC_KEY` · `VAPID_PRIVATE_KEY`, `./gradlew vapidKeys`로 만든다), `subject`(사이트 주소). 둘 다 비면 알림을 보내지 않고 예약 작업도 돌지 않는다.
 
 ---
 

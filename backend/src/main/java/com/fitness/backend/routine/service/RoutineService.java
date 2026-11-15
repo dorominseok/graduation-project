@@ -147,20 +147,9 @@ public class RoutineService {
 
         LocalDate referenceDate = today.minusDays(1);
         RoutinePolicy policy = policy();
-        MuscleVolumeResponse volume = analysisService.muscleVolume(userId, null, referenceDate);
-        BalanceResponse balance = analysisService.balance(userId, null, referenceDate);
-
-        List<Imbalance> imbalances = imbalances(balance);
-        Set<MuscleGroup> lesser = RoutineCheck.lesserOnly(imbalances);
-        Set<MuscleGroup> bigger = RoutineCheck.biggerOnly(imbalances);
-        Map<MuscleGroup, LocalDate> lastTrained = lastTrained(userId, today);
-        List<MuscleState> states = volume.tiers().stream()
-                .flatMap(tier -> tier.children().stream())
-                .map((ChildResponse c) -> new MuscleState(c.key(), c.weeklySets(), c.verdict(),
-                        lastTrained.get(c.key()), lesser.contains(c.key()), bigger.contains(c.key())))
-                .toList();
-
-        SlotPlanner.Plan plan = SlotPlanner.decide(states, volume.frequency().daysPerWeek(), today, policy);
+        Planning planning = plan(userId, today, policy);
+        SlotPlanner.Plan plan = planning.plan();
+        List<Imbalance> imbalances = planning.imbalances();
         List<RoutineSlot> slots = plan.slots();
         // 왜 오늘 이 부위인지는 규칙이 쓴다 — LLM이 켜져 있어도. LLM의 설명은 종목을 그렇게 고른 이유뿐이다
         String reason = RoutineReason.of(plan, imbalances, today, policy);
@@ -236,6 +225,51 @@ public class RoutineService {
         itemRepository.saveAll(saved);
         linkDay(userId, today, routine.getId());
         return new CreateResult(toResponse(routine), true);
+    }
+
+    /** 그날 묶음·부위·세트와 그때 본 불균형 */
+    private record Planning(SlotPlanner.Plan plan, List<Imbalance> imbalances) {
+    }
+
+    /**
+     * 그날 부위·세트를 정한다 — 종목은 고르지 않는다. 판정은 기준일 어제로, 회복 제외는 오늘 기록까지 본다.
+     * 루틴을 만들 때와 운동 리마인더의 문구({@link #reminderReason})가 같은 계산을 쓴다.
+     */
+    private Planning plan(Long userId, LocalDate today, RoutinePolicy policy) {
+        LocalDate referenceDate = today.minusDays(1);
+        MuscleVolumeResponse volume = analysisService.muscleVolume(userId, null, referenceDate);
+        BalanceResponse balance = analysisService.balance(userId, null, referenceDate);
+
+        List<Imbalance> imbalances = imbalances(balance);
+        Set<MuscleGroup> lesser = RoutineCheck.lesserOnly(imbalances);
+        Set<MuscleGroup> bigger = RoutineCheck.biggerOnly(imbalances);
+        Map<MuscleGroup, LocalDate> lastTrained = lastTrained(userId, today);
+        List<MuscleState> states = volume.tiers().stream()
+                .flatMap(tier -> tier.children().stream())
+                .map((ChildResponse c) -> new MuscleState(c.key(), c.weeklySets(), c.verdict(),
+                        lastTrained.get(c.key()), lesser.contains(c.key()), bigger.contains(c.key())))
+                .toList();
+        SlotPlanner.Plan plan = SlotPlanner.decide(states, volume.frequency().daysPerWeek(), today, policy);
+        return new Planning(plan, imbalances);
+    }
+
+    /**
+     * 운동 리마인더에 쓸 "왜 오늘 이 부위인지" 문장(「알림_설계서」 2장). 오늘 루틴을 이미 만들었으면 그 문장을,
+     * 아니면 루틴을 만드는 규칙 그대로 계산한다 — 알림과 루틴이 다른 말을 하지 않게. LLM은 부르지 않는다.
+     *
+     * @return 담을 부위가 없는 날(모두 회복 중이거나 과다 경계)이면 비어 있다 — 권할 게 없으면 보내지 않는다
+     */
+    public Optional<String> reminderReason(Long userId, LocalDate today) {
+        Optional<Routine> existing = routineRepository.findByUserIdAndRoutineDate(userId, today);
+        if (existing.isPresent() && existing.get().getReason() != null) {
+            return Optional.of(existing.get().getReason());
+        }
+        RoutinePolicy policy = policy();
+        Planning planning = plan(userId, today, policy);
+        if (planning.plan().slots().isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(RoutineReason.of(planning.plan(), planning.imbalances(), today, policy));
     }
 
     /** 불균형인 쌍마다 (적은 쪽, 많은 쪽). 판정 불가(양쪽 0)는 넣지 않는다 */
