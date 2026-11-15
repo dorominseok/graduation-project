@@ -1,5 +1,6 @@
 package com.fitness.backend.analysis.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -408,7 +409,97 @@ class AnalysisApiTest {
         mvc.perform(get("/api/v1/analysis/muscle-volume")).andExpect(status().isUnauthorized());
     }
 
+    // ── 부위별 주간 추이
+
+    @Test
+    @DisplayName("주간 추이 — 기준일에서 7일씩 끊어 오래된 주부터 센다. 기준일이 마지막 주의 끝이다")
+    void trendBucketsByWeeksEndingOnReferenceDate() throws Exception {
+        LocalDate ref = LocalDate.now().minusDays(1);
+        doneSession(ref, benchPress, 3);
+        doneSession(ref.minusDays(6), benchPress, 2);     // 같은 마지막 주
+        doneSession(ref.minusDays(7), benchPress, 4);     // 한 주 앞
+        doneSession(ref.minusDays(50), benchPress, 1);    // 맨 앞 주(기준일 55일 전 ~ 49일 전)
+        doneSession(ref.minusDays(20), squat, 2);
+
+        trend(null, ref)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.weeks").value(8))
+                .andExpect(jsonPath("$.periods.length()").value(8))
+                .andExpect(jsonPath("$.periods[0].from").value(ref.minusDays(55).toString()))
+                .andExpect(jsonPath("$.periods[7].from").value(ref.minusDays(6).toString()))
+                .andExpect(jsonPath("$.periods[7].to").value(ref.toString()))
+                .andExpect(jsonPath("$.firstRecordedOn").value(ref.minusDays(50).toString()))
+                .andExpect(jsonPath("$.periods[0].beforeFirstRecord").value(false))
+                .andExpect(jsonPath("$.groups.length()").value(9))
+                .andExpect(jsonPath("$.groups[0].key").value("CHEST"))
+                .andExpect(jsonPath("$.groups[0].weeklySets")
+                        .value(org.hamcrest.Matchers.contains(1, 0, 0, 0, 0, 0, 4, 5)))
+                .andExpect(jsonPath("$.groups[?(@.key == 'QUADS')].weeklySets[5]").value(2))
+                .andExpect(jsonPath("$.thresholds.optimalFrom").value(10));
+    }
+
+    @Test
+    @DisplayName("주간 추이의 최근 4주 평균은 부위별 볼륨의 주당 세트와 같다 — 약점 탭과 숫자가 어긋나지 않는다")
+    void trendRecentAverageMatchesVolume() throws Exception {
+        LocalDate ref = LocalDate.now().minusDays(1);
+        // 첫 기록이 12일 전이라 분모가 28일이 아니라 13일이다 — 그래도 같아야 한다
+        doneSession(ref, benchPress, 3);
+        doneSession(ref.minusDays(12), benchPress, 4);
+
+        String volumeBody = volume(null, ref).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        Matcher chest = Pattern.compile("\\{\"key\":\"CHEST\",\"label\":\"[^\"]+\",\"weeklySets\":([0-9.]+)")
+                .matcher(volumeBody.substring(volumeBody.indexOf("\"children\"")));
+        assertThat(chest.find()).isTrue();
+
+        trend(null, ref)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.groups[0].recentAverage").value(Double.parseDouble(chest.group(1))))
+                // 그 앞 4주는 기록 전이라 평균을 내지 않는다
+                .andExpect(jsonPath("$.groups[0].previousAverage").doesNotExist())
+                // 첫 기록(12일 전)보다 통째로 앞선 주는 기록 전이다
+                .andExpect(jsonPath("$.periods[5].beforeFirstRecord").value(true))
+                .andExpect(jsonPath("$.periods[6].beforeFirstRecord").value(false));
+    }
+
+    @Test
+    @DisplayName("그 앞 4주까지 다 기록한 뒤면 앞 4주 평균도 준다")
+    void trendPreviousAverageWhenFullyRecorded() throws Exception {
+        LocalDate ref = LocalDate.now().minusDays(1);
+        doneSession(ref.minusDays(60), squat, 1);   // 첫 기록 — 앞 4주(55일 전~28일 전)보다 먼저
+        doneSession(ref.minusDays(40), benchPress, 8);
+        doneSession(ref.minusDays(3), benchPress, 4);
+
+        trend(null, ref)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.groups[0].recentAverage").value(1.0))
+                .andExpect(jsonPath("$.groups[0].previousAverage").value(2.0));
+    }
+
+    @Test
+    @DisplayName("기록이 없어도 9개 부위가 0세트로 오고, 모든 주가 기록 전이다")
+    void trendWithoutRecords() throws Exception {
+        trend(null, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.groups.length()").value(9))
+                .andExpect(jsonPath("$.groups[8].key").value("CORE"))
+                .andExpect(jsonPath("$.groups[0].weeklySets")
+                        .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is(0))))
+                .andExpect(jsonPath("$.periods[7].beforeFirstRecord").value(true))
+                .andExpect(jsonPath("$.firstRecordedOn").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("주간 추이는 1~26주만 받는다")
+    void trendWeeksRange() throws Exception {
+        trend(27, null).andExpect(status().isBadRequest());
+        trend(4, null).andExpect(status().isOk()).andExpect(jsonPath("$.periods.length()").value(4));
+    }
+
     // ── 도우미
+
+    private ResultActions trend(Integer weeks, LocalDate referenceDate) throws Exception {
+        return mvc.perform(withPeriod(get("/api/v1/analysis/muscle-trend"), weeks, referenceDate));
+    }
 
     private ResultActions volume(Integer weeks, LocalDate referenceDate) throws Exception {
         return mvc.perform(withPeriod(get("/api/v1/analysis/muscle-volume"), weeks, referenceDate));

@@ -714,3 +714,35 @@ export interface PushSubscriptionRequest {
   endpoint: string
   keys: { p256dh: string; auth: string }
 }
+
+/**
+ * 부위별 주간 추이. 기준일에서 7일씩 끊은 주마다 본세트 수(오래된 주부터).
+ * 마지막 4주의 평균(`recentAverage`)은 부위별 볼륨의 주당 세트와 같은 값이다.
+ */
+export interface MuscleTrend {
+  referenceDate: string
+  weeks: number
+  /** 기준일까지 첫 운동한 날. 기록이 없으면 null */
+  firstRecordedOn: string | null
+  thresholds: { insufficientBelow: number; optimalFrom: number; optimalThrough: number }
+  periods: TrendWeek[]
+  groups: MuscleTrendRow[]
+}
+
+export interface TrendWeek {
+  from: string
+  to: string
+  /** 통째로 첫 기록 전인 주. 0세트가 아니라 기록 전이다 */
+  beforeFirstRecord: boolean
+}
+
+export interface MuscleTrendRow {
+  key: MuscleGroupKey
+  label: string
+  /** periods와 같은 순서 */
+  weeklySets: number[]
+  /** 최근 4주 주당 평균 */
+  recentAverage: number | null
+  /** 그 앞 4주 주당 평균. 그 4주가 다 기록한 뒤가 아니면 null */
+  previousAverage: number | null
+}

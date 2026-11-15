@@ -96,6 +96,37 @@ public final class AnalysisDtos {
             long totalSets) {
     }
 
+    @Schema(description = "부위별 주간 추이 — 기준일에서 7일씩 끊은 주마다 본세트 수")
+    public record MuscleTrendResponse(
+            LocalDate referenceDate,
+            int weeks,
+            @Schema(description = "기준일까지 첫 운동한 날. 기록이 없으면 null") LocalDate firstRecordedOn,
+            @Schema(description = "판정 경계(주당 세트). 화면이 기준선을 그린다") TrendThresholdsResponse thresholds,
+            @Schema(description = "오래된 주부터. 마지막 주가 기준일로 끝난다") List<TrendWeekResponse> periods,
+            @Schema(description = "판정 부위 9개. 부위별 볼륨의 하위 순서와 같다") List<MuscleTrendRowResponse> groups) {
+    }
+
+    public record TrendThresholdsResponse(BigDecimal insufficientBelow, BigDecimal optimalFrom,
+                                          BigDecimal optimalThrough) {
+    }
+
+    public record TrendWeekResponse(
+            LocalDate from,
+            LocalDate to,
+            @Schema(description = "그 주가 통째로 첫 기록 전이다. 0세트가 아니라 기록 전이라 화면이 비워 둔다")
+            boolean beforeFirstRecord) {
+    }
+
+    public record MuscleTrendRowResponse(
+            MuscleGroup key,
+            String label,
+            @Schema(description = "periods와 같은 순서의 주별 본세트 수") List<Long> weeklySets,
+            @Schema(description = "최근 4주 주당 평균. 부위별 볼륨의 weeklySets와 같은 값(분모도 같다)")
+            BigDecimal recentAverage,
+            @Schema(description = "그 앞 4주 주당 평균. 그 4주가 다 기록한 뒤가 아니면 null")
+            BigDecimal previousAverage) {
+    }
+
     @Schema(description = "밀기/당기기 · 상체/하체 균형")
     public record BalanceResponse(
             LocalDate referenceDate,

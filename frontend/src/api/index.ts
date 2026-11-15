@@ -16,6 +16,9 @@ export * as routineApi from './routines'
 export * as notificationApi from './notifications'
 export type {
   Balance,
+  MuscleTrend,
+  MuscleTrendRow,
+  TrendWeek,
   BalanceSide,
   BalanceSideKey,
   BalanceVerdict,

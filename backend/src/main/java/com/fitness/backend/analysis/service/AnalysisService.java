@@ -8,7 +8,9 @@ import com.fitness.backend.analysis.domain.ConfidenceLevel;
 import com.fitness.backend.analysis.domain.MuscleGroup;
 import com.fitness.backend.analysis.domain.SummaryBadge;
 import com.fitness.backend.analysis.domain.TierGroup;
+import com.fitness.backend.analysis.domain.VolumeThresholds;
 import com.fitness.backend.analysis.domain.VolumeVerdict;
+import com.fitness.backend.analysis.repository.MuscleDaySetCount;
 import com.fitness.backend.analysis.repository.MuscleSetCount;
 import com.fitness.backend.analysis.repository.MuscleVolumeRepository;
 import com.fitness.backend.analysis.web.AnalysisDtos.BalanceResponse;
@@ -16,10 +18,14 @@ import com.fitness.backend.analysis.web.AnalysisDtos.ChildResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.ConfidenceResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.DisplayOnlyResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.FrequencyResponse;
+import com.fitness.backend.analysis.web.AnalysisDtos.MuscleTrendResponse;
+import com.fitness.backend.analysis.web.AnalysisDtos.MuscleTrendRowResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.MuscleVolumeResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.PairResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.SideResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.TierResponse;
+import com.fitness.backend.analysis.web.AnalysisDtos.TrendThresholdsResponse;
+import com.fitness.backend.analysis.web.AnalysisDtos.TrendWeekResponse;
 import com.fitness.backend.common.config.AnalysisProperties;
 import com.fitness.backend.routine.RoutineProperties;
 import com.fitness.backend.routine.domain.RoutinePolicy;
@@ -30,7 +36,9 @@ import com.fitness.backend.workout.repository.WorkoutSessionRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -110,6 +118,79 @@ public class AnalysisService {
         return new FrequencyResponse(knownDays >= policy.minKnownDays(), daysPerWeek, policy.dailyMaxSets(),
                 TrainingFrequency.maxWeeklySetsPerMuscle(daysPerWeek, policy), policy.targetWeeklySets(),
                 TrainingFrequency.daysForTarget(policy));
+    }
+
+    /** 주간 추이의 기본 주 수 — 최근 4주와 그 앞 4주를 나란히 본다 */
+    public static final int TREND_WEEKS = 8;
+
+    /**
+     * 부위별 주간 추이. 기준일을 포함해 7일씩 끊은 {@code weeks}개 주마다 본세트를 센다(오래된 주부터).
+     *
+     * <p>주를 달력(월~일)이 아니라 기준일에서 7일씩 끊는다. 그래야 마지막 네 주의 합이 부위별 볼륨의 집계
+     * 구간(기준일 포함 28일)과 같아져 약점 탭의 숫자와 어긋나지 않는다. 달력 주로 끊으면 월요일에는 이번 주
+     * 막대가 거의 비어 "줄었다"로 읽힌다. 세트 조건(본세트·수행일 기준)도 볼륨과 같은 쿼리를 쓴다.
+     *
+     * <p>첫 기록 전의 주는 0세트가 아니라 기록 전으로 표시한다 — 막 시작한 사람에게 "7주 동안 안 했다"로
+     * 보이지 않게.
+     */
+    public MuscleTrendResponse muscleTrend(Long userId, Integer weeksParam, LocalDate referenceDateParam) {
+        int weeks = weeksParam == null ? TREND_WEEKS : weeksParam;
+        LocalDate to = referenceDateParam == null ? LocalDate.now(clock) : referenceDateParam;
+        LocalDate from = to.minusDays(weeks * 7L - 1);
+        LocalDate firstRecordedOn = sessionRepository.findFirstRecordedOn(userId, to);
+
+        Map<MuscleGroup, long[]> sets = new EnumMap<>(MuscleGroup.class);
+        for (MuscleDaySetCount row : volumeRepository.aggregateByDay(userId, from, to)) {
+            MuscleGroup.of(row.primaryMuscle(), row.deltRegion()).ifPresent(group -> {
+                int week = (int) (ChronoUnit.DAYS.between(from, row.performedOn()) / 7);
+                sets.computeIfAbsent(group, g -> new long[weeks])[week] += row.sets();
+            });
+        }
+
+        List<TrendWeekResponse> periods = new ArrayList<>();
+        for (int week = 0; week < weeks; week++) {
+            LocalDate start = from.plusDays(week * 7L);
+            LocalDate end = start.plusDays(6);
+            periods.add(new TrendWeekResponse(start, end, firstRecordedOn == null || end.isBefore(firstRecordedOn)));
+        }
+
+        // 최근 평균은 부위별 볼륨과 같은 구간·같은 분모로 낸다 — 약점 탭의 주당 세트와 같은 값이 나온다
+        int recentWeeks = properties.weeks();
+        int basisDays = AveragingBasis.days(firstRecordedOn, to, recentWeeks * 7, properties.minBasisDays());
+        // 그 앞 구간은 통째로 기록한 뒤일 때만 — 기록 전 날을 "안 한 날"로 나누면 평균이 낮게 나온다
+        LocalDate previousFrom = to.minusDays(recentWeeks * 14L - 1);
+        boolean previousKnown = weeks >= recentWeeks * 2
+                && firstRecordedOn != null && !firstRecordedOn.isAfter(previousFrom);
+
+        List<MuscleTrendRowResponse> groups = new ArrayList<>();
+        for (MuscleGroup group : MuscleGroup.values()) {
+            if (!group.judged()) {
+                continue;
+            }
+            long[] weekly = sets.getOrDefault(group, new long[weeks]);
+            BigDecimal recent = weeks >= recentWeeks
+                    ? weeklyAverage(sum(weekly, weeks - recentWeeks, weeks), basisDays)
+                    : null;
+            BigDecimal previous = previousKnown
+                    ? weeklyAverage(sum(weekly, weeks - recentWeeks * 2, weeks - recentWeeks), recentWeeks * 7)
+                    : null;
+            groups.add(new MuscleTrendRowResponse(group, group.label(),
+                    Arrays.stream(weekly).boxed().toList(), recent, previous));
+        }
+
+        VolumeThresholds thresholds = properties.volumeThresholds();
+        return new MuscleTrendResponse(to, weeks, firstRecordedOn,
+                new TrendThresholdsResponse(thresholds.insufficientBelow(), thresholds.optimalFrom(),
+                        thresholds.optimalThrough()),
+                List.copyOf(periods), List.copyOf(groups));
+    }
+
+    private static long sum(long[] values, int fromInclusive, int toExclusive) {
+        long total = 0;
+        for (int i = fromInclusive; i < toExclusive; i++) {
+            total += values[i];
+        }
+        return total;
     }
 
     /** 균형 판정. 계산 재료는 부위별 볼륨과 같은 주당 평균 세트다. */

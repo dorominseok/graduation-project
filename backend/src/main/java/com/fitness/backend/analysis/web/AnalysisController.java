@@ -3,6 +3,7 @@ package com.fitness.backend.analysis.web;
 import com.fitness.backend.analysis.service.AnalysisService;
 import com.fitness.backend.analysis.service.RecoveryService;
 import com.fitness.backend.analysis.web.AnalysisDtos.BalanceResponse;
+import com.fitness.backend.analysis.web.AnalysisDtos.MuscleTrendResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.MuscleVolumeResponse;
 import com.fitness.backend.analysis.web.AnalysisDtos.RecoveryResponse;
 import com.fitness.backend.auth.jwt.JwtProvider;
@@ -36,6 +37,9 @@ public class AnalysisController {
     /** 집계 기간 상한. 넘겨도 계산은 되지만 "최근 경향"이라 부를 수 없는 범위다. */
     private static final int MAX_WEEKS = 52;
 
+    /** 주간 추이 상한. 막대가 반년을 넘으면 한 줄에 읽히지 않는다 */
+    private static final int MAX_TREND_WEEKS = 26;
+
     private final AnalysisService analysisService;
     private final RecoveryService recoveryService;
 
@@ -58,6 +62,22 @@ public class AnalysisController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate referenceDate) {
 
         return analysisService.muscleVolume(principal.userId(), weeks, referenceDate);
+    }
+
+    @Operation(summary = "부위별 주간 추이",
+            description = "기준일에서 7일씩 끊은 주마다 판정 부위 9개의 본세트 수. 마지막 4주의 합은 부위별 볼륨과 같다")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "기록이 없어도 9개 부위가 모두 0세트로 내려온다"),
+            @ApiResponse(responseCode = "400", description = "weeks가 범위(1~26)를 벗어남")
+    })
+    @GetMapping("/muscle-trend")
+    public MuscleTrendResponse muscleTrend(
+            @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
+            @RequestParam(required = false) @Min(1) @Max(MAX_TREND_WEEKS) Integer weeks,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate referenceDate) {
+
+        return analysisService.muscleTrend(principal.userId(), weeks, referenceDate);
     }
 
     @Operation(summary = "밀기/당기기 · 상체/하체 균형",

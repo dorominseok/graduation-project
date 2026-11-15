@@ -4,13 +4,15 @@ import { analysisApi, isApiError } from '../../api'
 import type { Balance, MuscleVolume } from '../../api'
 import { ScreenHeader, SegmentedTabs, useToast } from '../../components'
 import { RecoveryView } from '../analysis/RecoveryView'
+import { TrendView } from '../analysis/TrendView'
 import { WeaknessView } from '../analysis/WeaknessView'
 import styles from '../analysis/analysis.module.css'
 
-type View = 'weakness' | 'recovery'
+type View = 'weakness' | 'trend' | 'recovery'
 
 const VIEWS = [
   { value: 'weakness', label: '약점' },
+  { value: 'trend', label: '추이' },
   { value: 'recovery', label: '회복' },
 ] as const
 
@@ -21,13 +23,16 @@ const VIEWS = [
  * 회복 자리에는 예전에 통계(종목별 추정 1RM)가 있었다 — 같은 패널이 종목 상세에 있어서 뺐고,
  * 그때 주소({@code ?view=stats})로 들어오면 회복을 연다.
  *
+ * <p>추이는 약점의 4주 평균을 주별로 펼친 것이라 약점 바로 옆에 둔다.
+ *
  * <p>AI 해설 카드는 두지 않는다. 판정은 부족하다는 데까지만 알리고 처방하지 않는다.
  */
 export function AnalysisScreen() {
   const { showToast } = useToast()
   const [params, setParams] = useSearchParams()
   const viewParam = params.get('view')
-  const view: View = viewParam === 'recovery' || viewParam === 'stats' ? 'recovery' : 'weakness'
+  const view: View =
+    viewParam === 'recovery' || viewParam === 'stats' ? 'recovery' : viewParam === 'trend' ? 'trend' : 'weakness'
 
   const [data, setData] = useState<{ volume: MuscleVolume; balance: Balance } | null>(null)
   const [failed, setFailed] = useState(false)
@@ -74,6 +79,8 @@ export function AnalysisScreen() {
           ) : (
             <div className={styles.status}>{failed ? '분석을 불러오지 못했어요' : '불러오는 중…'}</div>
           )
+        ) : view === 'trend' ? (
+          <TrendView />
         ) : (
           <RecoveryView />
         )}

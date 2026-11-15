@@ -1,5 +1,5 @@
 import { request } from './client'
-import type { Balance, MuscleVolume, Recovery } from './types'
+import type { Balance, MuscleTrend, MuscleVolume, Recovery } from './types'
 
 /**
  * 부위별 볼륨·부족 판정.
@@ -14,6 +14,11 @@ export function getMuscleVolume(): Promise<MuscleVolume> {
 /** 밀기/당기기 · 상체/하체 균형. 볼륨과 같은 기간을 본다. */
 export function getBalance(): Promise<Balance> {
   return request<Balance>('/analysis/balance')
+}
+
+/** 부위별 주간 추이. 기본 8주(최근 4주와 그 앞 4주) */
+export function getMuscleTrend(): Promise<MuscleTrend> {
+  return request<MuscleTrend>('/analysis/muscle-trend')
 }
 
 /** 부위별 회복 상태. 늘 오늘 기준이라 넘길 값이 없다. */
