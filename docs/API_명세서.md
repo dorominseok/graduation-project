@@ -12,6 +12,9 @@
 > 추가: 종목 기록(5.8, 2026-10-25) — 종목 상세의 최근 기록과 "기록 더보기" 페이지. 엔드포인트 52→53개
 > 개정: 2026-11-04 완성된 코드와 대조(LOG-45) — 1.3 인증 예외·403/404, 1.4 페이지 크기, 4.6 훈련 목표, 4.7 함께 지워지는 테이블, 화면이 쓰지 않는 API 표기. 엔드포인트 53개는 컨트롤러와 일치
 > 개정: 2026-11-06 훈련 목표 삭제(LOG-46) — `users.goal`을 지우고(`V12`) 4.5·4.6에서 `profile` 객체를 뺐다. 2.4-(2)·9.1·부록 A 갱신
+> 추가: 부위별 회복 상태(8.6, 2026-11-10). 엔드포인트 53→54개
+> 추가: 알림 설정·푸시 구독(12장, 2026-11-15). 엔드포인트 54→58개
+> 개정: 2026-11-16 종목 261종 — 5.6 분류별 종목 수(내전근은 하체), 11.5 교체 순서에 흔한 종목
 
 ---
 
@@ -304,6 +307,8 @@ Authorization: Bearer {accessToken}
 |---|---|---|---|
 | GET | `/exercises` | 종목 목록·검색 (필터·페이지네이션, `favorite` 필터) | — |
 | GET | `/exercises/{id}` | 종목 단건 조회 | — |
+| GET | `/exercises/categories` | 종목 고르기 1단계 — 분류 13종과 종목 수 (5.6) | — |
+| GET | `/exercises/groups` | 종목 고르기 2단계 — 한 분류의 계열 목록 (5.7) | — |
 | GET | `/exercises/{id}/last-performance` | 이 종목의 **직전 수행 기록** (종목 프리필용) | ✔ |
 | GET | `/exercises/{id}/history` | 이 종목의 **날짜별 기록** (종목 상세·종목 기록 페이지) | ✔ |
 | PUT | `/users/me/favorite-exercises/{exerciseId}` | 즐겨찾기 추가 (멱등) | ✔ |
@@ -823,8 +828,8 @@ Authorization: Bearer {accessToken}
 
 ```json
 [
-  { "category": "CHEST", "label": "가슴", "count": 18 },
-  { "category": "BACK",  "label": "등",   "count": 8 }
+  { "category": "CHEST", "label": "가슴", "count": 33 },
+  { "category": "BACK",  "label": "등",   "count": 33 }
 ]
 ```
 
@@ -836,21 +841,23 @@ Authorization: Bearer {accessToken}
 
 **분류 13종과 `primary_muscle` 대응**
 
-| 분류 | `label` | `primary_muscle` | 종목 수 |
+| 분류 | `label` | `primary_muscle` | 종목 수 (261종, 2026-11-16) |
 |---|---|---|---|
-| `CHEST` | 가슴 | `chest` | 18 |
-| `ABS` | 복부 | `abdominals` | 16 |
-| `LEGS` | 하체 | `quadriceps`, `hamstrings` | 15 |
-| `TRICEPS` | 삼두 | `triceps` | 14 |
-| `SHOULDERS_FRONT` | 어깨 전·측면 | `shoulders` + `delt_region = FRONT` | 10 |
-| `SHOULDERS_REAR` | 어깨 후면 | `shoulders` + `delt_region = REAR` | 3 |
-| `BACK` | 등 | `lats`, `middle back` | 8 |
-| `TRAPS` | 승모근 | `traps` | 7 |
-| `BICEPS` | 이두 | `biceps` | 7 |
-| `FOREARMS` | 전완 | `forearms` | 3 |
-| `GLUTES` | 엉덩이 | `glutes`, `abductors` | 3 |
-| `CALVES` | 종아리 | `calves` | 3 |
-| `LOWER_BACK` | 허리 | `lower back` | 2 |
+| `LEGS` | 하체 | `quadriceps`, `hamstrings`, `adductors` | 46 |
+| `CHEST` | 가슴 | `chest` | 33 |
+| `BACK` | 등 | `lats`, `middle back` | 33 |
+| `ABS` | 복부 | `abdominals` | 30 |
+| `TRICEPS` | 삼두 | `triceps` | 26 |
+| `BICEPS` | 이두 | `biceps` | 24 |
+| `SHOULDERS_FRONT` | 어깨 전·측면 | `shoulders` + `delt_region = FRONT` | 20 |
+| `GLUTES` | 엉덩이 | `glutes`, `abductors` | 12 |
+| `SHOULDERS_REAR` | 어깨 후면 | `shoulders` + `delt_region = REAR` | 9 |
+| `TRAPS` | 승모근 | `traps` | 9 |
+| `CALVES` | 종아리 | `calves` | 8 |
+| `LOWER_BACK` | 허리 | `lower back` | 7 |
+| `FOREARMS` | 전완 | `forearms` | 4 |
+
+> 내전근(`adductors`)은 이너타이 머신을 넣으며(2026-11-16) 하체에 붙였다. 그 전에는 해당 종목이 없어 어느 분류에도 없었다.
 
 > **컬럼을 추가하지 않았다.** 이 표는 `BrowseCategory` enum 안에 있고 기존 `primary_muscle` 값에서 파생한다. 분류를 고치려면 enum 한 곳만 고친다. 분석의 판정 부위 9종(8.1)과는 다른 축이므로 서로 영향을 주지 않는다.
 
@@ -2051,7 +2058,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
    "equipment": "CABLE", "measureType": "WEIGHT_REPS", "firstTime": true, "sameEquipment": false }]
 ```
 
-정렬은 **기구가 다른 종목 먼저**(LOG-08 — 기구가 없어서 바꾸는 경우가 많다) → 최근 8주에 자주 한 순 → 입문 대표 종목 순(설계서 4.1) → 시드 순. `sameEquipment`는 화면이 "다른 기구 / 같은 기구"로 묶는 데 쓴다.
+정렬은 **기구가 다른 종목 먼저**(LOG-08 — 기구가 없어서 바꾸는 경우가 많다) → 최근 8주에 자주 한 순 → 입문 대표 종목 순(설계서 4.1) → 흔한 종목 순(`common_rank`, 2026-11-16) → 시드 순. `sameEquipment`는 화면이 "다른 기구 / 같은 기구"로 묶는 데 쓴다.
 
 ### 11.6 PATCH /routines/{routineId}/items/{itemId}
 

@@ -45,7 +45,7 @@ const SECTIONS: { title: string; notices: Notice[] }[] = [
       {
         name: 'free-exercise-db',
         license: 'Unlicense (퍼블릭 도메인)',
-        body: 'everkinetic에 없는 종목의 그림이에요. 폭을 줄이고 webp로 바꿨어요.',
+        body: 'everkinetic에 없거나 맞는 그림이 없는 종목의 그림이에요. 폭을 줄이고 webp로 바꿨어요.',
         links: [{ label: '출처', href: 'https://github.com/yuhonas/free-exercise-db' }],
       },
     ],
