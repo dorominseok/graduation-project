@@ -124,4 +124,37 @@ class CandidatePickerTest {
                 new ExerciseOption(5L, "케이블 로우", CABLE, false, 0, true, 2));
         assertEquals(List.of(1L, 2L, 4L), ids(CandidatePicker.pick(withHistory, 3, 3)));
     }
+
+    private static ExerciseOption common(long id, String group, Equipment eq, int rank) {
+        return new ExerciseOption(id, group, eq, false, 0, true, null, rank);
+    }
+
+    @Test
+    @DisplayName("흔한 종목이 나머지보다 먼저다 — 기구가 다른 드문 종목보다 기구가 겹치는 레그 프레스가 앞선다")
+    void commonBeforeRest() {
+        List<ExerciseOption> pool = List.of(
+                new ExerciseOption(1L, "스쿼트", BARBELL, false, 0, true, 1, 1),
+                new ExerciseOption(2L, "런지", DUMBBELL, false, 0, true, 2, 1),
+                ex(3, "데드리프트", CABLE, false, 0),          // 케이블 데드리프트 — 드물다
+                common(4, "레그 익스텐션", MACHINE, 1),
+                common(5, "레그 프레스", MACHINE, 1));
+
+        assertEquals(List.of(1L, 2L, 4L, 5L, 3L), ids(CandidatePicker.pick(pool, 5, 3)));
+        assertEquals(List.of(1L, 2L, 4L, 5L), ids(CandidatePicker.pick(pool, 4, 3)));
+    }
+
+    @Test
+    @DisplayName("흔한 종목 안에서는 계열이 겹치지 않는 것 먼저, 흔한 정도 1이 2보다 먼저, 자리가 남으면 겹쳐도 흔한 것")
+    void commonSpreadsGroupsThenFillsWithCommon() {
+        List<ExerciseOption> pool = List.of(
+                new ExerciseOption(1L, "데드리프트", BARBELL, false, 0, true, 1, 1),
+                ex(2, "풀 스루", CABLE, false, 0),              // 드문 종목 — 새 계열이어도 뒤
+                common(3, "레그컬", MACHINE, 1),
+                common(4, "데드리프트", DUMBBELL, 1),           // 계열이 겹친다
+                common(5, "힙 쓰러스트", BARBELL, 2),           // 기구가 겹쳐도 새 계열이라 먼저
+                common(6, "킥백", CABLE, 2));
+
+        // 3(레그컬) → 5·6(새 계열, 흔한 정도 2) → 4(계열이 겹치는 흔한 종목) 순. 드문 2는 자리가 없다
+        assertEquals(List.of(1L, 3L, 5L, 6L, 4L), ids(CandidatePicker.pick(pool, 5, 3)));
+    }
 }

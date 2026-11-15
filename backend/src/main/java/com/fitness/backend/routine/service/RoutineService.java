@@ -297,7 +297,7 @@ public class RoutineService {
     }
 
 
-    /** 슬롯마다 후보. 종목 109개를 한 번 읽어 판정 부위로 나눈다 */
+    /** 슬롯마다 후보. 종목 전부를 한 번 읽어 판정 부위로 나눈다 */
     private Map<MuscleGroup, List<ExerciseOption>> candidates(Long userId, LocalDate today, List<RoutineSlot> slots,
                                                              Map<Long, Exercise> exercises) {
         Set<Long> favorites = new HashSet<>(favoriteRepository.findExerciseIdsByUserId(userId));
@@ -310,7 +310,8 @@ public class RoutineService {
                     pools.computeIfAbsent(group, g -> new ArrayList<>()).add(new ExerciseOption(
                             e.getId(), e.getGroupName(), e.getEquipment(), favorites.contains(e.getId()),
                             recent.getOrDefault(e.getId(), 0), !doneBefore.contains(e.getId()),
-                            e.getStarterRank() == null ? null : e.getStarterRank().intValue())));
+                            e.getStarterRank() == null ? null : e.getStarterRank().intValue(),
+                            e.getCommonRank() == null ? null : e.getCommonRank().intValue())));
         }
 
         Map<MuscleGroup, List<ExerciseOption>> result = new EnumMap<>(MuscleGroup.class);
@@ -393,6 +394,7 @@ public class RoutineService {
                         .comparing((Exercise e) -> e.getEquipment() == current.getEquipment())
                         .thenComparing(e -> recent.getOrDefault(e.getId(), 0), Comparator.reverseOrder())
                         .thenComparing(Exercise::getStarterRank, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(Exercise::getCommonRank, Comparator.nullsLast(Comparator.naturalOrder()))
                         .thenComparing(Exercise::getId))
                 .limit(MAX_ALTERNATIVES)
                 .map(e -> new AlternativeResponse(e.getId(), e.getNameKo(), e.getNameEn(), e.getEquipment(),

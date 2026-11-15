@@ -83,4 +83,12 @@ public class Exercise extends BaseCreatedEntity {
      */
     @Column(name = "starter_rank")
     private Short starterRank;
+
+    /**
+     * 헬스장에서 흔히 하는 정도. 1이 아주 흔함, 2가 흔함, 나머지는 null.
+     *
+     * <p>루틴 후보를 채울 때 입문 대표 종목 다음에 이 순서로 넣고, 종목 교체 목록도 이 순서로 보인다.
+     */
+    @Column(name = "common_rank")
+    private Short commonRank;
 }
