@@ -14,3 +14,82 @@
   text-align: center;
   margin-top: var(--space-6);
 }
+
+/* ---- 앱 안 브라우저 안내(구글 버튼 자리) ---- */
+
+.notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-14) var(--space-16);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  text-align: center;
+  word-break: keep-all;
+}
+
+.noticeTitle {
+  margin: 0;
+  font-size: var(--font-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.noticeBody {
+  margin: 0;
+  font-size: var(--font-xs);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.noticeButtons {
+  display: flex;
+  gap: var(--space-8);
+  margin-top: var(--space-6);
+}
+
+.open,
+.copy {
+  flex: 1;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: var(--font-sm);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+
+.open {
+  border: none;
+  background: var(--accent);
+  color: var(--on-fill);
+}
+
+.copy {
+  border: 1px solid var(--card-border);
+  background: none;
+  color: var(--text-primary);
+}
+
+.address {
+  margin: var(--space-4) 0 0;
+  font-size: var(--font-2xs);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+/* ── 유리 테마 */
+
+.notice {
+  composes: g-card from global;
+}
+
+.open {
+  composes: g-primary from global;
+}
+
+.copy {
+  composes: g-secondary from global;
+}
