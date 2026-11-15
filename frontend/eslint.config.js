@@ -20,4 +20,11 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // 알림 전용 서비스워커(self.registration, clients …)
+    files: ['src/sw.ts'],
+    languageOptions: {
+      globals: globals.serviceworker,
+    },
+  },
 ])

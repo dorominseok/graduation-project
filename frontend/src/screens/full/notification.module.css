@@ -1,0 +1,149 @@
+/*
+ * 설정 › 알림. 카드·행·안내 문구는 settings.module.css를 그대로 쓰고, 여기는 켜기 스위치·요일·시각만.
+ */
+
+/* 안내 문구가 길어 낱말 중간에서 줄이 바뀌지 않게 */
+.screen {
+  word-break: keep-all;
+}
+
+/* ---- 켜기 스위치. 행 전체가 버튼이다(누르기 쉽게) ---- */
+
+.switchRow:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 46px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  background: var(--chip-bg);
+  box-shadow: inset 0 0 0 1px var(--divider);
+  transition: background 0.2s;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-pill);
+  background: var(--on-fill);
+  box-shadow: 0 1px 3px oklch(30% 0.05 270 / 0.3);
+  transition: transform 0.2s;
+}
+
+.switchOn {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.switchOn::after {
+  transform: translateX(18px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch,
+  .switch::after {
+    transition: none;
+  }
+}
+
+/* ---- 요일 · 시각 줄 ---- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-12) var(--space-16) var(--space-16);
+  border-bottom: 1px solid var(--divider);
+}
+
+.field:last-child {
+  border-bottom: none;
+}
+
+.fieldLabel {
+  font-size: var(--font-2xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-tertiary);
+}
+
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--space-6);
+}
+
+.day {
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-pill);
+  background: none;
+  font-family: inherit;
+  font-size: var(--font-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.dayOn {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-fill);
+  font-weight: var(--weight-bold);
+}
+
+.selectWrap {
+  position: relative;
+}
+
+.select {
+  composes: input from './settings.module.css';
+  appearance: none;
+  padding-right: 40px;
+  cursor: pointer;
+}
+
+.selectArrow {
+  position: absolute;
+  top: 50%;
+  right: var(--space-14);
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+/* ── 유리 테마 */
+
+.dayOn {
+  composes: g-gem from global;
+}
+
+:global(:root[data-theme='glass']) .day {
+  border-color: rgb(255 255 255 / 0.75);
+  background: rgb(255 255 255 / 0.35);
+}
+
+/* 위 .day의 흰 유리보다 앞서야 한다 — g-gem과 우선순위가 같아 순서로 지면 흰 바탕에 흰 글자가 된다 */
+:global(:root[data-theme='glass']) .dayOn {
+  border-color: transparent;
+  background: var(--g-gem-bg);
+  box-shadow: var(--g-gem-shadow);
+}
+
+:global(:root[data-theme='glass']) .switch {
+  background: oklch(35% 0.04 270 / 0.12);
+  box-shadow: inset 0 1px 2px oklch(30% 0.06 270 / 0.15);
+}
+
+:global(:root[data-theme='glass']) .switchOn {
+  background: var(--g-gem-bg);
+  box-shadow: var(--g-gem-shadow);
+}

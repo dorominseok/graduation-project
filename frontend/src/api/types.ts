@@ -687,3 +687,30 @@ export interface RoutineFeedbackRequest {
   reason?: FeedbackReason
   skipped?: boolean
 }
+
+// ── 알림 (API 명세 12장)
+
+export type DayOfWeek = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY'
+
+export interface NotificationSettings {
+  /** 서버에 VAPID 키가 있어 보낼 수 있는지. false면 화면은 알림 켜기를 막는다 */
+  pushAvailable: boolean
+  /** 브라우저가 구독할 때 쓰는 서버 공개키(base64url). 보낼 수 없으면 null */
+  vapidPublicKey: string | null
+  /** 이 계정에 등록된 기기 수 */
+  subscriptionCount: number
+  /** 저장된 설정인지. false면 기본값(리마인더 요일은 최근 4주 자주 운동한 요일) */
+  saved: boolean
+  reminder: { enabled: boolean; days: DayOfWeek[]; time: string }
+  summary: { enabled: boolean; day: DayOfWeek; time: string }
+  cheer: boolean
+  group: boolean
+}
+
+export type UpdateNotificationSettingsRequest = Pick<NotificationSettings, 'reminder' | 'summary' | 'cheer' | 'group'>
+
+/** 브라우저 `PushSubscription.toJSON()` 모양 그대로 */
+export interface PushSubscriptionRequest {
+  endpoint: string
+  keys: { p256dh: string; auth: string }
+}

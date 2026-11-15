@@ -13,6 +13,7 @@ export * as statsApi from './stats'
 export * as analysisApi from './analysis'
 export * as groupApi from './groups'
 export * as routineApi from './routines'
+export * as notificationApi from './notifications'
 export type {
   Balance,
   BalanceSide,
@@ -25,6 +26,7 @@ export type {
   CheerState,
   ChangePasswordRequest,
   CreateSetRequest,
+  DayOfWeek,
   Equipment,
   Exercise,
   ExerciseGroup,
@@ -42,6 +44,7 @@ export type {
   MeResponse,
   MuscleGroupKey,
   MuscleVolume,
+  NotificationSettings,
   OpenDayRequest,
   OneRmTrend,
   Page,
@@ -65,6 +68,7 @@ export type {
   TodayStatus,
   TokenResponse,
   UpdateMeRequest,
+  UpdateNotificationSettingsRequest,
   UpdateSessionRequest,
   UpdateSetRequest,
   UserSummary,
