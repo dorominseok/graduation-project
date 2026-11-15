@@ -1,137 +1,176 @@
-﻿# 운동 습관 분석 기반 맞춤 루틴 추천 헬스 웹앱
+﻿# 밸런스핏 BalanceFit
 
 [![CI](https://github.com/dorominseok/graduation-project/actions/workflows/ci.yml/badge.svg)](https://github.com/dorominseok/graduation-project/actions/workflows/ci.yml)
 
-컴퓨터공학과 졸업작품 (2026)
+**운동 기록으로 부족한 부위를 찾고, 오늘 할 루틴을 짜 주는 헬스 웹앱(PWA)**
 
-운동 기록을 분석해 약점 부위를 자동 판정하고, 맞춤 루틴을 추천하는 PWA.
+기록만 하면 최근 4주 동안 어느 부위를 얼마나 했는지 ACSM 기준으로 판정하고, 회복 상태를 보고 오늘 채울 부위와 세트를 정해 줍니다. 2026년 컴퓨터공학과 졸업작품으로 시작해 지금도 기능을 늘려 가고 있습니다.
 
-## 개발 환경
+🔗 **https://balancefit.duckdns.org** — 휴대폰에서 열고 홈 화면에 추가하면 앱처럼 씁니다
 
-| 항목 | 버전 |
+<p align="center">
+  <img src="docs/images/screen-home.webp" width="200" alt="홈 — 오늘 루틴, 약점, 균형">
+  <img src="docs/images/screen-analysis.webp" width="200" alt="분석 — 부위별 주당 세트와 판정">
+  <img src="docs/images/screen-recovery.webp" width="200" alt="회복 지도 — 앞·뒤 인체 그림">
+  <img src="docs/images/screen-routine.webp" width="200" alt="오늘의 루틴 — 왜 이 부위인지와 종목">
+</p>
+
+## 주요 기능
+
+| 기능 | 내용 |
 |---|---|
-| Java | 21 (Temurin) |
-| Node.js | 24.11.1 / npm 11.6.2 |
-| PostgreSQL | 16 (Docker) |
-| Docker | 29.6.2 / Compose v5.3.1 |
-| 빌드 | Gradle (Groovy DSL) |
+| **운동 기록** | 하루 기록에 세트(무게·횟수·시간)를 체크하며 입력. 지난번 기록을 보며 채우고, 세트 사이 휴식 타이머가 돈다. 종목 109종, 동작 그림 포함 |
+| **약점 분석** | 최근 4주 부위별 주당 평균 세트로 **부족 · 권장 이하 · 최적 · 과다** 판정. 밀기/당기기 · 상체/하체 균형, 종목별 추정 1RM 추이 |
+| **회복 지도** | 앞·뒤 인체 그림에 부위별 회복 상태. 부위를 누르면 마지막 운동일과 오늘 루틴에서 빠지는지 |
+| **오늘의 루틴** | 규칙이 오늘 채울 부위와 세트를 정하고, LLM(Gemini)이 종목·순서·설명을 고른다. "왜 오늘 이 부위인지" 한 줄과 함께. 종목 교체 · 세트 조절 · 빼기 |
+| **그룹** | 초대 링크로 친구와 그룹을 만들어 서로의 운동 달력을 보고 응원 |
+| **알림** | 운동할 요일·시각 리마인더, 주간 요약, 응원 받음, 그룹 소식(웹 푸시). 밤 10시\~아침 8시는 보내지 않음 |
+| **기타** | 구글 로그인, 홈 화면 설치, 유리(glass) 테마 색감 6가지 |
 
-## 구조
+## 어떻게 판정하나
 
-- `backend/` — Spring Boot
-- `frontend/` — React (Vite, PWA)
-- `docs/` — 설계 문서
-- `docker-compose.yml` — 개발용 PostgreSQL
-- `deploy/` — 운영 서버 구성 (compose, Caddy, 백업)
+**부위별 판정** — 최근 4주 본세트(워밍업 제외)를 주동근 기준으로 세어 주당 평균을 낸다.
 
-## 실행
+| 주당 평균 세트 | 판정 |
+|---|---|
+| 4 미만 | 부족 |
+| 4 이상 10 미만 | 권장 이하 |
+| 10 이상 20 이하 | 최적 |
+| 20 초과 | 과다 |
 
-### 0. 환경변수
+10·20은 ACSM 2026 입장문(근육군당 주 10세트 이상, 약 18\~20세트부터 늘어나는 폭 감소), 4는 같은 문헌이 인용한 메타회귀(Pelland 외)의 최소 유효량을 따랐다. 균형은 큰 쪽이 작은 쪽의 2배를 넘으면 경고한다.
 
-```bash
-cp .env.example .env
+**오늘의 루틴** — 부위와 세트는 규칙이, 종목은 LLM이 고른다.
+
+1. 회복 중인 부위(오늘 포함 2일 안에 한 부위)가 든 묶음(하체 · 밀기 · 당기기)은 뺀다
+2. 남은 묶음에서 모자란 부위(부족 · 권장 이하) → 불균형의 적은 쪽 → 오래 쉰 부위 순으로 오늘의 묶음을 정한다
+3. 하루 18세트, 부위당 주 20세트(과다)를 넘지 않게 세트를 나눈다
+4. LLM은 부위별 후보 종목 중에서 고르고 순서와 설명을 붙인다. 응답이 늦거나 규칙에 어긋나면 규칙이 대신 고른다
+
+자세한 근거와 결정은 [문서](#문서)에 있다.
+
+## 기술 스택
+
+| 영역 | 사용 |
+|---|---|
+| 백엔드 | Java 21, Spring Boot 4.1 (Web MVC, Security, Data JPA, Validation), Flyway, PostgreSQL 16 |
+| 인증 | 자체 JWT(액세스는 메모리, 리프레시는 HttpOnly 쿠키 + 회전), 구글 ID 토큰 로그인 |
+| 프론트엔드 | React 19, TypeScript 6, Vite 8, React Router 7, CSS Modules, PWA(manifest + 알림 전용 서비스워커) |
+| LLM | Google Gemini API — 루틴의 종목·순서·설명만 |
+| 알림 | 웹 푸시(VAPID, RFC 8291 암호화) — 라이브러리 없이 JDK와 jjwt로 구현 |
+| 인프라 | AWS EC2(서울) 한 대에 Docker Compose(PostgreSQL · 백엔드 · Caddy), HTTPS는 Caddy가 Let's Encrypt로 |
+| CI/CD | GitHub Actions — PR마다 테스트, main 머지 시 OIDC + SSM으로 서버에 배포 |
+
+```mermaid
+flowchart LR
+  user["휴대폰 · 브라우저<br/>(PWA)"] -- HTTPS --> caddy
+  subgraph ec2["AWS EC2 · Docker Compose"]
+    caddy["Caddy<br/>화면 파일 · /api 전달"] --> api["Spring Boot"]
+    api --> db[("PostgreSQL")]
+  end
+  api -- 루틴 종목 --> gemini["Gemini API"]
+  api -- 웹 푸시 --> push["브라우저 푸시 서버<br/>(FCM · Apple · Mozilla)"]
+  push --> user
+  gh["GitHub Actions"] -- "SSM으로 배포" --> ec2
 ```
 
-`.env`에 `POSTGRES_PASSWORD`를 채운다. 나머지 값(`POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PORT`)은 로컬 개발용 기본값을 그대로 쓰면 된다.
+화면과 API가 한 도메인에서 나가서 CORS가 없다.
 
-`.env`는 `docker-compose.yml`(PostgreSQL 컨테이너)에서만 쓰인다. 백엔드는 이 값을 자동으로 읽지 않으므로, `.env`의 값을 기본값에서 바꿨다면 백엔드 실행 전에 아래 환경변수를 `.env`와 같은 값으로 맞춰서 내보내야 한다.
+## 폴더
 
-| 환경변수 | 기본값 (`.env.example` 기준) |
-|---|---|
-| `DB_URL` | `jdbc:postgresql://localhost:5432/fitness` |
-| `DB_USERNAME` | `fitness` |
-| `DB_PASSWORD` | (`.env`의 `POSTGRES_PASSWORD`) |
+```
+backend/     Spring Boot — 도메인별 패키지(auth, workout, analysis, routine, group, notification …)
+frontend/    React + Vite — screens/(화면), api/(API 호출), app/(라우터·알림), sw.ts(서비스워커)
+deploy/      운영 구성 — compose.yml, Caddyfile, 배포·백업 스크립트
+docs/        설계 문서
+scripts/     종목 데이터·그림 생성 스크립트
+docker-compose.yml   로컬 개발용 PostgreSQL
+```
 
-기본값을 그대로 쓴다면 이 단계는 건너뛰어도 된다.
+## 로컬에서 실행
 
-### 1. DB 기동
+필요한 것: Java 21, Node.js 24, Docker
 
 ```bash
+# 1. DB
+cp .env.example .env          # POSTGRES_PASSWORD=devpassword123 (백엔드 기본값과 같게)
 docker compose up -d
-docker compose ps   # postgres가 healthy인지 확인
-```
 
-PostgreSQL이 `.env`의 `POSTGRES_PORT`(기본 5432)로 뜬다.
-
-### 2. 백엔드 실행
-
-```bash
+# 2. 백엔드 — http://localhost:8080/actuator/health 가 UP이면 DB까지 연결된 것
 cd backend
 ./gradlew bootRun
-```
 
-IntelliJ에서 `BackendApplication`을 직접 실행해도 된다. `http://localhost:8080/actuator/health`에서 `"status": "UP"`(특히 `db.status: UP`)이 뜨면 DB 연결까지 정상이다.
-
-### 3. 프론트엔드 실행
-
-```bash
+# 3. 프론트엔드 — http://localhost:5173 (/api는 Vite가 8080으로 넘긴다)
 cd frontend
 npm install
 npm run dev
 ```
 
-`http://localhost:5173`에서 확인한다. `/api`, `/actuator`는 Vite dev 서버가 `localhost:8080`(백엔드)으로 프록시하므로, 화면에 백엔드의 `/actuator/health` 응답이 그대로 표시되면 연동이 정상 동작하는 것이다.
+아래는 넣지 않아도 앱은 돈다. 켜고 싶은 것만 백엔드 실행 전에 환경변수로 준다.
 
-**포트 정리**
+| 환경변수 | 없으면 | 넣는 법 |
+|---|---|---|
+| `LLM_ENABLED=true`, `GEMINI_API_KEY` | 규칙이 루틴 종목까지 고른다 | Google AI Studio에서 키 발급 |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | 알림을 보내지 않는다(설정 화면에서 켜기가 막힘) | `cd backend && ./gradlew vapidKeys` |
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | 로컬 기본값(`localhost:5432/fitness`, `fitness`, `devpassword123`) | `.env`를 기본값과 다르게 했을 때만 |
 
-| 서비스 | 포트 |
-|---|---|
-| PostgreSQL | `.env`의 `POSTGRES_PORT` (기본 5432) |
-| 백엔드 (Spring Boot) | 8080 |
-| 프론트엔드 (Vite dev) | 5173 |
+**테스트**
 
+```bash
+cd backend && ./gradlew test          # DB가 떠 있어야 한다 — 실제 PostgreSQL로 돈다
+cd frontend && npm run lint && npm run build
+```
+
+API 문서(Swagger UI)는 로컬에서 `http://localhost:8080/swagger-ui.html`, 손으로 쓴 명세는 [docs/API_명세서.md](docs/API_명세서.md).
 
 ## 배포
 
-루틴 추천이 완성되기 전에 기록·분석까지 먼저 배포한다. 실사용자 검증 4주가 압축할 수 없는 기간이고, 분석이 의미를 가지려면 기록이 먼저 4주 쌓여야 하기 때문이다(「설계 변경 로그」 LOG-15).
+main에 머지하면 CI가 테스트를 통과한 뒤 자동으로 올린다. `backend/` · `frontend/` · `deploy/`가 바뀐 커밋만 배포하고, 끝나면 `/actuator/health`를 확인한다. 같은 커밋을 다시 올리려면 Actions → Deploy → Run workflow.
 
-EC2(Ubuntu 24.04) 한 대에 DB·백엔드·웹서버(Caddy)를 컨테이너로 띄운다(LOG-35). 화면과 API가 한 도메인에서 나가는 동일 오리진 구성이라 CORS가 없다. 파일은 `deploy/`에 있다.
+<details>
+<summary>서버 처음 준비하기</summary>
 
-완료 조건은 **HTTPS 도메인에서 로그인 후 30분을 넘겨 재발급까지 유지되는 것**이다. 리프레시 토큰 쿠키가 `Secure`라 http에서는 저장되지 않아, 이게 되면 HTTPS·웹서버·운영 프로필이 다 맞물렸다는 뜻이다(LOG-17). main에 머지하면 GitHub Actions가 자동으로 배포한다(LOG-36).
-
-| 파일 | 역할 |
-|---|---|
-| `deploy/compose.yml` | 운영 구성. 바깥에는 웹서버의 80·443만 열린다 |
-| `deploy/Caddyfile` | HTTPS(Let's Encrypt 자동 발급·갱신), `/api` → 백엔드, 나머지는 앱 화면 |
-| `deploy/.env.example` | 운영 환경변수 템플릿 (도메인, DB 비밀번호, JWT 키) |
-| `deploy/setup-server.sh` | 서버 첫 준비 (스왑 2GB, Docker) |
-| `deploy/backup.sh` | DB 덤프, 7일치 보관 |
-| `deploy/update.sh` | 받아 온 코드로 이미지를 빌드하고 바뀐 컨테이너만 교체 |
-| `.github/workflows/deploy.yml` | 자동 배포. AWS SSM으로 서버에 `update.sh` 실행을 보낸다 |
-
-### 처음 한 번
-
-서버에 접속해서:
+서버(Ubuntu 24.04)에 접속해서:
 
 ```bash
 git clone https://github.com/dorominseok/graduation-project.git
 cd graduation-project
-bash deploy/setup-server.sh        # 처음이면 끝난 뒤 exit → 다시 접속
+bash deploy/setup-server.sh        # 스왑 2GB, Docker. 처음이면 끝난 뒤 다시 접속
 cd deploy
-cp .env.example .env               # DOMAIN을 채우고
-openssl rand -base64 32            # 두 번 실행해 POSTGRES_PASSWORD, JWT_SECRET에 넣는다
+cp .env.example .env               # DOMAIN, POSTGRES_PASSWORD, JWT_SECRET(openssl rand -base64 32)
+                                   # 선택: LLM_ENABLED·GEMINI_API_KEY, VAPID_PUBLIC_KEY·VAPID_PRIVATE_KEY
 docker compose up -d --build
 ```
 
-도메인의 DNS가 서버 IP를 가리키고 80·443이 열려 있으면 Caddy가 인증서를 받아 온다. `https://<도메인>/actuator/health`에 `"status":"UP"`이 뜨면 끝이다.
-
-백업은 crontab에 등록한다(`crontab -e`):
+도메인이 서버를 가리키고 80·443이 열려 있으면 Caddy가 인증서를 받아 온다. 백업은 crontab에 등록한다(7일치 보관):
 
 ```
 0 4 * * * /home/ubuntu/graduation-project/deploy/backup.sh >> /home/ubuntu/backups/backup.log 2>&1
 ```
 
-### 새 버전 올리기
+자동 배포가 안 될 때는 서버에서 `git pull && bash deploy/update.sh`. `.env`만 바꿨으면 `docker compose up -d backend`.
 
-main에 머지하면 CI가 테스트를 통과한 뒤 자동으로 올린다. `backend/`·`frontend/`·`deploy/`가 바뀐 커밋만 배포하고, 끝나면 `/actuator/health`가 `UP`인지 확인한다. 진행 상황은 Actions 탭의 CI 실행에서 `deploy` job을 본다. 같은 커밋을 다시 올리려면 Actions → Deploy → Run workflow.
+DB와 인증서는 볼륨에 남는다. `docker compose down -v`는 볼륨까지 지우므로 운영 서버에서 쓰지 않는다.
 
-자동 배포가 안 될 때는 서버에 접속해서 손으로 올린다:
+</details>
 
-```bash
-cd graduation-project && git pull
-bash deploy/update.sh
-```
+## 문서
 
-자동 배포를 처음 붙일 때 AWS·GitHub에 한 설정(서버 SSM 역할, GitHub OIDC 공급자, 배포 역할, 저장소 secret 2개)은 LOG-36에 있다.
+| 문서 | 내용 |
+|---|---|
+| [운동_분석로직_설계서](docs/운동_분석로직_설계서.md) | 세트 세는 법, 판정 구간과 근거, 균형 판정 |
+| [루틴생성_로직_설계서](docs/루틴생성_로직_설계서.md) | 오늘의 묶음·부위·세트 규칙, LLM에 맡기는 범위, 이유 문장 |
+| [LLM_연동_실험기록](docs/LLM_연동_실험기록.md) | 프롬프트·모델 실험과 결과 |
+| [회복지도_설계서](docs/회복지도_설계서.md) | 회복 상태 계산, 인체 그림 |
+| [알림_설계서](docs/알림_설계서.md) | 알림 종류, 보내는 규칙, 서비스워커 |
+| [운동기록_방식_설계서](docs/운동기록_방식_설계서.md) | 하루 기록, 세트 입력, 휴식 타이머 |
+| [API_명세서](docs/API_명세서.md) | 엔드포인트 전체 |
+| [설계변경_로그](docs/설계변경_로그.md) | 졸업작품 기간의 결정 기록(LOG-01\~46, 동결) |
 
-DB와 인증서는 볼륨에 남으므로 다시 빌드해도 사라지지 않는다. `docker compose down -v`는 **볼륨까지 지우므로** 운영 서버에서 쓰지 않는다.
+## 출처
+
+- 인체 그림: [react-muscle-highlighter](https://github.com/soroojshehryar/react-muscle-highlighter) 1.2.0 (MIT)의 SVG 경로
+- 종목 동작 그림: [everkinetic](https://github.com/everkinetic/data) (CC BY-SA 4.0), [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (Unlicense) — 크기만 줄여 webp로
+- 글꼴: [Pretendard](https://github.com/orioncactus/pretendard) (SIL OFL 1.1)
+
+앱 안 설정 › 오픈소스 라이선스에 원문이 있다. 개인정보처리방침은 [/privacy](https://balancefit.duckdns.org/privacy).
