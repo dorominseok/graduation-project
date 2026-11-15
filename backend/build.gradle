@@ -67,3 +67,11 @@ tasks.register('llmExperiment', JavaExec) {
 	workingDir = rootProject.projectDir
 	jvmArgs '-Dfile.encoding=UTF-8', '-Dstdout.encoding=UTF-8'
 }
+
+// 웹 푸시 VAPID 키 한 쌍을 만들어 찍는다 — 비밀키는 서버 .env에만 넣는다(「알림_설계서」 4.2)
+tasks.register('vapidKeys', JavaExec) {
+	group = 'application'
+	description = '웹 푸시 VAPID 키 한 쌍을 .env 형식으로 찍는다'
+	classpath = sourceSets.main.runtimeClasspath
+	mainClass = 'com.fitness.backend.notification.push.VapidKeyGenerator'
+}

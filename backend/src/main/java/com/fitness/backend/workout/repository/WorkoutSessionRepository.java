@@ -138,6 +138,18 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
                           @Param("from") LocalDate from,
                           @Param("to") LocalDate to);
 
+    /** 기간 안에 세트가 있는 날들 — 알림 리마인더의 기본 요일(자주 운동한 요일)을 고를 때 쓴다 */
+    @Query("""
+            select s.performedOn from WorkoutSession s
+             where s.userId = :userId
+               and s.performedOn >= :from
+               and s.performedOn <= :to
+               and exists (select 1 from WorkoutSet w where w.sessionId = s.id)
+            """)
+    List<LocalDate> findRecordedDays(@Param("userId") Long userId,
+                                     @Param("from") LocalDate from,
+                                     @Param("to") LocalDate to);
+
     /**
      * 기준일 이전(포함) 첫 운동한 날. 주당 평균의 분모를 정한다.
      *
