@@ -6,6 +6,7 @@ import type { DayOfWeek, NotificationSettings, UpdateNotificationSettingsRequest
 import { useAuth } from '../../auth'
 import * as push from '../../app/push'
 import type { PushSupport } from '../../app/push'
+import { SwitchRow } from './SwitchRow'
 import settingsStyles from './settings.module.css'
 import styles from './notification.module.css'
 
@@ -298,32 +299,6 @@ function deviceHint(
     return others > 0 ? `이 기기와 다른 기기 ${others}대로 알림이 와요.` : '이 기기로 알림이 와요.'
   }
   return '켜면 이 기기로 알림이 와요. 휴대폰·컴퓨터마다 따로 켜요.'
-}
-
-function SwitchRow({
-  label,
-  on,
-  disabled,
-  onToggle,
-}: {
-  label: string
-  on: boolean
-  disabled?: boolean
-  onToggle: () => void
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      className={`${settingsStyles.row} ${styles.switchRow}`}
-      disabled={disabled}
-      onClick={onToggle}
-    >
-      <span className={settingsStyles.rowLabel}>{label}</span>
-      <span className={`${styles.switch} ${on ? styles.switchOn : ''}`} aria-hidden="true" />
-    </button>
-  )
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {

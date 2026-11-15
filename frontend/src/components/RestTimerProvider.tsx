@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { RestTimerContext } from './rest-timer-context'
 import type { RestOrigin } from './rest-timer-context'
+import { alertRestEnd, getRestAlert, holdSound, keepScreenOn, primeSound, sleepSound } from '../app/restAlert'
 
 interface Running {
   /** 끝나는 시각(ms). 남은 시간은 볼 때마다 지금과의 차로 계산한다 */
@@ -15,6 +16,11 @@ interface Running {
 const STORAGE_KEY = 'rest-timer'
 /** "휴식 끝" 띠는 다음 세트를 하거나 닫을 때까지 두고, 아무것도 안 하면 이만큼 뒤에 내린다 */
 const DONE_MS = 60_000
+/**
+ * 끝난 걸 이만큼 넘겨서 알았으면 울리지 않는다 — 화면이 꺼져 있다가 다시 켠 경우다.
+ * 늦게 울리면 헷갈리니 "휴식 끝" 띠만 보인다
+ */
+const LATE_MS = 3_000
 
 function load(): Running | null {
   try {
@@ -44,6 +50,8 @@ function save(running: Running | null) {
  * <p>남은 초를 1초마다 빼지 않고 끝나는 시각을 들고 있다. 휴대폰은 화면이 꺼지거나
  * 다른 앱으로 가면 1초 반복을 멈추는데, 돌아와서 시각으로 다시 계산하니 어긋나지 않는다.
  * 새로고침에도 이어지게 이 탭에만 끝나는 시각을 남긴다.
+ *
+ * <p>끝나면 소리·진동으로 알리고, 쉬는 동안은 화면이 저절로 꺼지지 않게 잡아 둔다(`app/restAlert`).
  */
 export function RestTimerProvider({ userId, children }: { userId: number | null; children: ReactNode }) {
   const [running, setRunning] = useState<Running | null>(load)
@@ -55,24 +63,44 @@ export function RestTimerProvider({ userId, children }: { userId: number | null;
   useEffect(() => {
     save(running)
     if (!running) return
+    let finished = false
     const tick = () => {
+      if (finished) return
       const current = Date.now()
       if (current >= running.endsAt) {
+        finished = true
+        const own = running.userId === userId
         setRunning(null)
-        setDone(running.userId === userId)
+        setDone(own)
         setDoneOrigin(running.origin)
+        if (own && document.visibilityState === 'visible' && current - running.endsAt < LATE_MS) alertRestEnd()
       } else {
         setNow(current)
       }
     }
     const timer = window.setInterval(tick, 1000)
+    // 1초 반복만 두면 끝 소리가 최대 1초 늦는다. 끝나는 순간에 한 번 더 본다
+    const end = window.setTimeout(tick, running.endsAt - Date.now())
     // 화면을 다시 켰을 때 1초를 기다리지 않고 바로 맞춘다
     document.addEventListener('visibilitychange', tick)
     return () => {
       window.clearInterval(timer)
+      window.clearTimeout(end)
       document.removeEventListener('visibilitychange', tick)
     }
   }, [running, userId])
+
+  // 쉬는 동안만 화면을 켜 두고 소리 장치를 깨워 둔다. 남은 시간을 ±30초 해도 놓았다 잡지 않게 쉬는지 여부에만 묶는다
+  const resting = running !== null && running.userId === userId
+  useEffect(() => {
+    if (!resting) return
+    holdSound()
+    const release = getRestAlert().keepScreenOn ? keepScreenOn() : null
+    return () => {
+      release?.()
+      sleepSound()
+    }
+  }, [resting])
 
   useEffect(() => {
     if (!done) return
@@ -91,6 +119,8 @@ export function RestTimerProvider({ userId, children }: { userId: number | null;
   )
 
   const adjust = useCallback((deltaSeconds: number) => {
+    // 휴식 띠 버튼을 누르는 순간이다. 끝 소리를 낼 수 있게 깨워 둔다(아이폰)
+    primeSound()
     const current = Date.now()
     setNow(current)
     setRunning((prev) => {
