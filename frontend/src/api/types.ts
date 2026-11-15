@@ -741,8 +741,13 @@ export interface MuscleTrendRow {
   label: string
   /** periods와 같은 순서 */
   weeklySets: number[]
+  /** 주마다 그 주 세트가 닿은 구간 — 막대 색용. 기록 전 주는 null */
+  weeklyVerdicts: (VolumeVerdict | null)[]
   /** 최근 4주 주당 평균 */
   recentAverage: number | null
+  /** 최근 4주 평균의 판정 — 약점 탭과 같다. 막대 색을 이것으로 고른다 */
+  verdict: VolumeVerdict | null
+  verdictLabel: string | null
   /** 그 앞 4주 주당 평균. 그 4주가 다 기록한 뒤가 아니면 null */
   previousAverage: number | null
 }

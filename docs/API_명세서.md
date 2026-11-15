@@ -1727,7 +1727,9 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
   ],
   "groups": [
     { "key": "CHEST", "label": "가슴", "weeklySets": [0, 6, 8, 8, 10, 12, 12, 14],
-      "recentAverage": 12.0, "previousAverage": null }
+      "weeklyVerdicts": [null, "BELOW_RECOMMENDED", "BELOW_RECOMMENDED", "BELOW_RECOMMENDED",
+                         "OPTIMAL", "OPTIMAL", "OPTIMAL", "OPTIMAL"],
+      "recentAverage": 12.0, "verdict": "OPTIMAL", "verdictLabel": "최적", "previousAverage": null }
   ]
 }
 ```
@@ -1739,13 +1741,15 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | `beforeFirstRecord` | 그 주가 통째로 첫 기록 전이다. 0세트가 아니라 기록 전이라 화면이 회색 칸으로 둔다 |
 | `groups` | 판정 부위 9개가 `MuscleGroup` 순서로 **항상 모두** 온다. 종아리·전완은 없다 |
 | `weeklySets` | `periods`와 같은 순서의 주별 본세트 수 |
+| `weeklyVerdicts` | 주마다 그 주 세트가 닿은 구간(8.2와 같은 경계). **막대 색용**이다 — 약점 탭의 막대처럼 막대마다 그 길이의 구간 색을 입힌다. 기록 전 주는 `null` |
 | `recentAverage` | 최근 4주(`app.analysis.weeks`) 주당 평균. **8.2의 `weeklySets`와 같은 값**이다 — 같은 구간, 같은 분모(기록이 4주 미만이면 첫 기록일부터 센 일수, 최소 7일). `weeks`가 4보다 작으면 `null` |
+| `verdict` · `verdictLabel` | `recentAverage`의 판정 — **8.2의 `verdict`와 같다**. 부위의 판정은 이것이다(화면의 알약) |
 | `previousAverage` | 그 앞 4주 주당 평균. 그 4주가 통째로 첫 기록 뒤일 때만 — 기록 전 날을 "안 한 날"로 나누면 낮게 나온다. 아니면 `null` |
 | `thresholds` | 판정 경계(8.2와 같은 설정). 화면이 권장 구간 띠와 부족 경계선을 그린다 |
 
 > **주는 달력(월\~일)이 아니라 기준일에서 7일씩 끊는다.** 그래야 마지막 네 주의 합이 8.2의 집계 구간(기준일 포함 28일)과 같아져 약점 탭의 숫자와 어긋나지 않는다. 달력 주로 끊으면 월요일에는 이번 주 막대가 거의 비어 "줄었다"로 읽힌다. 2026-10-03에 만들었다가 걷어낸 `GET /analysis/weekly-volume`(LOG-30)은 월\~일 주였다. 세트 조건은 8.2와 같다 — 같은 쿼리(`aggregateByDay`)를 쓴다.
 >
-> 주별 판정(부족·최적…)은 내려주지 않는다. 한 주 세트로 판정하면 쉬는 주 하나에 "부족"이 붙는다 — 판정은 4주 평균(8.2)으로 한다. 화면은 기준선 위치로만 보인다.
+> 부위의 판정은 4주 평균(`verdict`, 8.2와 같다)이다. `weeklyVerdicts`는 막대마다 색을 입히는 구간일 뿐 그 주의 판정을 따로 말하지 않는다 — 화면도 주별로 "부족" 같은 글자를 붙이지 않는다. 막대를 부위 판정 색 하나로 다 칠하면, 4주 평균이 부족인 부위에서 12세트를 한 주까지 빨갛게 보인다(2026-11-16 화면 검토).
 
 ---
 

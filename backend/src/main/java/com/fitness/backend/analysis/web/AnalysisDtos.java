@@ -121,8 +121,13 @@ public final class AnalysisDtos {
             MuscleGroup key,
             String label,
             @Schema(description = "periods와 같은 순서의 주별 본세트 수") List<Long> weeklySets,
+            @Schema(description = "주마다 그 주 세트가 닿은 구간 — 막대 색용. 부위의 판정은 verdict(4주 평균)다. "
+                    + "기록 전 주는 null") List<VolumeVerdict> weeklyVerdicts,
             @Schema(description = "최근 4주 주당 평균. 부위별 볼륨의 weeklySets와 같은 값(분모도 같다)")
             BigDecimal recentAverage,
+            @Schema(description = "최근 4주 평균의 판정 — 부위별 볼륨의 verdict와 같다. 화면이 막대 색을 이것으로 고른다")
+            VolumeVerdict verdict,
+            String verdictLabel,
             @Schema(description = "그 앞 4주 주당 평균. 그 4주가 다 기록한 뒤가 아니면 null")
             BigDecimal previousAverage) {
     }

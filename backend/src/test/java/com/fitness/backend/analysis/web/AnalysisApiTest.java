@@ -434,6 +434,10 @@ class AnalysisApiTest {
                 .andExpect(jsonPath("$.groups[0].key").value("CHEST"))
                 .andExpect(jsonPath("$.groups[0].weeklySets")
                         .value(org.hamcrest.Matchers.contains(1, 0, 0, 0, 0, 0, 4, 5)))
+                // 막대 색용 구간 — 그 주 세트로 정한다(4 이상 10 미만은 권장 이하)
+                .andExpect(jsonPath("$.groups[0].weeklyVerdicts[0]").value("INSUFFICIENT"))
+                .andExpect(jsonPath("$.groups[0].weeklyVerdicts[6]").value("BELOW_RECOMMENDED"))
+                .andExpect(jsonPath("$.groups[0].weeklyVerdicts[7]").value("BELOW_RECOMMENDED"))
                 .andExpect(jsonPath("$.groups[?(@.key == 'QUADS')].weeklySets[5]").value(2))
                 .andExpect(jsonPath("$.thresholds.optimalFrom").value(10));
     }
@@ -447,17 +451,22 @@ class AnalysisApiTest {
         doneSession(ref.minusDays(12), benchPress, 4);
 
         String volumeBody = volume(null, ref).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
-        Matcher chest = Pattern.compile("\\{\"key\":\"CHEST\",\"label\":\"[^\"]+\",\"weeklySets\":([0-9.]+)")
+        Matcher chest = Pattern.compile("\\{\"key\":\"CHEST\",\"label\":\"[^\"]+\",\"weeklySets\":([0-9.]+),"
+                        + "\"totalSets\":[0-9]+,\"verdict\":\"([A-Z_]+)\",\"verdictLabel\":\"([^\"]+)\"")
                 .matcher(volumeBody.substring(volumeBody.indexOf("\"children\"")));
         assertThat(chest.find()).isTrue();
 
         trend(null, ref)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.groups[0].recentAverage").value(Double.parseDouble(chest.group(1))))
+                // 판정도 약점 탭과 같다 — 화면이 막대 색을 이것으로 고른다
+                .andExpect(jsonPath("$.groups[0].verdict").value(chest.group(2)))
+                .andExpect(jsonPath("$.groups[0].verdictLabel").value(chest.group(3)))
                 // 그 앞 4주는 기록 전이라 평균을 내지 않는다
                 .andExpect(jsonPath("$.groups[0].previousAverage").doesNotExist())
                 // 첫 기록(12일 전)보다 통째로 앞선 주는 기록 전이다
                 .andExpect(jsonPath("$.periods[5].beforeFirstRecord").value(true))
+                .andExpect(jsonPath("$.groups[0].weeklyVerdicts[5]").doesNotExist())
                 .andExpect(jsonPath("$.periods[6].beforeFirstRecord").value(false));
     }
 

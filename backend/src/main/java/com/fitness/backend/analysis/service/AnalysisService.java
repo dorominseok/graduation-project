@@ -39,6 +39,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -162,6 +163,7 @@ public class AnalysisService {
         boolean previousKnown = weeks >= recentWeeks * 2
                 && firstRecordedOn != null && !firstRecordedOn.isAfter(previousFrom);
 
+        VolumeThresholds thresholds = properties.volumeThresholds();
         List<MuscleTrendRowResponse> groups = new ArrayList<>();
         for (MuscleGroup group : MuscleGroup.values()) {
             if (!group.judged()) {
@@ -174,11 +176,19 @@ public class AnalysisService {
             BigDecimal previous = previousKnown
                     ? weeklyAverage(sum(weekly, weeks - recentWeeks * 2, weeks - recentWeeks), recentWeeks * 7)
                     : null;
+            // 부위의 판정은 4주 평균으로 한다(약점 탭과 같다). 주별 구간은 막대 색용 — 약점 탭의 막대처럼 막대마다
+            // 그 길이가 닿은 구간 색을 입힌다. 12세트 한 주를 4주 평균이 부족이라고 빨갛게 칠하지 않게
+            VolumeVerdict verdict = recent == null ? null : VolumeVerdict.classify(recent, thresholds);
+            List<VolumeVerdict> weeklyVerdicts = new ArrayList<>();
+            for (int week = 0; week < weeks; week++) {
+                weeklyVerdicts.add(periods.get(week).beforeFirstRecord()
+                        ? null : VolumeVerdict.classify(BigDecimal.valueOf(weekly[week]), thresholds));
+            }
             groups.add(new MuscleTrendRowResponse(group, group.label(),
-                    Arrays.stream(weekly).boxed().toList(), recent, previous));
+                    Arrays.stream(weekly).boxed().toList(), Collections.unmodifiableList(weeklyVerdicts),
+                    recent, verdict, verdict == null ? null : verdict.label(), previous));
         }
 
-        VolumeThresholds thresholds = properties.volumeThresholds();
         return new MuscleTrendResponse(to, weeks, firstRecordedOn,
                 new TrendThresholdsResponse(thresholds.insufficientBelow(), thresholds.optimalFrom(),
                         thresholds.optimalThrough()),

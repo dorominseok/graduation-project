@@ -4,39 +4,38 @@ import { analysisApi, isApiError } from '../../api'
 import type { MuscleTrend, MuscleTrendRow, TrendWeek } from '../../api'
 import { paths } from '../../app/paths'
 import { useToast } from '../../components'
-import { formatMonthDay } from './format'
+import { BAR_TICKS, VERDICT_TONE, barPercent, formatMonthDay } from './format'
+import type { Tone } from './format'
 import shared from './analysis.module.css'
 import styles from './trend.module.css'
 
-/** "2026-11-10" → "11/10". 막대 아래와 읽기 줄은 자리가 좁아 짧게 쓴다 */
+const TONE_CLASS: Record<Tone, string> = {
+  danger: shared.toneDanger,
+  warn: shared.toneWarn,
+  good: shared.toneGood,
+  neutral: shared.toneNeutral,
+}
+
+/** "2026-11-10" → "11/10". 막대 아래 줄은 자리가 좁아 짧게 쓴다 */
 function shortDate(isoDate: string): string {
   const [, month, day] = isoDate.split('-').map(Number)
   return `${month}/${day}`
 }
 
 function weekText(week: TrendWeek, latest: boolean): string {
-  const range = `${shortDate(week.from)}~${shortDate(week.to)}`
-  return latest ? `최근 7일 (${range})` : range
+  return latest ? '최근 7일' : `${shortDate(week.from)}~${shortDate(week.to)}`
 }
 
 /**
- * 아홉 부위가 한 눈금을 쓴다 — 부위끼리 막대 높이를 비교할 수 있어야 해서다. 권장 상한(20) 위로
- * 조금 여유를 둔다. 그보다 많이 한 주가 있으면 그 주에 맞춘다.
- */
-function scaleMax(trend: MuscleTrend): number {
-  const top = Math.max(trend.thresholds.optimalThrough, ...trend.groups.flatMap((g) => g.weeklySets))
-  return Math.ceil(top * 1.15)
-}
-
-/**
- * 추이 서브탭 — 부위마다 최근 8주의 주별 세트를 막대로.
+ * 추이 서브탭 — 부위마다 최근 8주의 주별 세트.
  *
  * <p>약점 탭은 최근 4주 평균 하나만 보여 줘서, 그 평균이 늘고 있는 중인지 줄고 있는 중인지, 한 주에 몰아서
  * 한 건지 알 수 없다. 여기서는 그 4주를 주별로 펼치고 그 앞 4주와 나란히 둔다. 마지막 네 막대의 평균이
  * 약점 탭의 숫자와 같다(서버가 같은 구간·같은 분모로 낸다).
  *
- * <p>판정은 색이 아니라 위치로 읽게 한다 — 권장 구간(주 10~20세트)을 옅은 띠로, 부족 경계(4세트)를 가는
- * 선으로 깔고, 막대는 한 색이다. 고른 주(처음에는 최근 주)를 가장 진하게 칠한다.
+ * <p>막대는 약점 탭의 막대를 주마다 세로로 세운 것이다 — 같은 트랙·같은 눈금(4·10·20)·같은 눈금 비율
+ * (`BAR_SCALE`)·같은 판정 색. 막대마다 그 주 세트가 닿은 구간 색이고(서버가 정한다), 부위 이름 옆 알약이
+ * 4주 평균 판정이다. 부위 전체 판정으로 막대를 다 칠하면 12세트를 한 주까지 빨갛게 보인다.
  */
 export function TrendView() {
   const navigate = useNavigate()
@@ -71,7 +70,7 @@ export function TrendView() {
       <div className={shared.period}>
         최근 {trend.weeks}주 · {formatMonthDay(trend.periods[0].from)} ~ {formatMonthDay(trend.referenceDate)}
       </div>
-      <div className={shared.periodSub}>부위별로 주마다 한 세트 수 · 워밍업 제외</div>
+      <div className={shared.periodSub}>부위별로 주마다 한 세트 수 · 오른쪽 숫자는 최근 4주 평균</div>
     </div>
   )
 
@@ -90,109 +89,97 @@ export function TrendView() {
     )
   }
 
-  const max = scaleMax(trend)
   const { thresholds } = trend
   return (
     <>
       {period}
 
-      <div className={styles.legend}>
-        <span className={styles.legendItem}>
-          <span className={styles.legendBand} aria-hidden="true" />
-          권장 구간 주 {thresholds.optimalFrom}~{thresholds.optimalThrough}세트
-        </span>
-        <span className={styles.legendItem}>
-          <span className={styles.legendLine} aria-hidden="true" />주 {thresholds.insufficientBelow}세트 아래는 부족
-        </span>
-      </div>
-
-      <ul className={styles.list}>
+      <ul className={shared.tiers}>
         {trend.groups.map((row) => (
-          <TrendCard key={row.key} row={row} periods={trend.periods} max={max} thresholds={thresholds} />
+          <TrendRow key={row.key} row={row} periods={trend.periods} />
         ))}
       </ul>
 
       <div className={shared.scaleNote}>
-        막대를 누르면 그 주의 세트 수가 나와요. 회색 칸은 기록을 시작하기 전이에요
+        눈금은 주 {thresholds.insufficientBelow} · {thresholds.optimalFrom} · {thresholds.optimalThrough}세트 —{' '}
+        {thresholds.optimalFrom}~{thresholds.optimalThrough}세트가 권장 구간이에요 (ACSM). 막대를 누르면 그 주의
+        세트 수가 나와요
       </div>
     </>
   )
 }
 
-function TrendCard({
-  row,
-  periods,
-  max,
-  thresholds,
-}: {
-  row: MuscleTrendRow
-  periods: TrendWeek[]
-  max: number
-  thresholds: MuscleTrend['thresholds']
-}) {
+function TrendRow({ row, periods }: { row: MuscleTrendRow; periods: TrendWeek[] }) {
   const last = periods.length - 1
   const [selected, setSelected] = useState(last)
   const week = periods[selected]
-  const percent = (sets: number) => `${(Math.min(sets, max) / max) * 100}%`
+  const tone: Tone = row.verdict ? VERDICT_TONE[row.verdict] : 'neutral'
+  const weekTone = (i: number): Tone => {
+    const verdict = row.weeklyVerdicts[i]
+    return verdict ? VERDICT_TONE[verdict] : 'neutral'
+  }
 
   return (
-    <li className={styles.card}>
-      <div className={styles.head}>
-        <span className={styles.label}>{row.label}</span>
-        {row.recentAverage !== null && <span className={styles.average}>주 {row.recentAverage}세트</span>}
+    <li className={shared.tier}>
+      <div className={shared.tierHead}>
+        <span className={shared.tierLeft}>
+          <span className={shared.tierLabel}>{row.label}</span>
+          {row.recentAverage !== null && <span className={shared.sets}>{row.recentAverage}세트</span>}
+        </span>
+        <span className={shared.tierRight}>
+          {row.verdictLabel && <span className={`${shared.pill} ${TONE_CLASS[tone]}`}>{row.verdictLabel}</span>}
+        </span>
       </div>
-      <div className={styles.sub}>
-        최근 4주 평균
-        {row.previousAverage !== null && ` · 그 전 4주 ${row.previousAverage}세트`}
+      {row.previousAverage !== null && <div className={styles.previous}>그 전 4주 {row.previousAverage}세트</div>}
+
+      <div
+        className={styles.weeks}
+        style={{ gridTemplateColumns: `repeat(${periods.length}, 1fr)` }}
+        role="group"
+        aria-label={`${row.label} 주별 세트`}
+      >
+        {periods.map((p, i) => {
+          const sets = row.weeklySets[i]
+          return (
+            <button
+              key={p.from}
+              type="button"
+              className={`${styles.week} ${p.beforeFirstRecord ? styles.before : ''}`}
+              aria-pressed={i === selected}
+              aria-label={`${weekText(p, i === last)} ${p.beforeFirstRecord ? '기록 전' : `${sets}세트`}`}
+              onClick={() => setSelected(i)}
+            >
+              {/* 약점 탭의 가로 막대를 그대로 세운다 — 트랙·눈금·채움이 같은 규칙이다 */}
+              <span className={styles.upright} aria-hidden="true">
+                <span className={`${shared.track} ${styles.track}`}>
+                  {BAR_TICKS.map((tick) => (
+                    <span
+                      key={tick}
+                      className={`${shared.tick} ${tick === 20 ? shared.tickStrong : ''}`}
+                      style={{ left: `${barPercent(tick)}%` }}
+                    />
+                  ))}
+                  {!p.beforeFirstRecord && sets > 0 && (
+                    <span
+                      className={`${shared.fill} ${TONE_CLASS[weekTone(i)]}`}
+                      style={{ width: `${barPercent(sets)}%` }}
+                    />
+                  )}
+                </span>
+              </span>
+              <span className={`${styles.mark} ${i === selected ? styles.markOn : ''}`} aria-hidden="true" />
+            </button>
+          )
+        })}
       </div>
 
-      <div className={styles.plot} role="group" aria-label={`${row.label} 주별 세트`}>
-        <span
-          className={styles.band}
-          style={{
-            bottom: percent(thresholds.optimalFrom),
-            height: `${((thresholds.optimalThrough - thresholds.optimalFrom) / max) * 100}%`,
-          }}
-          aria-hidden="true"
-        />
-        <span className={styles.line} style={{ bottom: percent(thresholds.insufficientBelow) }} aria-hidden="true" />
-        <div className={styles.columns} style={{ gridTemplateColumns: `repeat(${periods.length}, 1fr)` }}>
-          {periods.map((p, i) => {
-            const sets = row.weeklySets[i]
-            return (
-              <button
-                key={p.from}
-                type="button"
-                className={[
-                  styles.column,
-                  p.beforeFirstRecord ? styles.before : '',
-                  i === selected ? styles.selected : '',
-                ].join(' ')}
-                aria-pressed={i === selected}
-                aria-label={`${weekText(p, i === last)} ${p.beforeFirstRecord ? '기록 전' : `${sets}세트`}`}
-                onClick={() => setSelected(i)}
-              >
-                {!p.beforeFirstRecord && sets > 0 && (
-                  <span
-                    className={`${styles.bar} ${i === last ? styles.barLatest : ''}`}
-                    style={{ height: percent(sets) }}
-                  />
-                )}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      <div className={styles.axis} aria-hidden="true">
-        <span>{shortDate(periods[0].from)}</span>
-        <span>최근 7일</span>
-      </div>
-
-      <div className={styles.readout} aria-live="polite">
-        <span>{weekText(week, selected === last)}</span>
-        <span className={styles.readoutValue}>
-          {week.beforeFirstRecord ? '기록 전' : `${row.weeklySets[selected]}세트`}
+      <div className={styles.foot}>
+        <span className={styles.footStart} aria-hidden="true">
+          {shortDate(periods[0].from)}
+        </span>
+        <span aria-live="polite">
+          {weekText(week, selected === last)}{' '}
+          <span className={styles.footValue}>{week.beforeFirstRecord ? '기록 전' : `${row.weeklySets[selected]}세트`}</span>
         </span>
       </div>
     </li>

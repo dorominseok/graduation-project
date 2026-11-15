@@ -1,180 +1,91 @@
 /*
- * 분석 › 추이. 부위마다 카드 하나, 카드 안에 최근 8주 막대.
+ * 분석 › 추이. 카드·부위 줄·알약·눈금 문구는 analysis.module.css(약점 탭)를 그대로 쓰고, 여기는 주별 막대만.
  *
- * 막대는 한 색이고 고른 주(처음에는 최근 주)가 가장 진하다. 판정은 색이 아니라 위치로 — 권장 구간 띠와 부족 경계선 위에
- * 막대가 어디까지 닿는지로 읽는다. 막대 끝만 둥글고 바닥은 각지다(약점 탭의 막대와 같은 이유).
+ * 주별 막대는 약점 탭의 가로 막대(.track · .tick · .fill)를 -90° 돌려 세운 것이다. 색·둥근 끝·눈금 위치가
+ * 약점 탭과 저절로 같아진다. 세로 막대를 따로 그리면 판정 색 그라데이션이 가로 방향(90deg)이라 맞지 않는다.
  */
 
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-6) var(--space-14);
-  font-size: var(--font-2xs);
-  color: var(--text-secondary);
-}
-
-.legendItem {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-6);
-}
-
-.legendBand {
-  width: 14px;
-  height: 10px;
-  border-radius: 2px;
-  background: var(--accent-soft);
-}
-
-.legendLine {
-  width: 14px;
-  border-top: 1px solid var(--tick-strong);
-}
-
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-14) var(--space-16);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
-  background: var(--card-bg);
-}
-
-.head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: var(--space-8);
-}
-
-.label {
-  font-size: var(--font-md);
-  font-weight: var(--weight-bold);
-  color: var(--text-primary);
-}
-
-.average {
-  flex-shrink: 0;
-  font-size: var(--font-md);
-  font-weight: var(--weight-bold);
-  color: var(--text-primary);
-}
-
-.sub {
+.previous {
+  margin-top: calc(-1 * var(--space-2));
   font-size: var(--font-2xs);
   color: var(--text-tertiary);
 }
 
-/* ── 막대 칸 */
-
-.plot {
-  position: relative;
-  height: 76px;
-  margin-top: var(--space-8);
-  border-bottom: 1px solid var(--tick-strong);
-}
-
-.band {
-  position: absolute;
-  left: 0;
-  right: 0;
-  border-radius: 2px;
-  background: var(--accent-soft);
-}
-
-.line {
-  position: absolute;
-  left: 0;
-  right: 0;
-  border-top: 1px solid var(--tick-strong);
-}
-
-.columns {
-  position: absolute;
-  inset: 0;
+/* 막대 높이 — 돌린 막대의 길이가 된다 */
+.weeks {
+  --bar-length: 64px;
   display: grid;
-  gap: 2px;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
 }
 
-/* 칸 전체가 누르는 자리다 — 막대가 낮아도 손가락이 닿게 */
-.column {
+/* 칸 전체가 누르는 자리다 — 막대가 짧아도 손가락이 닿게 */
+.week {
   position: relative;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  height: calc(var(--bar-length) + 10px);
   padding: 0;
   border: none;
-  border-radius: 6px 6px 0 0;
   background: none;
   cursor: pointer;
 }
 
-.column.before {
-  background: color-mix(in oklch, var(--text-tertiary) 12%, transparent);
-}
-
-/* 고른 주는 막대를 진하게. 칸에 배경을 깔면 기록 전 칸의 회색과 헷갈린다. 처음에는 최근 주를 고른 채로 연다 */
-.bar {
-  width: min(24px, 72%);
-  border-radius: 4px 4px 0 0;
-  background: color-mix(in oklch, var(--accent) 36%, transparent);
-}
-
-.bar.barLatest {
-  background: color-mix(in oklch, var(--accent) 62%, transparent);
-}
-
-.column.selected .bar {
-  background: var(--accent);
-}
-
-.column:focus-visible {
+.week:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  outline-offset: 1px;
+  border-radius: var(--radius-sm);
 }
 
-.axis {
-  display: flex;
-  justify-content: space-between;
-  font-size: var(--font-3xs);
-  color: var(--text-tertiary);
+/* 가로 막대 하나를 세로로 세우는 틀. 길이 = 칸 높이, 두께 = 약점 탭 막대 두께 */
+.upright {
+  display: block;
+  position: absolute;
+  left: 50%;
+  top: calc(var(--bar-length) / 2);
+  width: var(--bar-length);
+  height: 12px;
+  transform: translate(-50%, -50%) rotate(-90deg);
 }
 
-.readout {
+/* span이라 블록으로 바꿔야 크기를 갖는다(약점 탭은 div) */
+.track {
+  display: block;
+  height: 100%;
+}
+
+.before .track {
+  opacity: 0.4;
+}
+
+/* 고른 주 표시 — 막대 아래 점 */
+.mark {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: transparent;
+}
+
+.markOn {
+  background: var(--text-primary);
+}
+
+.foot {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: var(--space-8);
-  margin-top: var(--space-2);
-  font-size: var(--font-xs);
+  font-size: var(--font-2xs);
   color: var(--text-secondary);
 }
 
-.readoutValue {
-  flex-shrink: 0;
+.footStart {
+  color: var(--text-tertiary);
+}
+
+.footValue {
   font-weight: var(--weight-bold);
   color: var(--text-primary);
-}
-
-/* ── 유리 테마 */
-
-.card {
-  composes: g-card from global;
-}
-
-:global(:root[data-theme='glass']) .card {
-  border-radius: var(--radius-xl);
-}
-
-:global(:root[data-theme='glass']) .plot {
-  border-bottom-color: var(--tick-strong);
 }
