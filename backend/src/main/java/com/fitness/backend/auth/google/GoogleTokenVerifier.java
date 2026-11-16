@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
@@ -39,12 +40,17 @@ public class GoogleTokenVerifier {
     private final GoogleProperties properties;
     private final JwtDecoder decoder;
 
+    @Autowired
     public GoogleTokenVerifier(GoogleProperties properties) {
+        this(properties, NimbusJwtDecoder.withJwkSetUri(JWKS_URI).build());
+    }
+
+    /** 테스트가 서명 키만 바꿔 끼운다. 발급자·받는 쪽·만료 규칙은 여기서 붙이므로 운영과 같다 */
+    GoogleTokenVerifier(GoogleProperties properties, NimbusJwtDecoder nimbus) {
         this.properties = properties;
-        NimbusJwtDecoder nimbus = NimbusJwtDecoder.withJwkSetUri(JWKS_URI).build();
         nimbus.setJwtValidator(new DelegatingOAuth2TokenValidator<>(List.of(
                 new JwtTimestampValidator(),
-                claim("iss", jwt -> ISSUERS.contains(jwt.getClaimAsString("iss"))),
+                claim("iss", jwt -> jwt.hasClaim("iss") && ISSUERS.contains(jwt.getClaimAsString("iss"))),
                 claim("aud", jwt -> jwt.getAudience() != null && jwt.getAudience().contains(properties.clientId())))));
         this.decoder = nimbus;
     }

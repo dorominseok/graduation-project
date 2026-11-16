@@ -1,5 +1,6 @@
 package com.fitness.backend.auth.web;
 
+import com.fitness.backend.common.validation.MaxUtf8Bytes;
 import com.fitness.backend.user.domain.User;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -11,7 +12,7 @@ public final class AuthDtos {
     private AuthDtos() {
     }
 
-    /** 비밀번호 상한 72자는 BCrypt가 그 이상을 잘라내기 때문이다. */
+    /** 비밀번호 상한은 BCrypt가 받는 72바이트다. 글자 수로만 세면 한글 25자부터 해시가 예외를 낸다. */
     public record SignUpRequest(
             @NotBlank(message = "필수 항목입니다.")
             @Email(message = "이메일 형식이 올바르지 않습니다.")
@@ -20,6 +21,7 @@ public final class AuthDtos {
 
             @NotBlank(message = "필수 항목입니다.")
             @Size(min = 8, max = 72, message = "8자 이상 72자 이하여야 합니다.")
+            @MaxUtf8Bytes(value = 72, message = "너무 깁니다. 영문·숫자는 72자, 한글은 24자까지 쓸 수 있습니다.")
             String password,
 
             @NotBlank(message = "필수 항목입니다.")
