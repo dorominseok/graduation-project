@@ -1,12 +1,24 @@
 package com.fitness.backend.common.error;
 
+import com.fitness.backend.auth.jwt.JwtProvider;
+import com.fitness.backend.user.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import org.hibernate.exception.ConstraintViolationException;
+import org.hibernate.exception.DataException;
+import org.hibernate.query.SemanticException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -28,9 +40,12 @@ public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     private final com.fitness.backend.auth.web.RefreshCookies refreshCookies;
+    private final UserRepository userRepository;
 
-    public GlobalExceptionHandler(com.fitness.backend.auth.web.RefreshCookies refreshCookies) {
+    public GlobalExceptionHandler(com.fitness.backend.auth.web.RefreshCookies refreshCookies,
+                                  UserRepository userRepository) {
         this.refreshCookies = refreshCookies;
+        this.userRepository = userRepository;
     }
 
     /** 애플리케이션이 의도적으로 던진 오류. */
@@ -124,6 +139,80 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleNoResource(
             NoResourceFoundException e, HttpServletRequest request) {
         return build(ErrorCode.RESOURCE_NOT_FOUND, ErrorCode.RESOURCE_NOT_FOUND.defaultMessage(), request, null);
+    }
+
+    /** 그 주소에 없는 메서드(예: 목록 주소에 {@code DELETE}). 쓸 수 있는 메서드를 {@code Allow}로 알려 준다. */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotAllowed(
+            HttpRequestMethodNotSupportedException e, HttpServletRequest request) {
+        ResponseEntity<ErrorResponse> response =
+                build(ErrorCode.METHOD_NOT_ALLOWED, ErrorCode.METHOD_NOT_ALLOWED.defaultMessage(), request, null);
+        String[] allowed = e.getSupportedMethods();
+        if (allowed == null || allowed.length == 0) {
+            return response;
+        }
+        return ResponseEntity.status(response.getStatusCode())
+                .header(HttpHeaders.ALLOW, String.join(", ", allowed))
+                .body(response.getBody());
+    }
+
+    /** 본문이 JSON이 아닌 경우(예: {@code text/plain}). */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleUnsupportedMediaType(
+            HttpMediaTypeNotSupportedException e, HttpServletRequest request) {
+        return build(ErrorCode.UNSUPPORTED_MEDIA_TYPE, ErrorCode.UNSUPPORTED_MEDIA_TYPE.defaultMessage(), request, null);
+    }
+
+    /**
+     * 없는 정렬 기준({@code sort=nope}). 정렬 이름은 쿼리를 만들 때에야 엔티티와 맞춰 보므로 DB 계층 예외로 올라온다.
+     * {@code sort}를 보낸 요청에서 "그런 속성이 없다"일 때만 400으로 보고, 나머지는 서버 잘못으로 둔다.
+     */
+    @ExceptionHandler(InvalidDataAccessApiUsageException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidQuery(
+            InvalidDataAccessApiUsageException e, HttpServletRequest request) {
+        if (request.getParameter("sort") != null && causedBy(e, SemanticException.class)) {
+            return build(ErrorCode.VALIDATION_ERROR, ErrorCode.VALIDATION_ERROR.defaultMessage(), request,
+                    List.of(new ErrorResponse.FieldError("sort", "정렬할 수 없는 항목입니다.")));
+        }
+        return handleUnexpected(e, request);
+    }
+
+    /**
+     * DB가 값을 거절한 경우 가운데 요청 탓인 둘을 가려낸다. 나머지는 서버 잘못(500)이다.
+     *
+     * <ul>
+     *   <li>값이 DB가 담을 수 있는 범위 밖(예: 9억 년의 날짜) → 400
+     *   <li>탈퇴한 사용자의 남은 액세스 토큰으로 쓰기 → 401. 액세스 토큰은 요청마다 DB를 보지 않아(명세 2.3)
+     *       탈퇴 뒤에도 만료까지 통과하고, 쓰기는 사용자 외래키에서 걸린다. 다시 로그인하게 한다
+     * </ul>
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleRejectedByDatabase(
+            DataIntegrityViolationException e, HttpServletRequest request) {
+        if (causedBy(e, DataException.class)) {
+            log.warn("DB가 담지 못하는 값: {} {}", request.getMethod(), request.getRequestURI());
+            return build(ErrorCode.VALIDATION_ERROR, "값이 허용 범위를 벗어났습니다.", request, null);
+        }
+        if (causedBy(e, ConstraintViolationException.class) && callerNoLongerExists()) {
+            return build(ErrorCode.TOKEN_INVALID, ErrorCode.TOKEN_INVALID.defaultMessage(), request, null);
+        }
+        return handleUnexpected(e, request);
+    }
+
+    private boolean callerNoLongerExists() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null
+                && authentication.getPrincipal() instanceof JwtProvider.AuthenticatedUser caller
+                && !userRepository.existsById(caller.userId());
+    }
+
+    private static boolean causedBy(Throwable e, Class<? extends Throwable> type) {
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
+            if (type.isInstance(cause)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

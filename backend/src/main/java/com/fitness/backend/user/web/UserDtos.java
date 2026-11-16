@@ -1,7 +1,9 @@
 package com.fitness.backend.user.web;
 
+import com.fitness.backend.common.validation.MaxUtf8Bytes;
 import com.fitness.backend.user.domain.User;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.OffsetDateTime;
 
@@ -29,8 +31,9 @@ public final class UserDtos {
     public record LoginMethods(boolean password, boolean google) {
     }
 
-    /** 부분 수정. 바꿀 수 있는 항목은 닉네임뿐이고, 보내지 않으면 그대로 둔다. */
+    /** 부분 수정. 바꿀 수 있는 항목은 닉네임뿐이고, 보내지 않으면 그대로 둔다. 보낸다면 가입처럼 공백만은 안 된다. */
     public record UpdateMeRequest(
+            @Pattern(regexp = "(?s).*\\S.*", message = "공백만으로는 지을 수 없습니다.")
             @Size(min = 1, max = 50, message = "1자 이상 50자 이하여야 합니다.") String nickname) {
     }
 
@@ -50,8 +53,7 @@ public final class UserDtos {
      * <p>현재 비밀번호를 다시 받는 것은 탈퇴와 같은 이유다 — 액세스 토큰만 있으면
      * 실행되는 동작인데, 자리를 비운 사이 남이 바꾸면 계정을 통째로 빼앗긴다.
      *
-     * <p>{@code newPassword}의 8~72자는 가입 규칙과 같은 값이다. 상한 72자는
-     * BCrypt가 그 이상을 잘라내기 때문이다.
+     * <p>{@code newPassword}의 규칙은 가입과 같다 — 8자 이상, BCrypt가 받는 72바이트까지.
      */
     public record ChangePasswordRequest(
             @NotBlank(message = "필수 항목입니다.")
@@ -59,6 +61,7 @@ public final class UserDtos {
 
             @NotBlank(message = "필수 항목입니다.")
             @Size(min = 8, max = 72, message = "8자 이상 72자 이하여야 합니다.")
+            @MaxUtf8Bytes(value = 72, message = "너무 깁니다. 영문·숫자는 72자, 한글은 24자까지 쓸 수 있습니다.")
             String newPassword) {
     }
 }

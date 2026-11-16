@@ -5,6 +5,7 @@ import com.fitness.backend.workout.domain.WorkoutSession;
 import com.fitness.backend.workout.domain.WorkoutSet;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -66,6 +67,7 @@ public final class WorkoutDtos {
             @DecimalMin(value = "0.0", message = "0 이상이어야 합니다.")
             @Digits(integer = 4, fraction = 2, message = "소수점 두 자리까지 입력할 수 있습니다.")
             BigDecimal weightKg,
+            @Max(value = Short.MAX_VALUE, message = "32767 이하여야 합니다.")
             @Min(value = 1, message = "1 이상이어야 합니다.") Integer reps,
             @Min(value = 1, message = "1 이상이어야 합니다.") Integer durationSec,
             Boolean isWarmup) {
@@ -181,6 +183,7 @@ public final class WorkoutDtos {
             @DecimalMin(value = "0.0", message = "0 이상이어야 합니다.")
             @Digits(integer = 4, fraction = 2, message = "소수점 두 자리까지 입력할 수 있습니다.")
             BigDecimal weightKg,
+            @Max(value = Short.MAX_VALUE, message = "32767 이하여야 합니다.")
             @Min(value = 1, message = "1 이상이어야 합니다.") Integer reps,
             @Min(value = 1, message = "1 이상이어야 합니다.") Integer durationSec,
             Boolean isWarmup) {

@@ -15,6 +15,7 @@
 > 추가: 부위별 회복 상태(8.6, 2026-11-10). 엔드포인트 53→54개
 > 추가: 알림 설정·푸시 구독(12장, 2026-11-15). 엔드포인트 54→58개
 > 개정: 2026-11-16 종목 261종 — 5.6 분류별 종목 수(내전근은 하체), 11.5 교체 순서에 흔한 종목
+> 개정: 2026-11-17 잘못된 요청이 500이던 것 — 1.5에 `405 METHOD_NOT_ALLOWED` · `415 UNSUPPORTED_MEDIA_TYPE` 추가, 없는 정렬·범위 밖 날짜는 400, 비밀번호 72바이트(4.1·4.8), 닉네임 공백(4.6), `reps` 상한(6.4), 달력 `year` 범위(6.8), 탈퇴한 사용자의 토큰(4.7)
 > 개정: 2026-11-17 보안 점검 — 4.9 구글 계정을 묶을 때 비밀번호 삭제·기존 로그인 끊기, 12.3 푸시 주소 허용 호스트·계정당 10개, 1.5 요청 제한은 인코딩을 푼 경로로
 
 ---
@@ -149,7 +150,7 @@ Authorization: Bearer {accessToken}
 
 | HTTP | `code` | 발생 상황 |
 |---|---|---|
-| 400 | `VALIDATION_ERROR` | 필수값 누락, 형식 오류, 범위 초과 (`errors` 포함) |
+| 400 | `VALIDATION_ERROR` | 필수값 누락, 형식 오류, 범위 초과 (`errors` 포함). 없는 정렬 기준(`sort=nope` → `errors[].field`가 `sort`), DB가 담지 못하는 값(예: 9억 년의 날짜 — `errors` 없이)도 |
 | 400 | `INVALID_MEASURE_INPUT` | 종목의 `measureType`에 맞지 않는 세트 입력 (5.1·6.4 참조) |
 | 400 | `INVALID_DATE_RANGE` | `from > to`, 미래 날짜 등 |
 | 401 | `AUTHENTICATION_REQUIRED` | `Authorization` 헤더 없음 |
@@ -159,6 +160,8 @@ Authorization: Bearer {accessToken}
 | 401 | `GOOGLE_LOGIN_FAILED` | 구글 ID 토큰 검증 실패, 또는 구글이 확인하지 않은 이메일 (4.9, LOG-37) |
 | 403 | `ACCESS_DENIED` | 방장 전용 동작을 멤버가 시도 (10장). 타 사용자 리소스는 `404` (1.3) |
 | 404 | `RESOURCE_NOT_FOUND` | 대상 리소스 없음 |
+| 405 | `METHOD_NOT_ALLOWED` | 그 주소에 없는 메서드(예: `DELETE /workout-sessions`). `Allow` 헤더에 쓸 수 있는 메서드 |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` | 본문이 JSON이 아님(예: `Content-Type: text/plain`) |
 | 409 | `EMAIL_ALREADY_EXISTS` | 회원가입 이메일 중복. 구글 로그인에서 그 이메일이 이미 다른 구글 계정에 묶여 있을 때도 (4.9) |
 | 409 | `DAY_ALREADY_RECORDED` | 기록의 날짜를 옮기려는데 그 날짜에 기록이 이미 있음 (6.9, LOG-39) |
 | 409 | `GROUP_LIMIT_EXCEEDED` | 그룹 인원 20명 또는 한 사람의 그룹 10개 초과 (10장) |
@@ -409,7 +412,7 @@ Authorization: Bearer {accessToken}
 | 필드 | 규칙 |
 |---|---|
 | `email` | 필수, 이메일 형식, ≤ 255자, 중복 불가 |
-| `password` | 필수, 8~72자 (BCrypt 입력 상한). 서버가 BCrypt 해시 후 `password_hash`에 저장 |
+| `password` | 필수, 8자 이상 · 72자 이하이면서 **UTF-8로 72바이트 이하**(BCrypt 입력 상한 — 한글만 쓰면 24자까지). 서버가 BCrypt 해시 후 `password_hash`에 저장 |
 | `nickname` | 필수, 1~50자 |
 
 **응답 `201 Created`**
@@ -534,7 +537,7 @@ Authorization: Bearer {accessToken}
 
 | 필드 | 규칙 |
 |---|---|
-| `nickname` | 1~50자 |
+| `nickname` | 1\~50자. 공백만으로는 안 된다(가입과 같다) |
 
 **응답 `200 OK`** — 4.5와 동일한 전체 프로필.
 
@@ -614,13 +617,13 @@ Authorization: Bearer {accessToken}
 | 필드 | 규칙 |
 |---|---|
 | `currentPassword` | 필수. 현재 비밀번호 재확인 |
-| `newPassword` | 필수, 8~72자(4.1과 동일). 현재 비밀번호와 같으면 `400` |
+| `newPassword` | 필수, 8자 이상 · 72바이트 이하(4.1과 동일). 현재 비밀번호와 같으면 `400` |
 
 **응답 `204 No Content`**
 
 - 서버는 새 비밀번호를 BCrypt로 해시해 `password_hash`를 갱신한다. 스키마 변경은 없다.
 - **해당 사용자의 리프레시 토큰을 전부 폐기하고 쿠키를 만료시킨다.** 비밀번호를 바꾸는 이유 중 하나가 "내 계정이 털린 것 같다"이므로, 바꿔도 기존 세션이 살아 있으면 목적을 달성하지 못한다. 변경한 본인도 재로그인한다.
-- 액세스 토큰은 남은 만료 시간(최대 30분) 동안 유효하다. 2.3의 로그아웃과 같은 한계이며 같은 이유로 감수한다.
+- 액세스 토큰은 남은 만료 시간(최대 30분) 동안 유효하다. 2.3의 로그아웃과 같은 한계이며 같은 이유로 감수한다. 그 토큰으로 조회하면 빈 결과가 오고, **쓰기(기록·루틴·그룹·즐겨찾기)는 `401 TOKEN_INVALID`** — 사용자가 없어 저장되지 않는다.
 
 **오류**
 
@@ -1030,7 +1033,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | `clientSetId` | **필수. 멱등 키** — 클라이언트가 완료 체크 시점에 생성한 UUID(`crypto.randomUUID()`). 같은 세션에서 같은 값이 다시 오면 새로 저장하지 않는다 (아래 참조) |
 | `exerciseId` | 필수 |
 | `weightKg` | 종목 `measureType`에 따라 필수/무시 (5.1 표). 0 이상, 소수 2자리 |
-| `reps` | 종목에 따라 필수/무시. 1 이상 |
+| `reps` | 종목에 따라 필수/무시. 1 이상 32767 이하(세트 수정 6.11도 같다) |
 | `durationSec` | `TIME` 종목만 필수. 1 이상 |
 | `isWarmup` | 기본 `false`. `true`면 볼륨 집계 제외(8.2), 강도(%)에는 표시(7.2) |
 | ~~`setNo`~~ | **요청에서 받지 않는다**(LOG-26). 서버가 `해당 세션 내 같은 exerciseId 세트 수 + 1`로 부여한다. 클라이언트가 정하게 두면 같은 번호를 두 번 보내 1세트가 두 줄이 되고, 화면이 세트를 셀 근거가 없어진다 |
@@ -1171,7 +1174,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 
 캘린더 화면용 월별 요약.
 
-**쿼리 파라미터**: `year` (필수), `month` (필수, 1~12)
+**쿼리 파라미터**: `year` (필수, 1\~9999), `month` (필수, 1\~12)
 
 **응답 `200 OK`**
 

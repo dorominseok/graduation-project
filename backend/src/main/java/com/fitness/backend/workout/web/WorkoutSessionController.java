@@ -126,7 +126,7 @@ public class WorkoutSessionController {
     @GetMapping("/calendar")
     public CalendarResponse calendar(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
-            @RequestParam int year,
+            @RequestParam @Min(1) @Max(9999) int year,
             @RequestParam @Min(1) @Max(12) int month) {
         return workoutService.calendar(principal.userId(), year, month);
     }

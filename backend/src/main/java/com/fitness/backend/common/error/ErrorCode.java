@@ -27,12 +27,14 @@ public enum ErrorCode {
 
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "대상을 찾을 수 없습니다."),
+    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "이 주소에서 쓸 수 없는 요청 방식입니다."),
 
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
     DAY_ALREADY_RECORDED(HttpStatus.CONFLICT, "그 날짜에는 이미 기록이 있습니다."),
     GROUP_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "그룹 한도를 넘었습니다."),
     ROUTINE_FEEDBACK_EXISTS(HttpStatus.CONFLICT, "이미 답한 루틴입니다."),
 
+    UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "요청 본문은 JSON이어야 합니다."),
     RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "일시적인 오류가 발생했습니다.");
 
