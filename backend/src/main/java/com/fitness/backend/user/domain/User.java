@@ -18,8 +18,8 @@ import lombok.NoArgsConstructor;
  * 새어 나갈 경로가 생기므로 아예 저장하지 않는다.
  *
  * <p>로그인 방법은 비밀번호와 구글 둘이다. 구글로만 가입한 사람은 비밀번호가 없고,
- * 이메일로 가입한 뒤 같은 이메일의 구글로 들어오면 두 방법을 다 갖는다. 둘 다 없는 계정은
- * DB 제약({@code ck_users_login_method})이 막는다.
+ * 이메일로 가입한 뒤 같은 이메일의 구글로 들어오면 그때부터 구글만 남는다({@link #linkGoogle}).
+ * 둘 다 없는 계정은 DB 제약({@code ck_users_login_method})이 막는다.
  */
 @Entity
 @Getter
@@ -63,9 +63,13 @@ public class User extends BaseTimeEntity {
         return user;
     }
 
-    /** 이메일로 가입한 계정에 같은 이메일의 구글 계정을 묶는다. */
+    /**
+     * 이메일로 가입한 계정에 같은 이메일의 구글 계정을 묶는다. 비밀번호는 지운다 — 가입할 때 이메일 주인인지
+     * 확인하지 않았으므로, 그 비밀번호를 정한 사람이 주인이라는 보장이 없다.
+     */
     public void linkGoogle(String googleId) {
         this.googleId = googleId;
+        this.passwordHash = null;
     }
 
     public boolean hasPassword() {

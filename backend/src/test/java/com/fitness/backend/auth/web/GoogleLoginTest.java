@@ -2,7 +2,7 @@ package com.fitness.backend.auth.web;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -118,7 +118,34 @@ class GoogleLoginTest {
 
         User user = userRepository.findById(existingId).orElseThrow();
         assertEquals(sub, user.getGoogleId());
-        assertNotNull(user.getPasswordHash(), "비밀번호 로그인도 그대로 된다");
+    }
+
+    @Test
+    @DisplayName("묶을 때 비밀번호를 지우고 그 전 로그인을 모두 끊는다 — 가입은 이메일 주인인지 확인하지 않았다")
+    void linkingDropsPasswordAndOldSessions() throws Exception {
+        // 남이 내 이메일로 먼저 가입해 두었다
+        AuthService.AuthResult squatter = authService.signUp(email, "hunter2hunter2", "남");
+        Long existingId = squatter.user().getId();
+        googleSays(new GoogleIdentity(sub, email, true, "이영희"));
+
+        MvcResult linked = googleLogin().andExpect(status().isOk()).andReturn();
+
+        assertNull(userRepository.findById(existingId).orElseThrow().getPasswordHash());
+        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"hunter2hunter2\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+        ApiException e = assertThrows(ApiException.class,
+                () -> authService.refresh(squatter.tokens().refreshTokenRaw()));
+        assertEquals(ErrorCode.TOKEN_INVALID, e.errorCode());
+
+        // 방금 구글로 들어온 쪽의 로그인은 살아 있다
+        mvc.perform(get("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, bearerOf(linked)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.loginMethods.password").value(false))
+                .andExpect(jsonPath("$.loginMethods.google").value(true));
+        mvc.perform(post("/api/v1/auth/refresh").cookie(linked.getResponse().getCookie("refreshToken")))
+                .andExpect(status().isOk());
     }
 
     @Test
