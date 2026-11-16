@@ -6,6 +6,7 @@ import com.fitness.backend.notification.domain.NotificationSchedule;
 import com.fitness.backend.notification.domain.NotificationSettings;
 import com.fitness.backend.notification.domain.PushSubscription;
 import com.fitness.backend.notification.push.EcKeys;
+import com.fitness.backend.notification.push.PushEndpointPolicy;
 import com.fitness.backend.notification.push.PushGateway;
 import com.fitness.backend.notification.repository.NotificationSettingsRepository;
 import com.fitness.backend.notification.repository.PushSubscriptionRepository;
@@ -14,7 +15,6 @@ import com.fitness.backend.notification.web.NotificationDtos.SettingsResponse;
 import com.fitness.backend.notification.web.NotificationDtos.Summary;
 import com.fitness.backend.notification.web.NotificationDtos.UpdateRequest;
 import com.fitness.backend.workout.repository.WorkoutSessionRepository;
-import java.net.URI;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -23,7 +23,10 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +40,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class NotificationSettingsService {
 
+    private static final Logger log = LoggerFactory.getLogger(NotificationSettingsService.class);
+
+    /** 한 계정이 등록할 수 있는 기기 수. 발송은 기기마다 푸시 서버를 한 번씩 부른다 */
+    static final int MAX_DEVICES = 10;
     /** 최근 이 일수 동안 */
     private static final int SUGGEST_WINDOW_DAYS = 28;
     /** 같은 요일에 이만큼 운동했으면 그 요일을 기본으로 고른다 */
@@ -92,10 +99,12 @@ public class NotificationSettingsService {
     /**
      * 기기(브라우저) 하나를 등록한다. 같은 푸시 주소가 이미 있으면 주인과 키만 바꾼다 — 같은 브라우저로 다른 계정에
      * 로그인한 경우다. 처음 켜는 사람이면 설정을 기본값으로 만든다.
+     *
+     * <p>주소는 브라우저 회사의 푸시 서버만 받고({@link PushEndpointPolicy}), 한 계정에 {@value #MAX_DEVICES}개까지다.
      */
     @Transactional
     public SettingsResponse subscribe(Long userId, String endpoint, String p256dh, String auth) {
-        requireHttps(endpoint);
+        requirePushServer(userId, endpoint);
         requireKey(p256dh, P256DH_BYTES, "p256dh");
         requireKey(auth, AUTH_BYTES, "auth");
         try {
@@ -103,8 +112,14 @@ public class NotificationSettingsService {
         } catch (IllegalArgumentException e) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR, "브라우저 공개키(p256dh)가 올바르지 않습니다.");
         }
-        subscriptionRepository.findByEndpoint(endpoint).ifPresentOrElse(
-                existing -> existing.reassign(userId, p256dh, auth),
+        Optional<PushSubscription> existing = subscriptionRepository.findByEndpoint(endpoint);
+        boolean alreadyMine = existing.filter(subscription -> subscription.getUserId().equals(userId)).isPresent();
+        if (!alreadyMine && subscriptionRepository.countByUserId(userId) >= MAX_DEVICES) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR,
+                    "알림을 받는 기기는 " + MAX_DEVICES + "개까지 등록할 수 있습니다. 쓰지 않는 기기에서 알림을 꺼 주세요.");
+        }
+        existing.ifPresentOrElse(
+                subscription -> subscription.reassign(userId, p256dh, auth),
                 () -> subscriptionRepository.save(PushSubscription.of(userId, endpoint, p256dh, auth)));
         NotificationSettings settings = settingsRepository.findById(userId)
                 .orElseGet(() -> settingsRepository.save(NotificationSettings.defaults(userId, suggestedDays(userId))));
@@ -151,16 +166,13 @@ public class NotificationSettingsService {
         }
     }
 
-    private static void requireHttps(String endpoint) {
-        URI uri;
-        try {
-            uri = URI.create(endpoint);
-        } catch (IllegalArgumentException e) {
-            throw new ApiException(ErrorCode.VALIDATION_ERROR, "푸시 주소가 올바르지 않습니다.");
+    private static void requirePushServer(Long userId, String endpoint) {
+        if (PushEndpointPolicy.allowed(endpoint)) {
+            return;
         }
-        if (!"https".equals(uri.getScheme()) || uri.getHost() == null) {
-            throw new ApiException(ErrorCode.VALIDATION_ERROR, "푸시 주소는 https여야 합니다.");
-        }
+        // 목록에 없는 브라우저일 수 있다. 어느 호스트였는지 남겨 두고, 확인되면 PushEndpointPolicy에 더한다
+        log.warn("허용하지 않는 푸시 서버라 등록을 거절: host={} userId={}", PushEndpointPolicy.hostOf(endpoint), userId);
+        throw new ApiException(ErrorCode.VALIDATION_ERROR, "이 브라우저의 알림은 아직 지원하지 않습니다.");
     }
 
     private static void requireKey(String value, int bytes, String name) {

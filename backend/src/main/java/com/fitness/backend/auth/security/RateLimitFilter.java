@@ -74,7 +74,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         errorResponder.write(request, response, ErrorCode.RATE_LIMITED);
     }
 
+    /**
+     * 컨트롤러가 받는 것과 같은, 퍼센트 인코딩을 푼 경로. {@code getRequestURI()}는 보낸 글자 그대로라
+     * {@code /auth/%6Cogin}처럼 한 글자만 인코딩해도 규칙과 어긋나 세지 않게 된다.
+     */
     private static String path(HttpServletRequest request) {
-        return request.getRequestURI().substring(request.getContextPath().length());
+        String pathInfo = request.getPathInfo();
+        return pathInfo == null ? request.getServletPath() : request.getServletPath() + pathInfo;
     }
 }

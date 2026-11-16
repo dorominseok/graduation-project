@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.net.URI;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,6 +87,19 @@ class RateLimitFilterTest {
         mvc.perform(emptySignup(ip))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().string(HttpHeaders.RETRY_AFTER, "1800"));
+    }
+
+    @Test
+    @DisplayName("경로 글자를 퍼센트 인코딩해도 같은 한도로 센다 — 컨트롤러는 풀어서 받는다")
+    void encodedPathIsCounted() throws Exception {
+        String ip = "203.0.113.6";
+        for (int i = 0; i < 3; i++) {
+            mvc.perform(login(ip));
+        }
+        for (String path : new String[] {"/api/v1/auth/%6Cogin", "/api/v1/auth/log%69n", "/api/v1/%61uth/login"}) {
+            mvc.perform(from(ip, post(URI.create(path)).contentType(MediaType.APPLICATION_JSON).content(WRONG_LOGIN)))
+                    .andExpect(status().isTooManyRequests());
+        }
     }
 
     @Test

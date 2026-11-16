@@ -117,6 +117,57 @@ class NotificationApiTest {
     }
 
     @Test
+    @DisplayName("브라우저 회사의 푸시 서버가 아닌 주소는 받지 않는다 — 서버가 아무 주소로나 요청을 보내게 되지 않도록")
+    void rejectsUnknownPushHost() throws Exception {
+        for (String endpoint : new String[] {
+                "https://127.0.0.1:9/hook",
+                "https://10.0.0.5/internal",
+                "https://169.254.169.254/latest/meta-data/",
+                "https://postgres:5432/",
+                "https://attacker.example/collect",
+                "https://fcm.googleapis.com.attacker.example/fcm/send/x",
+                "https://user:pw@fcm.googleapis.com/fcm/send/x",
+                "https://fcm.googleapis.com:8443/fcm/send/x",
+        }) {
+            subscribe(subscription(endpoint, p256dh(), auth()))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        }
+        settings().andExpect(jsonPath("$.subscriptionCount").value(0));
+    }
+
+    @Test
+    @DisplayName("크롬·파이어폭스·사파리·엣지의 푸시 주소는 받는다")
+    void acceptsBrowserPushHosts() throws Exception {
+        String[] endpoints = {
+                "https://fcm.googleapis.com/fcm/send/" + UUID.randomUUID(),
+                "https://updates.push.services.mozilla.com/wpush/v2/" + UUID.randomUUID(),
+                "https://web.push.apple.com/" + UUID.randomUUID(),
+                "https://wns2-pn1p.notify.windows.com/w/?token=" + UUID.randomUUID(),
+        };
+        for (String endpoint : endpoints) {
+            subscribe(subscription(endpoint, p256dh(), auth())).andExpect(status().isOk());
+        }
+        settings().andExpect(jsonPath("$.subscriptionCount").value(endpoints.length));
+    }
+
+    @Test
+    @DisplayName("한 계정에 기기는 10개까지 — 이미 등록한 기기를 다시 보내는 것은 된다")
+    void limitsDevicesPerAccount() throws Exception {
+        String first = endpoint();
+        subscribe(subscription(first, p256dh(), auth())).andExpect(status().isOk());
+        for (int i = 0; i < 9; i++) {
+            subscribe(subscription(endpoint(), p256dh(), auth())).andExpect(status().isOk());
+        }
+        subscribe(subscription(endpoint(), p256dh(), auth()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        subscribe(subscription(first, p256dh(), auth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.subscriptionCount").value(10));
+    }
+
+    @Test
     @DisplayName("등록 해제는 내 기기만 지운다")
     void unsubscribe() throws Exception {
         String endpoint = endpoint();
@@ -162,7 +213,7 @@ class NotificationApiTest {
     }
 
     private static String endpoint() {
-        return "https://push.example.com/send/" + UUID.randomUUID();
+        return "https://fcm.googleapis.com/fcm/send/" + UUID.randomUUID();
     }
 
     private static String p256dh() {

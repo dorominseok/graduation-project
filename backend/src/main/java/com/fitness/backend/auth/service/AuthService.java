@@ -88,6 +88,10 @@ public class AuthService {
      * ③ 새로 가입. ②는 구글이 그 이메일의 소유를 확인한 경우({@code email_verified})에만
      * 한다. 확인되지 않은 이메일로 묶으면 남의 이메일을 적은 구글 계정이 그 사람의 기록을
      * 가져갈 수 있다.
+     *
+     * <p>②에서 묶을 때 그 계정의 비밀번호를 지우고 리프레시 토큰을 모두 폐기한다. 가입은 이메일 주인인지
+     * 확인하지 않으므로, 남이 이 이메일로 먼저 가입해 두었다면 그 비밀번호와 로그인이 묶인 뒤에도 남아
+     * 주인의 기록을 볼 수 있다. 구글이 소유를 확인한 쪽만 남긴다.
      */
     public AuthResult googleLogin(String credential) {
         GoogleIdentity google = googleTokenVerifier.verify(credential);
@@ -107,6 +111,8 @@ public class AuthService {
                         throw new ApiException(ErrorCode.EMAIL_ALREADY_EXISTS);
                     }
                     existing.linkGoogle(google.subject());
+                    // 벌크 갱신이 영속성 컨텍스트를 비운다 — 위 변경은 그 전에 flush된다
+                    refreshTokenRepository.revokeAllByUserId(existing.getId(), OffsetDateTime.now(clock));
                     return existing;
                 })
                 .orElseGet(() -> userRepository.save(
@@ -133,7 +139,11 @@ public class AuthService {
      * 동시 재발급으로 본다. 액세스 토큰이 만료되는 순간 여러 요청이 함께 401을 받아
      * 재발급이 두 번 발사될 수 있고, 이 앱은 운동 중 요청이 몰려 그 상황이 잦다.
      * 동시 요청은 밀리초 단위로 붙어 오지만 탈취는 그렇지 않으므로 시간으로 가른다.
+     *
+     * <p>{@code noRollbackFor}: 전체 폐기 뒤에 던지는 {@code TOKEN_INVALID}가 트랜잭션을 되돌리면 폐기도
+     * 같이 사라진다. 이 메서드의 다른 거절은 아무것도 바꾸기 전이라 커밋해도 남는 것이 없다.
      */
+    @Transactional(noRollbackFor = ApiException.class)
     public TokenPair refresh(String rawRefreshToken) {
         OffsetDateTime now = OffsetDateTime.now(clock);
         RefreshToken token = refreshTokenRepository.findByTokenHash(opaqueTokenFactory.hash(rawRefreshToken))

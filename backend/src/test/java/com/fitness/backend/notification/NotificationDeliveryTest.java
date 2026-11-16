@@ -208,7 +208,7 @@ class NotificationDeliveryTest {
 
     /** 기기 하나를 등록하고 그 푸시 주소를 돌려준다 */
     private String subscribe(Long user) {
-        String endpoint = "https://push.example.com/send/" + UUID.randomUUID();
+        String endpoint = "https://fcm.googleapis.com/fcm/send/" + UUID.randomUUID();
         String p256dh = EcKeys.toBase64Url(EcKeys.encode((ECPublicKey) EcKeys.generate().getPublic()));
         String auth = EcKeys.toBase64Url(UUID.randomUUID().toString().substring(0, 16).getBytes());
         settings.subscribe(user, endpoint, p256dh, auth);

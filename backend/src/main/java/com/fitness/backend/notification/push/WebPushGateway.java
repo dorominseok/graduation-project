@@ -31,6 +31,12 @@ public final class WebPushGateway implements PushGateway {
 
     @Override
     public Result send(Target target, byte[] payload, Duration ttl) {
+        // 등록할 때 막지만, 허용 목록이 생기기 전에 저장된 주소가 남아 있을 수 있다
+        if (!PushEndpointPolicy.allowed(target.endpoint())) {
+            log.warn("허용하지 않는 푸시 서버라 보내지 않고 구독을 지운다: host={}",
+                    PushEndpointPolicy.hostOf(target.endpoint()));
+            return Result.GONE;
+        }
         byte[] body;
         try {
             body = WebPushEncryption.encrypt(payload, EcKeys.publicKey(EcKeys.fromBase64Url(target.p256dh())),
