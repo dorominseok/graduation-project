@@ -25,7 +25,8 @@ import java.util.stream.Stream;
  *   회복   = 오늘·어제 한 부위가 있는 묶음은 통째로 뺀다. 코어는 부위만 ({@link RoutineExclusion})
  *   후보   = 부족 · 권장 이하 (과다·최적 제외)
  *   정렬   = 판정 → 불균형 적은 쪽 → 모자란 양(큰 순) → 마지막 운동일(오래된 순) → 크기 순
- *   묶음   = 맨 앞 부위의 묶음(하체·밀기·당기기). 불균형이면 적은 쪽이 먼저, 많은 쪽은 마지막
+ *   묶음   = 맨 앞 부위의 묶음(하체·밀기·당기기). 불균형이면 적은 쪽이 먼저, 많은 쪽은 마지막.
+ *            최적 부위로 정할 때는 과다 경계까지 부위당 최소 세트가 남은 부위만 본다
  *   세트   = 주 목표 ÷ 묶음이 돌아오는 주당 횟수(주당 일수 ÷ 묶음 수). 부족은 올림, 권장 이하·최적은 내림, 3~6으로 자름
  *   담기   = 묶음의 부족 부위 → 코어 → 묶음의 최적 부위. 하루 상한(18)을 넘으면 남은 만큼만
  *   최적   = 같은 세트를 담되 과다 경계(주당 평균 + 오늘 세트 ≤ 20)를 넘지 않는 만큼만. 3세트도 못 담으면 뺀다
@@ -133,7 +134,9 @@ public final class SlotPlanner {
                         .thenComparing(s -> SIZE_ORDER.indexOf(s.muscle())))
                 .toList();
 
-        Optional<Leader> leader = leader(lacking, optimal);
+        // 과다 경계 때문에 3세트도 못 담는 최적 부위로 묶음을 정하면 그 부위 없는 묶음이 된다 — 등이 가장 오래
+        // 쉬었어도 주 18이면 어깨 후면·이두만 하는 당기기 날이고, 당기기가 다 그러면 코어만 남는다
+        Optional<Leader> leader = leader(lacking, optimal.stream().filter(s -> fits(s, policy)).toList());
         Optional<MuscleBundle> bundle = leader.flatMap(l -> MuscleBundle.of(l.state().muscle()));
         Predicate<MuscleState> inBundle = s -> bundle.filter(b -> b.contains(s.muscle())).isPresent();
         Predicate<MuscleState> core = s -> s.muscle() == MuscleGroup.CORE;
@@ -184,6 +187,8 @@ public final class SlotPlanner {
      * 그날 묶음을 정하는 부위. 불균형의 적은 쪽 부위가 판정보다 먼저고, 많은 쪽에만 속한 부위는 가장 나중이다 —
      * 많은 쪽 묶음을 하면 불균형이 커진다(R3). 부족한 부위가 코어뿐이거나 없으면 가장 오래 쉰 최적 부위다.
      * 코어는 묶음이 없어 건너뛴다.
+     *
+     * @param optimal 과다 경계 안에서 담을 수 있는 최적 부위만({@link #fits})
      */
     private static Optional<Leader> leader(List<MuscleState> lacking, List<MuscleState> optimal) {
         Predicate<MuscleState> neutral = s -> !s.lesserSide() && !s.biggerSide();
@@ -245,7 +250,7 @@ public final class SlotPlanner {
 
         /** 과다 경계 안에서 부위당 최소라도 담을 수 있는 최적 부위인지 */
         boolean fillable(MuscleState state) {
-            return roomBeforeExcessive(state) >= policy.perMuscleMinSets();
+            return fits(state, policy);
         }
 
         /** 하루 상한까지 남은 자리를 {@code parts}부위가 나눌 때 한 부위의 몫. 부위당 최소보다 작게 주지는 않는다 */
@@ -254,7 +259,7 @@ public final class SlotPlanner {
         }
 
         private int roomBeforeExcessive(MuscleState state) {
-            return policy.optimalThrough().subtract(state.weeklySets()).setScale(0, RoundingMode.FLOOR).intValue();
+            return SlotPlanner.roomBeforeExcessive(state, policy);
         }
 
         boolean belowMin() {
@@ -288,6 +293,16 @@ public final class SlotPlanner {
         List<RoutineSlot> slots() {
             return List.copyOf(slots);
         }
+    }
+
+    /** 과다 경계(주당 평균 + 오늘 세트 ≤ 20)까지 오늘 더 담을 수 있는 세트 */
+    private static int roomBeforeExcessive(MuscleState state, RoutinePolicy policy) {
+        return policy.optimalThrough().subtract(state.weeklySets()).setScale(0, RoundingMode.FLOOR).intValue();
+    }
+
+    /** 과다 경계 안에서 부위당 최소라도 담을 수 있다 — 주 20이면 17까지 */
+    private static boolean fits(MuscleState state, RoutinePolicy policy) {
+        return roomBeforeExcessive(state, policy) >= policy.perMuscleMinSets();
     }
 
     /** 오래된 순. 한 번도 안 한 부위가 가장 오래된 것이다 */

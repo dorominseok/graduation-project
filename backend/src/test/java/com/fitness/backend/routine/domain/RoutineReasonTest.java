@@ -183,13 +183,27 @@ class RoutineReasonTest {
     }
 
     @Test
-    @DisplayName("코어만 담은 날 — 묶음이 모두 쉬는지, 남은 묶음이 과다인지를 구분한다")
+    @DisplayName("코어만 담은 날 — 묶음이 모두 쉬는지, 남은 묶음 부위가 과다 경계에 걸렸는지를 구분한다")
     void coreOnly() {
         List<MuscleState> bundlesRest = all(INSUFFICIENT, "3", 1, state(CORE, "3", INSUFFICIENT, 4));
         List<MuscleState> bundlesExcessive = all(EXCESSIVE, "22", 3, state(CORE, "3", INSUFFICIENT, 4));
+        // 최적이지만 주 17을 넘어 3세트도 못 담는다. "이미 과다"는 틀린 말이다
+        List<MuscleState> bundlesNearExcessive = all(OPTIMAL, "18", 3, state(CORE, "12", OPTIMAL, 3));
 
         assertEquals("하체, 밀기와 당기기가 모두 회복 중이라 오늘은 코어만 담았어요.", reason(bundlesRest, NONE));
-        assertEquals("남은 묶음 부위는 이미 과다(주 20세트 초과)라 오늘은 코어만 담았어요.", reason(bundlesExcessive, NONE));
+        assertEquals("남은 묶음 부위는 이미 주 22세트 이상이라, 과다(주 20세트 초과)가 되지 않게 오늘은 코어만 담았어요.",
+                reason(bundlesExcessive, NONE));
+        assertEquals("남은 묶음 부위는 이미 주 18세트 이상이라, 과다(주 20세트 초과)가 되지 않게 오늘은 코어만 담았어요.",
+                reason(bundlesNearExcessive, NONE));
+    }
+
+    @Test
+    @DisplayName("과다 경계에 걸린 최적 부위가 가장 오래 쉬었어도 문장은 루틴에 담긴 부위를 말한다")
+    void optimalLeadIsInTheRoutine() {
+        // 등이 주 18로 가장 오래 쉬었지만 3세트도 못 담는다 — "6일 쉰 등이 있는 당기기 날"이 아니다
+        List<MuscleState> states = all(OPTIMAL, "12", 3, state(BACK, "18", OPTIMAL, 6));
+
+        assertEquals("모자란 부위가 없어서 오늘은 3일 쉰 가슴이 있는 밀기 날이에요.", reason(states, NONE));
     }
 
     private static final Pattern WEEKLY = Pattern.compile("([가-힣·\\s]+?)[이가] 주 ([0-9.]+)세트로 (부족|권장 이하)(?:해서|라서)");
@@ -217,6 +231,10 @@ class RoutineReasonTest {
             assertEquals(plan.basis().bundle().orElseThrow().label(), label, sentence);
             assertTrue(day.slots().stream().anyMatch(s -> MuscleBundle.of(s.muscle())
                     .filter(b -> b.label().equals(label)).isPresent()), "그 묶음의 부위가 루틴에 있다: " + sentence);
+        }
+        // 묶음을 정한 부위(문장이 이름을 대는 부위)는 루틴에 있다
+        if (plan.basis().bundle().isPresent()) {
+            assertTrue(day.slots().stream().anyMatch(s -> s.muscle() == lead.muscle()), "말한 부위가 루틴에 있다: " + sentence);
         }
         Matcher weekly = WEEKLY.matcher(sentence);
         if (weekly.find()) {

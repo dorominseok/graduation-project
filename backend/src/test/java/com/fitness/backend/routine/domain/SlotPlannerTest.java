@@ -156,6 +156,28 @@ class SlotPlannerTest {
     }
 
     @Test
+    @DisplayName("모자란 부위가 없는 날, 과다 경계 때문에 3세트도 못 담는 최적 부위로는 묶음을 정하지 않는다 — 담을 수 있는 부위 중 가장 오래 쉰 부위")
+    void optimalLeadMustFit() {
+        LocalDate sixDaysAgo = TODAY.minusDays(6);
+        // ① 등만 주 18에 가장 오래 쉼 — 등으로 정하면 등 없는 당기기 12세트였다
+        SlotPlanner.Plan backFull = SlotPlanner.decide(all(OPTIMAL, "12", TODAY.minusDays(3),
+                state(BACK, "18", OPTIMAL, sixDaysAgo)), 5, TODAY, POLICY);
+        assertEquals(Map.of(CHEST, 6, DELT_FRONT, 6, TRICEPS, 6), sets(backFull.slots()));
+        assertEquals(CHEST, backFull.basis().lead().muscle());
+
+        // ② 당기기 셋이 모두 주 18 — 코어 6세트뿐이었다. 밀기·하체는 자리가 있다
+        MuscleState[] pullFull = {state(BACK, "18", OPTIMAL, sixDaysAgo), state(DELT_REAR, "18", OPTIMAL, sixDaysAgo),
+                state(BICEPS, "18", OPTIMAL, sixDaysAgo)};
+        List<RoutineSlot> pull = SlotPlanner.plan(all(OPTIMAL, "12", TODAY.minusDays(3), pullFull), 5, TODAY, POLICY);
+        assertEquals(Map.of(CHEST, 6, DELT_FRONT, 6, TRICEPS, 6), sets(pull));
+
+        // ③ ②에 코어도 주 18 — 빈 루틴이었다. 밀기·하체는 여전히 자리가 있다
+        MuscleState[] pullAndCoreFull = {pullFull[0], pullFull[1], pullFull[2], state(CORE, "18", OPTIMAL, sixDaysAgo)};
+        List<RoutineSlot> core = SlotPlanner.plan(all(OPTIMAL, "12", TODAY.minusDays(3), pullAndCoreFull), 5, TODAY, POLICY);
+        assertEquals(Map.of(CHEST, 6, DELT_FRONT, 6, TRICEPS, 6), sets(core));
+    }
+
+    @Test
     @DisplayName("최적인 코어는 하체 날에만 붙는다 — 밀기·당기기 날은 세 부위로 자리가 차고, 모자라도 끌어오지 않는다")
     void optimalCoreOnlyOnLowerDay() {
         // 주 6회면 부위당 5세트라 밀기 날이 15세트다. 자리가 남아도 최적인 코어는 붙이지 않는다

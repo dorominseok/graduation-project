@@ -152,4 +152,16 @@ class LlmRoutineValidatorTest {
         assertTrue(validate(pick("BACK", "20") + "," + pick("BICEPS", "83"),
                 "등과 이두를 한 번에 이어서 당기는 날이에요.").failures().isEmpty());
     }
+
+    @Test
+    @DisplayName("L6 — 말로 쓴 횟수 '세 번'은 잡고, '한 번에'·서수 '두 번째'·부위 이름 끝 글자('삼두 번갈아')는 통과")
+    void l6CountedTimes() {
+        String picks = pick("BACK", "20") + "," + pick("BICEPS", "83");
+
+        assertEquals(Set.of("L6"), validate(picks, "등은 세 번씩 반복해서 당기는 구성이에요.").codes());
+        assertEquals(Set.of("L6"), validate(picks, "등은 두번 나눠 당기는 구성이에요.").codes());
+        assertTrue(validate(picks, "등과 이두를 한 번에 이어서 당기는 날이에요.").failures().isEmpty());
+        assertTrue(validate(picks, "두 번째 종목은 덤벨 컬로 팔을 따로 채웠어요.").failures().isEmpty());
+        assertTrue(validate(picks, "등과 이두 번갈아 당기는 구성이에요.").failures().isEmpty());
+    }
 }

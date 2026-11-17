@@ -131,6 +131,11 @@ public class RoutineItem {
         return originalSets != null ? originalSets : plannedSets;
     }
 
+    /** 종목을 바꿨다. 바꿨다가 원래 종목으로 되돌렸으면 아니다 */
+    public boolean swapped() {
+        return originalExerciseId != null && !originalExerciseId.equals(exerciseId);
+    }
+
     public boolean adjusted() {
         return originalExerciseId != null || originalSets != null || removed;
     }

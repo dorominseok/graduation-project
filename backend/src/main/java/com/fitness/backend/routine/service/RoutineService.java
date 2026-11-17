@@ -261,8 +261,14 @@ public class RoutineService {
      */
     public Optional<String> reminderReason(Long userId, LocalDate today) {
         Optional<Routine> existing = routineRepository.findByUserIdAndRoutineDate(userId, today);
-        if (existing.isPresent() && existing.get().getReason() != null) {
-            return Optional.of(existing.get().getReason());
+        if (existing.isPresent()) {
+            // 담은 부위가 없는 루틴이면 권할 게 없다. 항목은 지우지 않고 표시만 하므로, 비었으면 만들 때 빈 루틴이다
+            if (itemRepository.findByRoutineIdOrderByPositionAsc(existing.get().getId()).isEmpty()) {
+                return Optional.empty();
+            }
+            if (existing.get().getReason() != null) {
+                return Optional.of(existing.get().getReason());
+            }
         }
         RoutinePolicy policy = policy();
         Planning planning = plan(userId, today, policy);
@@ -420,6 +426,13 @@ public class RoutineService {
                 // 다른 부위로 바꾸면 루틴의 근거(이 부위가 부족하다)가 성립하지 않는다
                 throw new ApiException(ErrorCode.VALIDATION_ERROR, "같은 부위의 종목으로만 바꿀 수 있습니다.");
             }
+            boolean elsewhere = itemRepository.findByRoutineIdOrderByPositionAsc(routine.getId()).stream()
+                    .anyMatch(other -> !other.getId().equals(item.getId()) && !other.isRemoved()
+                            && other.getExerciseId().equals(exercise.getId()));
+            if (elsewhere) {
+                // 같은 종목이 두 항목이면 그날 세트가 두 항목에 다 잡혀 진행이 두 번 세어진다
+                throw new ApiException(ErrorCode.VALIDATION_ERROR, "이미 오늘 루틴에 있는 종목입니다.");
+            }
             boolean firstTime = !historyRepository.exercisesDoneBefore(userId, routine.getRoutineDate())
                     .contains(exercise.getId());
             item.replaceExercise(exercise.getId(), RepRange.of(exercise.getMeasureType()), firstTime);
@@ -526,11 +539,27 @@ public class RoutineService {
                 && trainedRoutineMuscle(routine.getUserId(), routine.getRoutineDate(), items, exercises);
 
         return new RoutineResponse(routine.getId(), routine.getRoutineDate(), routine.getReferenceDate(),
-                routine.getGeneratedBy(), routine.getReason(), routine.getComment(), lowConfidence(routine), totalSets,
+                routine.getGeneratedBy(), routine.getReason(), comment(routine, items), lowConfidence(routine), totalSets,
                 doneSets,
                 itemResponses,
                 new FeedbackState(routine.getFeedbackRating(), routine.getFeedbackReason(), routine.isFeedbackSkipped()),
                 askFeedback);
+    }
+
+    /**
+     * 종목 설명. 교체·빼기를 했으면 지금 남은 항목으로 규칙 문장을 다시 고른다 — 만들 때의 설명은 바꾼 종목 이름이나
+     * 뺀 코어("코어로 마무리")를 말할 수 있다. 세트만 바꿨으면 설명이 맞으므로(숫자가 없다) 그대로 둔다.
+     * 저장된 설명은 바꾸지 않는다 — LLM 채택률 같은 지표가 만들 때의 값을 본다.
+     */
+    private static String comment(Routine routine, List<RoutineItem> items) {
+        boolean reshaped = items.stream().anyMatch(item -> item.isRemoved() || item.swapped());
+        if (!reshaped) {
+            return routine.getComment();
+        }
+        return RuleComposer.comment(items.stream()
+                .filter(item -> !item.isRemoved())
+                .map(item -> new PlannedItem(item.getMuscleGroup(), item.getExerciseId(), item.getPlannedSets()))
+                .toList());
     }
 
     /** 만든 날 기준 최근 4주 운동한 날이 신뢰도 임계에 못 미친다(분석 5.5와 같은 기준) */
