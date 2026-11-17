@@ -11,7 +11,19 @@ export interface NavigateMessage {
   url: string
 }
 
-/** 앱 안 경로만 받는다. 다른 주소나 이상한 값이면 홈 */
+/**
+ * 앱 안 경로만 받는다. 다른 주소나 이상한 값이면 홈.
+ *
+ * 글자로 "/로 시작하는지"만 보면 안 된다 — 브라우저는 `/\evil.example`의 `\`를 `/`로 읽고 탭·줄바꿈을
+ * 지우므로 둘 다 `//evil.example`(다른 사이트)이 된다. 그래서 브라우저와 같은 방식으로 주소를 풀어 출처가 이
+ * 앱과 같을 때만 경로를 쓴다. `location`은 서비스워커에서도 화면에서도 이 앱의 주소다.
+ */
 export function safeAppPath(url: unknown): string {
-  return typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') ? url : '/'
+  if (typeof url !== 'string') return '/'
+  try {
+    const parsed = new URL(url, location.origin)
+    return parsed.origin === location.origin ? parsed.pathname + parsed.search + parsed.hash : '/'
+  } catch {
+    return '/'
+  }
 }

@@ -5,6 +5,7 @@ import com.fitness.backend.auth.repository.RefreshTokenRepository;
 import com.fitness.backend.common.error.ApiException;
 import com.fitness.backend.common.error.ErrorCode;
 import com.fitness.backend.group.service.GroupService;
+import com.fitness.backend.notification.repository.PushSubscriptionRepository;
 import com.fitness.backend.user.domain.User;
 import com.fitness.backend.user.repository.UserRepository;
 import com.fitness.backend.user.web.UserDtos;
@@ -24,6 +25,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final GoogleTokenVerifier googleTokenVerifier;
     private final GroupService groupService;
+    private final PushSubscriptionRepository pushSubscriptionRepository;
     private final Clock clock;
 
     public UserService(UserRepository userRepository,
@@ -31,12 +33,14 @@ public class UserService {
                        PasswordEncoder passwordEncoder,
                        GoogleTokenVerifier googleTokenVerifier,
                        GroupService groupService,
+                       PushSubscriptionRepository pushSubscriptionRepository,
                        Clock clock) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.googleTokenVerifier = googleTokenVerifier;
         this.groupService = groupService;
+        this.pushSubscriptionRepository = pushSubscriptionRepository;
         this.clock = clock;
     }
 
@@ -94,6 +98,10 @@ public class UserService {
      *
      * <p>액세스 토큰은 남은 만료 시간(최대 30분) 동안 유효하다 — 로그아웃과 같은
      * 한계이며 같은 이유로 감수한다.
+     *
+     * <p><b>알림 기기(푸시 구독)도 모두 지운다.</b> 로그아웃한 기기에는 알림을 보내지 않는다 —
+     * 세션을 끊었는데 남의 폰·공용 PC에 리마인더·응원 알림이 계속 뜨면 안 된다. 바꾼 그 기기도
+     * 로그아웃하며 꺼지므로, 다시 로그인한 뒤 설정 › 알림에서 켠다(「알림_설계서」 4.1).
      */
     public void changePassword(Long userId, String currentPassword, String newPassword) {
         User user = get(userId);
@@ -113,5 +121,6 @@ public class UserService {
 
         user.changePassword(passwordEncoder.encode(newPassword));
         refreshTokenRepository.revokeAllByUserId(userId, OffsetDateTime.now(clock));
+        pushSubscriptionRepository.deleteByUserId(userId);
     }
 }
