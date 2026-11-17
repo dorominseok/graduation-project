@@ -327,13 +327,12 @@ export function SessionScreen() {
         else throw err
       }
     })
-    // 줄은 끊기지 않게 잇고, 뜻밖의 오류는 삼키지 않고 그대로 올린다
-    const settled = next.catch(() => undefined)
+    // 줄이 끊기지 않게 오류는 여기서 받는다. API 오류는 위에서 이미 알렸고, 그 밖의 뜻밖의 오류는 콘솔에 남긴다
+    const settled = next.catch((err: unknown) => console.error('세트 수정 실패', err))
     patchQueue.current.set(key, settled)
     void settled.then(() => {
       if (patchQueue.current.get(key) === settled) patchQueue.current.delete(key)
     })
-    void next
   }
 
   /**
