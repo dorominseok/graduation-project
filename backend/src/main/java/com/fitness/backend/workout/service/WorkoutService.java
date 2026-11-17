@@ -42,7 +42,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -145,21 +144,17 @@ public class WorkoutService {
 
         // 측정 유형이 쓰지 않는 값은 담지 않는다. 맨몸 운동에 중량이 들어가면
         // 볼륨 집계가 부풀려져 부족한 부위를 충분한 것으로 오판한다.
-        WorkoutSet set = WorkoutSet.record(sessionId, request.exerciseId(), setNo,
+        //
+        // 같은 키가 거의 동시에 둘 들어오면 위의 조회는 둘 다 "없음"을 본다. UNIQUE 제약이 최종 방어선이고,
+        // 충돌한 쪽은 넣지 않고 먼저 저장된 세트를 돌려준다.
+        boolean created = setRepository.insertIfAbsent(sessionId, request.exerciseId(), setNo,
                 measureType.requiresWeight() ? request.weightKg() : null,
                 measureType.requiresReps() ? toShort(request.reps()) : null,
                 measureType.requiresDuration() ? request.durationSec() : null,
-                request.warmupOrDefault(), OffsetDateTime.now(clock), request.clientSetId());
-
-        try {
-            return new SetSaveResult(SetResponse.of(setRepository.saveAndFlush(set), exercise.getNameKo()), true);
-        } catch (DataIntegrityViolationException e) {
-            // 같은 키가 거의 동시에 둘 들어온 경우. UNIQUE 제약이 최종 방어선이고,
-            // 여기서는 먼저 저장된 쪽을 돌려준다.
-            WorkoutSet existing = setRepository.findBySessionIdAndClientSetId(sessionId, request.clientSetId())
-                    .orElseThrow(() -> e);
-            return new SetSaveResult(toSetResponse(existing), false);
-        }
+                request.warmupOrDefault(), OffsetDateTime.now(clock), request.clientSetId()) == 1;
+        WorkoutSet saved = setRepository.findBySessionIdAndClientSetId(sessionId, request.clientSetId())
+                .orElseThrow(() -> new IllegalStateException("방금 저장한 세트가 없다"));
+        return new SetSaveResult(SetResponse.of(saved, exercise.getNameKo()), created);
     }
 
     /**

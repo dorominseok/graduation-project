@@ -1,10 +1,15 @@
 package com.fitness.backend.workout.repository;
 
 import com.fitness.backend.workout.domain.WorkoutSet;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface WorkoutSetRepository extends JpaRepository<WorkoutSet, Long> {
 
@@ -13,6 +18,33 @@ public interface WorkoutSetRepository extends JpaRepository<WorkoutSet, Long> {
 
     /** 멱등 처리. 이미 있으면 저장하지 않고 이 세트를 그대로 돌려준다 */
     Optional<WorkoutSet> findBySessionIdAndClientSetId(Long sessionId, UUID clientSetId);
+
+    /**
+     * 세트를 넣는다. 같은 {@code (session_id, client_set_id)}가 이미 있으면 아무것도 하지 않는다.
+     *
+     * <p>엔티티를 저장하고 유니크 충돌 예외를 잡는 방식은 쓸 수 없다 — 충돌이 난 트랜잭션에서는
+     * 먼저 저장된 세트를 다시 읽지 못해 500이 된다. 충돌은 DB가 조용히 넘기게 한다
+     * ({@code WorkoutSessionRepository#insertIfAbsent}와 같은 방식).
+     *
+     * @return 새로 넣었으면 1, 같은 키가 이미 있었으면 0
+     */
+    @Modifying
+    @Query(value = """
+            insert into workout_sets (session_id, exercise_id, set_no, weight_kg, reps, duration_sec,
+                                      is_warmup, recorded_at, client_set_id)
+            values (:sessionId, :exerciseId, :setNo, cast(:weightKg as numeric), cast(:reps as smallint),
+                    cast(:durationSec as integer), :isWarmup, :recordedAt, :clientSetId)
+            on conflict (session_id, client_set_id) do nothing
+            """, nativeQuery = true)
+    int insertIfAbsent(@Param("sessionId") Long sessionId,
+                       @Param("exerciseId") Long exerciseId,
+                       @Param("setNo") short setNo,
+                       @Param("weightKg") BigDecimal weightKg,
+                       @Param("reps") Short reps,
+                       @Param("durationSec") Integer durationSec,
+                       @Param("isWarmup") boolean isWarmup,
+                       @Param("recordedAt") OffsetDateTime recordedAt,
+                       @Param("clientSetId") UUID clientSetId);
 
     /** {@code setNo} 자동 부여용. 같은 세션 안 같은 종목의 세트 수 + 1이 다음 번호다 */
     int countBySessionIdAndExerciseId(Long sessionId, Long exerciseId);

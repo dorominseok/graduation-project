@@ -134,6 +134,12 @@ export function SessionScreen() {
   const [statsVersion, setStatsVersion] = useState(0)
   const bumpStats = () => setStatsVersion((v) => v + 1)
 
+  // 같은 세트의 수정은 앞 요청이 끝난 뒤 보낸다. 서버는 세트 한 줄을 통째로 덮어써서, 한 세트에 요청이
+  // 둘 겹치면 늦게 끝난 쪽이 앞선 변경을 되돌린다 — 화면은 65kg·8회인데 서버는 65kg·10회로 남는다
+  const patchQueue = useRef(new Map<string, Promise<void>>())
+  // 서버에서 지우는 중인 줄. 응답을 기다리는 동안 ✕를 또 눌러도 다시 보내지 않는다
+  const removing = useRef(new Set<string>())
+
   const fail = useCallback(
     (err: unknown) => {
       if (!isApiError(err)) throw err
@@ -283,6 +289,53 @@ export function SessionScreen() {
   }
 
   /**
+   * 응답을 기다린 뒤에 고칠 때 쓴다. 기다리는 사이 줄이 지워지거나 더해지면 "몇 번째 줄"은 다른 줄을
+   * 가리키므로 {@code clientSetId}로 찾는다. 그 사이 지워진 줄이면 아무 일도 없다.
+   */
+  const updateRowById = (clientSetId: string, change: (row: SetRow) => Partial<SetRow>) => {
+    setCards((prev) =>
+      prev.map((card) =>
+        card.rows.some((row) => row.clientSetId === clientSetId)
+          ? { ...card, rows: card.rows.map((row) => (row.clientSetId === clientSetId ? { ...row, ...change(row) } : row)) }
+          : card,
+      ),
+    )
+  }
+
+  /**
+   * 저장된 세트의 값을 서버에 맞춘다. 화면은 이미 바뀌어 있고, 실패하면 {@code revert}로 되돌린다.
+   * 같은 세트의 요청은 한 줄로 세워 보낸 순서대로 닿게 한다 — +2.5를 빠르게 여러 번 눌러도 마지막 값이 남는다.
+   */
+  const sendPatch = (
+    targetSessionId: number,
+    row: SetRow,
+    body: { weightKg?: number; reps?: number; durationSec?: number; isWarmup?: boolean },
+    revert: (current: SetRow) => Partial<SetRow>,
+    affectsStats: boolean,
+  ) => {
+    const savedId = row.savedId
+    if (savedId === null) return
+    const key = row.clientSetId
+    const previous = patchQueue.current.get(key) ?? Promise.resolve()
+    const next = previous.then(async () => {
+      try {
+        await workoutApi.updateSet(targetSessionId, savedId, body)
+        if (affectsStats) bumpStats()
+      } catch (err) {
+        updateRowById(key, revert)
+        if (isApiError(err)) showToast({ message: err.message, tone: 'danger' })
+        else throw err
+      }
+    })
+    // 줄이 끊기지 않게 오류는 여기서 받는다. API 오류는 위에서 이미 알렸고, 그 밖의 뜻밖의 오류는 콘솔에 남긴다
+    const settled = next.catch((err: unknown) => console.error('세트 수정 실패', err))
+    patchQueue.current.set(key, settled)
+    void settled.then(() => {
+      if (patchQueue.current.get(key) === settled) patchQueue.current.delete(key)
+    })
+  }
+
+  /**
    * 쉬고 나서 할 세트. 이 종목에 체크 안 한 줄이 남았으면 이 종목, 다 했으면 목록에서 다음 종목이고,
    * 뒤에 없으면 앞쪽에 남겨 둔 종목이다. 남은 세트가 없으면 null.
    */
@@ -308,8 +361,10 @@ export function SessionScreen() {
       if (!session) return
       setBusy(true)
       try {
+        // 줄 세워 둔 수정이 있으면 먼저 닿게 한 뒤 지운다
+        await patchQueue.current.get(row.clientSetId)
         await workoutApi.deleteSet(session.id, row.savedId)
-        updateRow(cardIndex, rowIndex, { savedId: null })
+        updateRowById(row.clientSetId, () => ({ savedId: null }))
         bumpStats()
       } catch (err) {
         fail(err)
@@ -340,7 +395,7 @@ export function SessionScreen() {
         durationSec: row.durationSec,
         isWarmup: row.isWarmup,
       })
-      updateRow(cardIndex, rowIndex, { savedId: saved.id })
+      updateRowById(row.clientSetId, () => ({ savedId: saved.id }))
       bumpStats()
       setFlashId(row.clientSetId)
       setExpandedId(null)
@@ -367,41 +422,38 @@ export function SessionScreen() {
    * 워밍업 표시. 워밍업 세트는 분석의 세트 집계에서 빠진다 — 준비 세트까지 세면 부족한 부위가
    * 충분한 것으로 보인다.
    */
-  const toggleWarmup = async (cardIndex: number, rowIndex: number) => {
+  const toggleWarmup = (cardIndex: number, rowIndex: number) => {
     const row = cards[cardIndex].rows[rowIndex]
     const next = !row.isWarmup
     updateRow(cardIndex, rowIndex, { isWarmup: next })
 
-    // 이미 저장된 세트면 서버 값도 맞춘다.
-    if (row.savedId !== null && session) {
-      try {
-        await workoutApi.updateSet(session.id, row.savedId, { isWarmup: next })
-      } catch (err) {
-        updateRow(cardIndex, rowIndex, { isWarmup: !next })
-        fail(err)
-      }
+    // 이미 저장된 세트면 서버 값도 맞춘다. 실패하면 그 뒤로 다시 바꾸지 않았을 때만 되돌린다
+    if (session) {
+      sendPatch(session.id, row, { isWarmup: next }, (current) => (current.isWarmup === next ? { isWarmup: !next } : {}), false)
     }
   }
 
-  /** 값 하나를 고친다. 이미 저장된 세트면 서버 값까지 맞춘다 */
-  const patchValue = async (
-    cardIndex: number,
-    rowIndex: number,
-    field: Field,
-    value: number,
-  ) => {
+  /**
+   * 값을 고친다. 이미 저장된 세트면 서버 값까지 맞춘다 — 여러 값을 같이 고칠 때(일괄 수정)도 요청은 한 번이다.
+   *
+   * <p>실패하면 고치기 전 값으로 되돌리되, 그 뒤로 사용자가 다시 고친 칸은 건드리지 않는다.
+   */
+  const patchValues = (cardIndex: number, rowIndex: number, values: Partial<Record<Field, number>>) => {
     const row = cards[cardIndex].rows[rowIndex]
-    const before = row[field]
-    updateRow(cardIndex, rowIndex, { [field]: value })
-    if (row.savedId === null || !session) return
-    try {
-      await workoutApi.updateSet(session.id, row.savedId, { [field]: value })
-      bumpStats()
-    } catch (err) {
-      updateRow(cardIndex, rowIndex, { [field]: before })
-      fail(err)
-    }
+    const fields = Object.keys(values) as Field[]
+    updateRow(cardIndex, rowIndex, values)
+    if (!session) return
+    sendPatch(
+      session.id,
+      row,
+      values,
+      (current) => Object.fromEntries(fields.filter((f) => current[f] === values[f]).map((f) => [f, row[f]])),
+      true,
+    )
   }
+
+  const patchValue = (cardIndex: number, rowIndex: number, field: Field, value: number) =>
+    patchValues(cardIndex, rowIndex, { [field]: value })
 
   const addRow = (cardIndex: number) => {
     setCards((prev) =>
@@ -419,18 +471,26 @@ export function SessionScreen() {
 
   const removeRow = async (cardIndex: number, rowIndex: number) => {
     const row = cards[cardIndex].rows[rowIndex]
+    if (removing.current.has(row.clientSetId)) return
     if (row.savedId !== null && session) {
+      removing.current.add(row.clientSetId)
       try {
+        await patchQueue.current.get(row.clientSetId)
         await workoutApi.deleteSet(session.id, row.savedId)
         bumpStats()
       } catch (err) {
         fail(err)
         return
+      } finally {
+        removing.current.delete(row.clientSetId)
       }
     }
+    // 지우는 동안 다른 줄이 먼저 사라졌을 수 있다. 줄 번호가 아니라 그 줄을 찾아 지운다
     setCards((prev) =>
-      prev.map((card, ci) =>
-        ci !== cardIndex ? card : { ...card, rows: card.rows.filter((_, ri) => ri !== rowIndex) },
+      prev.map((card) =>
+        card.rows.some((it) => it.clientSetId === row.clientSetId)
+          ? { ...card, rows: card.rows.filter((it) => it.clientSetId !== row.clientSetId) }
+          : card,
       ),
     )
   }
@@ -795,7 +855,7 @@ export function SessionScreen() {
                             className={styles.fieldValue}
                             value={row[primaryField]}
                             allowDecimal={primaryField === 'weightKg'}
-                            onCommit={(value) => void patchValue(openedIndex, rowIndex, primaryField, value)}
+                            onCommit={(value) => patchValue(openedIndex, rowIndex, primaryField, value)}
                             aria-label={FIELD_LABEL[primaryField]}
                           />
                           <span className={styles.fieldUnit}>{FIELD_UNIT[primaryField]}</span>
@@ -803,7 +863,7 @@ export function SessionScreen() {
                             type="button"
                             className={styles.pillBtn}
                             onClick={() =>
-                              void patchValue(
+                              patchValue(
                                 openedIndex,
                                 rowIndex,
                                 primaryField,
@@ -817,7 +877,7 @@ export function SessionScreen() {
                             type="button"
                             className={styles.pillBtn}
                             onClick={() =>
-                              void patchValue(
+                              patchValue(
                                 openedIndex,
                                 rowIndex,
                                 primaryField,
@@ -835,7 +895,7 @@ export function SessionScreen() {
                             <NumberField
                               className={styles.fieldValue}
                               value={row.reps}
-                              onCommit={(value) => void patchValue(openedIndex, rowIndex, 'reps', value)}
+                              onCommit={(value) => patchValue(openedIndex, rowIndex, 'reps', value)}
                               aria-label="횟수"
                             />
                             <span className={styles.fieldUnit}>회</span>
@@ -843,7 +903,7 @@ export function SessionScreen() {
                               type="button"
                               className={styles.pillBtn}
                               onClick={() =>
-                                void patchValue(
+                                patchValue(
                                   openedIndex,
                                   rowIndex,
                                   'reps',
@@ -857,7 +917,7 @@ export function SessionScreen() {
                               type="button"
                               className={styles.pillBtn}
                               onClick={() =>
-                                void patchValue(openedIndex, rowIndex, 'reps', (row.reps ?? 0) + 1)
+                                patchValue(openedIndex, rowIndex, 'reps', (row.reps ?? 0) + 1)
                               }
                             >
                               +1
@@ -907,7 +967,7 @@ export function SessionScreen() {
                             className={`${styles.warmupPill} ${
                               row.isWarmup ? styles.warmupPillOn : ''
                             }`}
-                            onClick={() => void toggleWarmup(openedIndex, rowIndex)}
+                            onClick={() => toggleWarmup(openedIndex, rowIndex)}
                           >
                             {row.isWarmup ? '워밍업 해제' : '워밍업 설정'}
                           </button>
@@ -1030,8 +1090,12 @@ export function SessionScreen() {
             onClick={() => {
               opened.rows.forEach((row, rowIndex) => {
                 if (!batchPicked[row.clientSetId]) return
-                void patchValue(openedIndex, rowIndex, primaryField, batchPrimary)
-                if (hasReps) void patchValue(openedIndex, rowIndex, 'reps', batchReps)
+                // 세트마다 요청 한 번. 중량과 횟수를 따로 보내면 서버에서 한쪽이 다른 쪽을 덮어쓴다
+                patchValues(
+                  openedIndex,
+                  rowIndex,
+                  hasReps ? { [primaryField]: batchPrimary, reps: batchReps } : { [primaryField]: batchPrimary },
+                )
               })
               setBatchOpen(false)
             }}

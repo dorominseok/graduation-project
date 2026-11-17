@@ -19,6 +19,9 @@ public interface OneRmTrendRepository extends Repository<WorkoutSet, Long> {
      * <p>{@code reps} 상한을 파라미터로 받는 것은 {@code app.analysis.one-rm-max-reps}가
      * 조정 가능한 값이기 때문이다. 고반복 구간에서 Epley 오차가 커져 15회 20회를
      * 넣으면 실제로 들지 못할 1RM이 나온다.
+     *
+     * <p>0kg 세트는 뺀다 — 덤벨 종목을 맨몸으로 하고 0kg으로 적은 날에 "추정 1RM 0.0kg" 점이 찍혀
+     * 추이가 바닥으로 꺼진다.
      */
     @Query("""
             select new com.fitness.backend.stats.repository.OneRmSample(
@@ -29,7 +32,7 @@ public interface OneRmTrendRepository extends Repository<WorkoutSet, Long> {
                and s.userId = :userId
                and s.performedOn >= :from
                and s.performedOn <= :to
-               and w.weightKg is not null
+               and w.weightKg > 0
                and w.reps is not null
                and w.reps >= 1
                and w.reps <= :maxReps

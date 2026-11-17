@@ -19,6 +19,7 @@ import com.fitness.backend.workout.web.WorkoutDtos.UpdateSetRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.time.Clock;
 import java.time.LocalDate;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -52,9 +53,11 @@ public class WorkoutSessionController {
     private static final int DEFAULT_HISTORY_DAYS = 30;
 
     private final WorkoutService workoutService;
+    private final Clock clock;
 
-    public WorkoutSessionController(WorkoutService workoutService) {
+    public WorkoutSessionController(WorkoutService workoutService, Clock clock) {
         this.workoutService = workoutService;
+        this.clock = clock;
     }
 
     /** 그날 기록 열기. */
@@ -112,7 +115,7 @@ public class WorkoutSessionController {
             @RequestParam(required = false) Long exerciseId,
             @PageableDefault(size = 20, sort = "performedOn", direction = Sort.Direction.DESC)
             Pageable pageable) {
-        LocalDate toDate = to != null ? to : LocalDate.now();
+        LocalDate toDate = to != null ? to : LocalDate.now(clock);
         LocalDate fromDate = from != null ? from : toDate.minusDays(DEFAULT_HISTORY_DAYS);
         return PageResponse.from(
                 workoutService.history(principal.userId(), fromDate, toDate, exerciseId, pageable));
