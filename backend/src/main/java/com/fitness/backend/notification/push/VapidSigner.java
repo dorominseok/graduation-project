@@ -38,7 +38,10 @@ public final class VapidSigner {
         this.subject = subject;
         this.clock = clock;
         try {
-            Jwts.parser().verifyWith(publicKey).build().parseSignedClaims(token("https://example.com"));
+            // 서명에 쓴 시계로 검증한다. 실제 시각으로 보면 시계를 고정한 쪽(테스트)은 12시간 뒤부터
+            // 만료로 걸려 "짝이 아니다"로 잘못 멈춘다
+            Jwts.parser().verifyWith(publicKey).clock(() -> Date.from(clock.instant())).build()
+                    .parseSignedClaims(token("https://example.com"));
         } catch (RuntimeException e) {
             throw new IllegalStateException("VAPID 공개키와 비밀키가 짝이 아니다 — VAPID_PUBLIC_KEY·VAPID_PRIVATE_KEY를 확인한다", e);
         }
