@@ -31,9 +31,15 @@ public final class LlmRoutineValidator {
 
     /** 아라비아 숫자. 설명에 숫자를 쓰면 화면의 근거(규칙이 쓴 숫자)와 어긋날 수 있다 */
     private static final Pattern DIGIT = Pattern.compile("\\d");
-    /** 말로 쓴 수량 — "두 세트", "세 번 반복"은 숫자를 우회한 것과 같다. "한 번에"는 막지 않는다 */
+    /** 말로 쓴 수량 — "두 세트", "세 회"는 숫자를 우회한 것과 같다 */
     private static final Pattern COUNTED = Pattern.compile(
             "(한|두|세|네|다섯|여섯|일곱|여덟|아홉|열)\\s*(세트|회|kg|킬로|초|분|배|퍼센트)");
+    /**
+     * 말로 쓴 횟수 — "세 번 반복". "한 번에"(일상 표현)는 막지 않으려고 "한"은 넣지 않았다. "두 번째"(서수)와,
+     * 앞 글자에 붙은 "이두 번갈아"·"삼두 번"(부위 이름의 끝 글자)은 수량이 아니라 걸리지 않게 한다
+     */
+    private static final Pattern COUNTED_TIMES = Pattern.compile(
+            "(?<![가-힣])(두|세|네|다섯|여섯|일곱|여덟|아홉|열)\\s*번(?!\\s*째|갈)");
     /** 처방형 종결 어미. 분석 해설 실험에서 다듬은 사전을 그대로 쓴다 */
     private static final Pattern PRESCRIPTIVE = Pattern.compile(
             "(하세요|하십시오|하시기 바랍|해야\\s*(합니다|한다|해요|겠)|필요합니다|필요하다|"
@@ -144,7 +150,7 @@ public final class LlmRoutineValidator {
         if (comment.length() > COMMENT_MAX_LENGTH) {
             return Optional.of("comment가 " + COMMENT_MAX_LENGTH + "자를 넘었다");
         }
-        if (DIGIT.matcher(comment).find() || COUNTED.matcher(comment).find()) {
+        if (DIGIT.matcher(comment).find() || COUNTED.matcher(comment).find() || COUNTED_TIMES.matcher(comment).find()) {
             return Optional.of("comment에 숫자나 수량(세트·횟수·무게 등)을 썼다");
         }
         if (PRESCRIPTIVE.matcher(comment).find()) {

@@ -18,7 +18,8 @@ import java.util.Optional;
  *
  * <p><b>규칙이 실제로 본 값만 적는다.</b> 재료는 {@link SlotPlanner#decide}가 돌려준 근거({@link Basis})뿐이다 —
  * 묶음을 정한 부위와 그 단계, 그 부위의 주당 세트·판정·마지막 운동일, 회복으로 쉬는 묶음. 문장을 따로 추론하지
- * 않으므로 루틴과 어긋날 수 없다. "가장 모자라서" 같은 비교급은 쓰지 않는다 — 코어처럼 묶음을 못 정하는 부위나
+ * 않으므로 루틴과 어긋날 수 없다 — 묶음을 정한 부위는 늘 루틴에 담긴다({@link SlotPlanner}가 담을 수 없는 최적
+ * 부위로는 묶음을 정하지 않는다). "가장 모자라서" 같은 비교급은 쓰지 않는다 — 코어처럼 묶음을 못 정하는 부위나
  * 불균형 때문에 뒤로 밀린 부위가 더 모자랄 수 있어, 맞는 날도 있고 틀리는 날도 있는 말이 된다.
  *
  * <p>LLM은 이 문장을 쓰지 않는다. LLM의 설명은 종목을 그렇게 고른 이유이고(숫자 금지), 판정과 수치는 여기서
@@ -117,8 +118,15 @@ public final class RoutineReason {
             String all = join(basis.restingBundles().keySet().stream().map(MuscleBundle::label).toList());
             return all + subject(all) + " 모두 회복 중이라 오늘은 코어만 담았어요.";
         }
-        // 묶음을 못 정했는데 쉬지 않는 묶음 부위가 있다 = 부족도 최적도 아닌, 과다인 부위뿐이다
-        return rest + "남은 묶음 부위는 이미 과다(주 " + number(policy.optimalThrough()) + "세트 초과)라 오늘은 코어만 담았어요.";
+        // 묶음을 못 정했는데 쉬지 않는 묶음 부위가 있다 = 모자라지 않고, 과다 경계까지 부위당 최소 세트도 안 남은
+        // 부위뿐이다(최적이지만 주 17 초과이거나 과다). "이미 과다"라고 하면 최적인 부위에는 틀린 말이라 수치로 적는다
+        BigDecimal least = basis.available().stream()
+                .filter(s -> MuscleBundle.of(s.muscle()).isPresent())
+                .map(MuscleState::weeklySets)
+                .min(BigDecimal::compareTo)
+                .orElseThrow();
+        return rest + "남은 묶음 부위는 이미 주 " + number(least) + "세트 이상이라, 과다(주 "
+                + number(policy.optimalThrough()) + "세트 초과)가 되지 않게 오늘은 코어만 담았어요.";
     }
 
     /** " 가슴과 삼두는 주 20세트를 넘지 않게 줄여 담았어요." — 줄인 부위가 없으면 빈 문자열 */

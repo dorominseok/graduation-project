@@ -2,6 +2,8 @@ package com.fitness.backend.routine.web;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -28,6 +30,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -122,7 +125,46 @@ class RoutineLlmWiringTest {
         assertEquals("RULE", row(id).get("comment_by"));
     }
 
+    @Test
+    @DisplayName("종목을 바꾸면 LLM 설명 대신 남은 항목으로 고른 규칙 문장 — 세트만 바꾸면 LLM 설명 그대로, 저장된 설명은 안 바뀐다")
+    void swapReplacesLlmComment() throws Exception {
+        String llmComment = "가슴은 바벨 벤치프레스로 무게를 다루는 동작부터 익혀요.";
+        BEHAVIOR.set(prompt -> answer(prompt, false, llmComment));
+
+        long id = idOf(createToday()
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.comment").value(llmComment))
+                .andExpect(jsonPath("$.items[0].exerciseName").value("바벨 벤치프레스")));
+        long chestItem = itemId(id, 0);
+
+        updateItem(id, chestItem, "{\"plannedSets\":4}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.comment").value(llmComment));
+
+        long pushUp = jdbc.queryForObject("SELECT id FROM exercises WHERE name_ko = '푸시업'", Long.class);
+        // 설명이 말하던 벤치프레스는 이제 루틴에 없다
+        updateItem(id, chestItem, "{\"exerciseId\":" + pushUp + "}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.comment").value("큰 근육부터 시작해서 작은 근육으로 마무리하는 순서예요."));
+
+        assertEquals(llmComment, jdbc.queryForObject("SELECT comment FROM routines WHERE id = ?", String.class, id));
+    }
+
     // ── 도우미
+
+    private ResultActions updateItem(long routineId, long itemId, String body) throws Exception {
+        return mvc.perform(patch("/api/v1/routines/" + routineId + "/items/" + itemId)
+                .header(HttpHeaders.AUTHORIZATION, bearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body));
+    }
+
+    private long itemId(long routineId, int index) throws Exception {
+        String body = mvc.perform(get("/api/v1/routines/" + routineId).header(HttpHeaders.AUTHORIZATION, bearer))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        return ((Number) JsonPath.read(body, "$.items[" + index + "].id")).longValue();
+    }
 
     /** 프롬프트의 입력에서 부위마다 첫 후보를 골라 답을 짓는다 */
     private static String answer(LlmClient.Prompt prompt, boolean reverse, String comment) {

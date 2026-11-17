@@ -13,11 +13,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fitness.backend.auth.service.AuthService;
+import com.fitness.backend.routine.service.RoutineService;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.persistence.EntityManager;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -52,6 +55,7 @@ class RoutineApiTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired EntityManager em;
     @Autowired Clock clock;
+    @Autowired RoutineService routineService;
 
     private String bearer;
     private LocalDate today;
@@ -240,6 +244,68 @@ class RoutineApiTest {
                 .andExpect(jsonPath("$.items[0].adjusted").value(true))
                 .andExpect(jsonPath("$.items[1].adjusted").value(false))
                 .andExpect(jsonPath("$.totalSets").value(17));
+    }
+
+    @Test
+    @DisplayName("빼지 않은 다른 항목에 있는 종목으로는 바꿀 수 없다 — 같은 종목이 두 항목이면 진행이 두 번 세어진다")
+    void swapToExerciseAlreadyInRoutineRejected() throws Exception {
+        long routineId = idOf(createToday());
+        long first = itemExerciseId(routineId, 0);
+        long secondItem = itemId(routineId, 1);
+
+        updateItem(routineId, secondItem, "{\"exerciseId\":" + first + "}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        // 그 항목을 빼면 그 종목으로 바꿀 수 있고, 지금 종목을 다시 보내는 것은 그대로 받는다
+        mvc.perform(delete("/api/v1/routines/" + routineId + "/items/" + itemId(routineId, 0))
+                        .header(HttpHeaders.AUTHORIZATION, bearer))
+                .andExpect(status().isOk());
+        updateItem(routineId, secondItem, "{\"exerciseId\":" + first + "}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[1].exerciseId").value(first));
+        updateItem(routineId, secondItem, "{\"exerciseId\":" + first + "}").andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("교체·빼기를 하면 종목 설명을 남은 항목으로 다시 고른다 — 세트만 바꾸면 그대로, 저장된 설명은 안 바뀐다")
+    void commentFollowsRemainingItems() throws Exception {
+        String original = "큰 근육부터 시작해서 작은 근육으로 마무리하는 순서예요.";
+        long routineId = idOf(createToday().andExpect(jsonPath("$.comment").value(original)));
+
+        updateItem(routineId, itemId(routineId, 2), "{\"plannedSets\":4}")
+                .andExpect(jsonPath("$.comment").value(original));
+
+        // 어깨·삼두를 빼면 가슴만 남는다 — "작은 근육으로 마무리"가 아니다
+        for (int index : new int[] {2, 3}) {
+            mvc.perform(delete("/api/v1/routines/" + routineId + "/items/" + itemId(routineId, index))
+                            .header(HttpHeaders.AUTHORIZATION, bearer))
+                    .andExpect(status().isOk());
+        }
+        routine(routineId).andExpect(jsonPath("$.comment").value("큰 근육 위주로, 큰 부위부터 하는 순서예요."));
+
+        assertEquals(original, jdbc.queryForObject("SELECT comment FROM routines WHERE id = ?", String.class, routineId));
+    }
+
+    @Test
+    @DisplayName("담을 부위가 없는 루틴을 만든 날은 리마인더 문구가 없다 — 권할 게 없으면 보내지 않는다")
+    void noReminderReasonForEmptyRoutine() throws Exception {
+        String email = "r" + UUID.randomUUID().toString().substring(0, 8) + "@example.com";
+        AuthService.AuthResult user = authService.signUp(email, "hunter2hunter2", "민석");
+        bearer = "Bearer " + user.tokens().accessToken();
+        long userId = user.user().getId();
+        // 어제 하체·밀기·당기기·코어를 다 했다 — 오늘은 모두 회복 중
+        for (String name : List.of("바벨 벤치프레스", "랫풀다운: 와이드 그립", "바벨 스쿼트", "케이블 크런치")) {
+            sets(today.minusDays(1), exerciseIdOf(name), 3);
+        }
+        assertEquals(Optional.empty(), routineService.reminderReason(userId, today), "루틴을 만들기 전");
+
+        createToday()
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.items").isEmpty())
+                .andExpect(jsonPath("$.reason").value("하체, 밀기, 당기기와 코어가 모두 회복 중이라 오늘은 담을 부위가 없어요."));
+
+        assertEquals(Optional.empty(), routineService.reminderReason(userId, today), "빈 루틴을 만든 뒤");
     }
 
     @Test
