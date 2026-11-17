@@ -153,7 +153,8 @@ public class StatsService {
         }
         BigDecimal max = null;
         for (WorkoutSet set : sets) {
-            if (set.getWeightKg() == null || set.getReps() == null
+            // 0kg은 추이(7.1)와 같이 뺀다 — 0kg에서 추정한 1RM은 뜻이 없다
+            if (set.getWeightKg() == null || set.getWeightKg().signum() <= 0 || set.getReps() == null
                     || !OneRepMax.isEligible(set.getReps(), properties.oneRmMaxReps())) {
                 continue;
             }

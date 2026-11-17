@@ -16,7 +16,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 /**
  * V9 — 같은 날 기록을 하나로 합친다.
@@ -29,7 +31,19 @@ class DailyRecordMigrationTest {
 
     private static final String SCHEMA = "v9_check";
 
-    @Autowired DataSource dataSource;
+    /**
+     * 앱의 연결 풀을 쓰지 않고 따로 연다. 풀의 연결로 스키마를 바꿔 가며 마이그레이션하면, 지운 스키마를
+     * 가리킨 연결이 풀에 남아 뒤에 도는 테스트가 "users 테이블이 없다"로 실패한다 — 연결을 여럿 쓰는
+     * 테스트(동시 요청)에서 드러난다.
+     */
+    private final DataSource dataSource;
+
+    @Autowired
+    DailyRecordMigrationTest(@Value("${spring.datasource.url}") String url,
+                             @Value("${spring.datasource.username}") String username,
+                             @Value("${spring.datasource.password}") String password) {
+        this.dataSource = new DriverManagerDataSource(url, username, password);
+    }
 
     @AfterEach
     void dropSchema() throws SQLException {

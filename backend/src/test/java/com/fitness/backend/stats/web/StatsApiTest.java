@@ -96,6 +96,16 @@ class StatsApiTest {
     }
 
     @Test
+    @DisplayName("0kg으로 적은 세트는 추정에서 뺀다 — 덤벨 종목을 맨몸으로 한 날에 0.0kg 점이 찍히지 않게")
+    void excludesZeroWeightSets() throws Exception {
+        doneSession(LocalDate.now().minusDays(1), benchPress, "0.0", 10, 2);
+
+        trend(benchPress)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.points.length()").value(0));
+    }
+
+    @Test
     @DisplayName("체크한 세트는 바로 추이에 들어간다 — 종료가 없다")
     void checkedSetsCountRightAway() throws Exception {
         long session = backfillSession(LocalDate.now());
@@ -147,6 +157,18 @@ class StatsApiTest {
                 .andExpect(jsonPath("$.exercises[0].sets[0].intensityPct").value(64))
                 .andExpect(jsonPath("$.exercises[0].sets[1].intensityPct").value(75))
                 .andExpect(jsonPath("$.exercises[0].sets[2].intensityPct").value(75));
+    }
+
+    @Test
+    @DisplayName("0kg 세트뿐이면 그날 추정 1RM이 없다 — 0kg으로 나누지 않는다")
+    void zeroWeightOnlyHasNoOneRm() throws Exception {
+        long session = backfillSession(LocalDate.now().minusDays(1));
+        postSet(session, weightSet(benchPress, "0.0", 10)).andExpect(status().isCreated());
+
+        intensity(session)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.exercises[0].estimatedOneRm").isEmpty())
+                .andExpect(jsonPath("$.exercises[0].sets[0].intensityPct").isEmpty());
     }
 
     @Test

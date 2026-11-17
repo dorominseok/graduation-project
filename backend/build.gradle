@@ -55,6 +55,9 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	// 앱의 "오늘"은 한국 시간이다(ClockConfig). 테스트가 LocalDate.now()로 기대값을 만들므로 테스트 JVM도 맞춘다 —
+	// 안 맞추면 UTC인 CI에서 한국 0~9시에 하루가 어긋난다
+	systemProperty 'user.timezone', 'Asia/Seoul'
 }
 
 // 루틴 조합 LLM 오프라인 실험(루틴생성_로직_설계서 11.5). 실제 Gemini를 부르고 무료 쿼터를 쓰므로
