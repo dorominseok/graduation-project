@@ -86,6 +86,14 @@ class NotificationApiTest {
     }
 
     @Test
+    @DisplayName("리마인더 요일에 null이 섞이면 400 — 서버 오류(500)가 아니라")
+    void rejectsNullDay() throws Exception {
+        save(body(true, "[\"MONDAY\",null]", "19:00", true, "SUNDAY", "20:00", true, true))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
     @DisplayName("기기를 등록하면 설정이 기본값으로 저장되고, 같은 주소를 다시 보내도 하나다")
     void subscribe() throws Exception {
         String endpoint = endpoint();
@@ -114,6 +122,15 @@ class NotificationApiTest {
         subscribe(subscription("http://push.example.com/x", p256dh(), auth())).andExpect(status().isBadRequest());
         subscribe(subscription(endpoint(), "AAAA", auth())).andExpect(status().isBadRequest());
         subscribe(subscription(endpoint(), p256dh(), "AAAA")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("길이는 맞아도 P-256 곡선 위의 점이 아닌 공개키는 받지 않는다 — 보낼 때마다 암호화가 실패하게 된다")
+    void rejectsKeyOffTheCurve() throws Exception {
+        subscribe(subscription(endpoint(), offCurveKey(), auth()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        settings().andExpect(jsonPath("$.subscriptionCount").value(0));
     }
 
     @Test
@@ -219,6 +236,15 @@ class NotificationApiTest {
     private static String p256dh() {
         KeyPair pair = EcKeys.generate();
         return EcKeys.toBase64Url(EcKeys.encode((ECPublicKey) pair.getPublic()));
+    }
+
+    /** 0x04 ‖ x=1 ‖ y=1 — 65바이트지만 y² ≠ x³ − 3x + b 라 곡선 위에 없다 */
+    private static String offCurveKey() {
+        byte[] point = new byte[65];
+        point[0] = 0x04;
+        point[32] = 1;
+        point[64] = 1;
+        return EcKeys.toBase64Url(point);
     }
 
     private static String auth() {

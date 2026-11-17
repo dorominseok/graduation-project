@@ -8,11 +8,13 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
+import java.security.spec.ECFieldFp;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.ECParameterSpec;
 import java.security.spec.ECPoint;
 import java.security.spec.ECPrivateKeySpec;
 import java.security.spec.ECPublicKeySpec;
+import java.security.spec.EllipticCurve;
 import java.util.Arrays;
 import java.util.Base64;
 
@@ -50,18 +52,36 @@ public final class EcKeys {
         }
     }
 
-    /** @param uncompressed 0x04 ‖ x ‖ y (65바이트) */
+    /**
+     * @param uncompressed 0x04 ‖ x ‖ y (65바이트)
+     * @throws IllegalArgumentException 형식이 다르거나 곡선 위의 점이 아닐 때. JDK는 곡선 밖의 점도 키로 만들어 주고
+     *                                  ECDH에서야 실패하므로, 여기서 먼저 막는다
+     */
     public static ECPublicKey publicKey(byte[] uncompressed) {
         if (uncompressed.length != 1 + 2 * COORDINATE || uncompressed[0] != 0x04) {
             throw new IllegalArgumentException("P-256 공개키는 0x04로 시작하는 65바이트여야 한다");
         }
         BigInteger x = new BigInteger(1, Arrays.copyOfRange(uncompressed, 1, 1 + COORDINATE));
         BigInteger y = new BigInteger(1, Arrays.copyOfRange(uncompressed, 1 + COORDINATE, uncompressed.length));
+        if (!onCurve(x, y)) {
+            throw new IllegalArgumentException("P-256 위의 점이 아니다");
+        }
         try {
             return (ECPublicKey) KeyFactory.getInstance("EC").generatePublic(new ECPublicKeySpec(new ECPoint(x, y), P256));
         } catch (GeneralSecurityException e) {
             throw new IllegalArgumentException("P-256 위의 점이 아니다", e);
         }
+    }
+
+    /** 0 ≤ x, y &lt; p 이고 y² ≡ x³ + ax + b (mod p). P-256은 보조인수가 1이라 곡선 위의 점이면 쓸 수 있는 점이다 */
+    private static boolean onCurve(BigInteger x, BigInteger y) {
+        EllipticCurve curve = P256.getCurve();
+        BigInteger p = ((ECFieldFp) curve.getField()).getP();
+        if (x.compareTo(p) >= 0 || y.compareTo(p) >= 0) {
+            return false;
+        }
+        BigInteger right = x.pow(3).add(curve.getA().multiply(x)).add(curve.getB()).mod(p);
+        return y.pow(2).mod(p).equals(right);
     }
 
     /** @param scalar 비밀키 32바이트 */

@@ -32,7 +32,7 @@ public final class NotificationDtos {
 
     public record Reminder(
             boolean enabled,
-            @NotNull @Schema(description = "운동하는 요일. 이 요일에만 보낸다") List<DayOfWeek> days,
+            @NotNull @Schema(description = "운동하는 요일. 이 요일에만 보낸다") List<@NotNull DayOfWeek> days,
             @NotNull @JsonFormat(pattern = "HH:mm")
             @Schema(description = "08:00~21:30, 30분 단위", example = "19:00") LocalTime time) {
     }

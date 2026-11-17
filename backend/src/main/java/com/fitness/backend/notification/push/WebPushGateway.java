@@ -38,6 +38,8 @@ public final class WebPushGateway implements PushGateway {
             return Result.GONE;
         }
         byte[] body;
+        // 키도 등록할 때 막지만(곡선 위의 점인지까지), 그 검사가 생기기 전에 저장된 키가 남아 있을 수 있다.
+        // 여기서 걸러 지우지 않으면 암호화가 예외로 멈춰 그 사람의 다른 기기에도 보내지 못한다
         try {
             body = WebPushEncryption.encrypt(payload, EcKeys.publicKey(EcKeys.fromBase64Url(target.p256dh())),
                     EcKeys.fromBase64Url(target.auth()));
