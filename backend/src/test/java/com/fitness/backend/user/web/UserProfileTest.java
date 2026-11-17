@@ -1,6 +1,7 @@
 package com.fitness.backend.user.web;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -12,6 +13,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fitness.backend.auth.repository.RefreshTokenRepository;
 import com.fitness.backend.auth.service.AuthService;
 import com.fitness.backend.common.error.ApiException;
+import com.fitness.backend.notification.domain.PushSubscription;
+import com.fitness.backend.notification.repository.PushSubscriptionRepository;
 import com.fitness.backend.user.repository.UserRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +38,7 @@ class UserProfileTest {
     @Autowired AuthService authService;
     @Autowired UserRepository userRepository;
     @Autowired RefreshTokenRepository refreshTokenRepository;
+    @Autowired PushSubscriptionRepository pushSubscriptionRepository;
 
     private String email;
     private String bearer;
@@ -169,6 +173,32 @@ class UserProfileTest {
         assertTrue(refreshTokenRepository.findAll().stream()
                 .filter(t -> t.getUserId().equals(userId))
                 .allMatch(t -> t.isRevoked()), "살아 있는 리프레시 토큰이 남아 있다");
+    }
+
+    /**
+     * 비밀번호 변경은 모든 기기를 로그아웃시키고, 로그아웃한 기기에는 알림을 보내지 않는다(「알림_설계서」 4.1).
+     * 남의 폰·공용 PC에서 켜 둔 알림이 세션을 끊은 뒤에도 계속 오지 않게.
+     */
+    @Test
+    @DisplayName("비밀번호를 바꾸면 그 사용자의 알림 기기(푸시 구독)가 모두 지워진다 — 다른 사람 것은 그대로")
+    void changePasswordRemovesPushSubscriptions() throws Exception {
+        pushSubscriptionRepository.save(PushSubscription.of(userId, pushEndpoint(), "p256dh", "auth"));
+        pushSubscriptionRepository.save(PushSubscription.of(userId, pushEndpoint(), "p256dh", "auth"));
+        Long other = authService.signUp("o" + UUID.randomUUID().toString().substring(0, 8) + "@example.com",
+                "hunter2hunter2", "지수").user().getId();
+        pushSubscriptionRepository.save(PushSubscription.of(other, pushEndpoint(), "p256dh", "auth"));
+
+        mvc.perform(patch("/api/v1/users/me/password").header(HttpHeaders.AUTHORIZATION, bearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"hunter2hunter2\",\"newPassword\":\"hunter3hunter3\"}"))
+                .andExpect(status().isNoContent());
+
+        assertEquals(0, pushSubscriptionRepository.countByUserId(userId), "비밀번호를 바꾼 사람의 알림 기기가 남아 있다");
+        assertEquals(1, pushSubscriptionRepository.countByUserId(other));
+    }
+
+    private static String pushEndpoint() {
+        return "https://fcm.googleapis.com/fcm/send/" + UUID.randomUUID();
     }
 
     @Test

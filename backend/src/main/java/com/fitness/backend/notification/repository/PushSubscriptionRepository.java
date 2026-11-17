@@ -12,4 +12,7 @@ public interface PushSubscriptionRepository extends JpaRepository<PushSubscripti
     Optional<PushSubscription> findByEndpoint(String endpoint);
 
     long countByUserId(Long userId);
+
+    /** 비밀번호를 바꿀 때 — 모든 기기가 로그아웃되므로 알림 기기도 모두 지운다(「알림_설계서」 4.1) */
+    long deleteByUserId(Long userId);
 }
