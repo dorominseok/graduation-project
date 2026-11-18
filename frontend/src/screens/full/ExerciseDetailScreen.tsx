@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ScreenHeader, useToast } from '../../components'
+import { BottomSheet, ScreenHeader, useToast } from '../../components'
 import { exerciseApi, isApiError } from '../../api'
-import type { Exercise, ExerciseHistoryDay, Page } from '../../api'
+import type { CategoryCount, Exercise, ExerciseHistoryDay, Page } from '../../api'
 import {
   BODY_PART_LABEL,
   EQUIPMENT_LABEL,
@@ -12,9 +12,11 @@ import {
 } from './exerciseLabels'
 import { exerciseImage, hideOnError } from './exerciseImage'
 import { ExerciseDayCard } from './ExerciseDayCard'
+import { CustomExerciseForm } from './CustomExerciseForm'
 import { OneRmTrendPanel } from '../analysis/OneRmTrendPanel'
 import { paths } from '../../app/paths'
 import styles from './exerciseDetail.module.css'
+import cx from './customExercise.module.css'
 
 /** 상세에 보여 줄 최근 기록 날 수. 더 있으면 "기록 더보기"로 종목 기록 페이지에 간다 */
 const RECENT_DAYS = 3
@@ -31,6 +33,10 @@ export function ExerciseDetailScreen() {
   const [exercise, setExercise] = useState<Exercise | null>(null)
   const [recent, setRecent] = useState<Page<ExerciseHistoryDay> | null>(null)
   const [loading, setLoading] = useState(true)
+  // 내 종목이면 고치기·지우기. 고치기 창의 부위 버튼에 분류 이름이 필요하다
+  const [sheet, setSheet] = useState<'edit' | 'delete' | null>(null)
+  const [categories, setCategories] = useState<CategoryCount[]>([])
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!exerciseId) return
@@ -57,6 +63,35 @@ export function ExerciseDetailScreen() {
       alive = false
     }
   }, [exerciseId, navigate, showToast])
+
+  const openEdit = async () => {
+    if (categories.length === 0) {
+      try {
+        setCategories(await exerciseApi.categories())
+      } catch (err) {
+        if (!isApiError(err)) throw err
+        showToast({ message: err.message, tone: 'danger' })
+        return
+      }
+    }
+    setSheet('edit')
+  }
+
+  /** 기록이 있으면 서버가 지우지 않고 숨긴다 — 지난 기록의 종목 이름은 남는다 */
+  const removeMine = async () => {
+    if (!exercise || deleting) return
+    setDeleting(true)
+    try {
+      await exerciseApi.remove(exercise.id)
+      showToast({ message: `${exercise.nameKo}을(를) 지웠어요` })
+      navigate(-1)
+    } catch (err) {
+      if (!isApiError(err)) throw err
+      showToast({ message: err.message, tone: 'danger' })
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const toggleFavorite = async () => {
     if (!exercise) return
@@ -114,7 +149,11 @@ export function ExerciseDetailScreen() {
                 loading="lazy"
                 onError={hideOnError}
               />
-            ) : null
+            ) : (
+              // 그림 없는 종목(영문명 없는 내 종목)도 같은 크기의 빈 칸을 둔다 — 그림 파일이 없는 기본 종목처럼 빈 상자로
+              // 보이게(「내종목_설계서」 결정 6). 비워 두면 상자가 선 하나로 납작해진다
+              <span key={shot} className={styles.heroShot} />
+            )
           })}
         </div>
 
@@ -149,6 +188,18 @@ export function ExerciseDetailScreen() {
           </div>
         </dl>
 
+        {/* 내가 만든 종목만 고치고 지울 수 있다(「내종목_설계서」 3.4) */}
+        {exercise.mine && (
+          <div className={cx.ownActions}>
+            <button type="button" className={cx.ownAction} onClick={() => void openEdit()}>
+              고치기
+            </button>
+            <button type="button" className={cx.ownDelete} onClick={() => setSheet('delete')}>
+              지우기
+            </button>
+          </div>
+        )}
+
         <div className={styles.sectionTitle}>최근 기록</div>
         {recent && recent.content.length > 0 ? (
           <>
@@ -177,6 +228,41 @@ export function ExerciseDetailScreen() {
           </>
         )}
       </div>
+
+      <BottomSheet open={sheet === 'edit'} onClose={() => setSheet(null)} title={<span className={cx.sheetTitle}>종목 고치기</span>}>
+        {sheet === 'edit' && (
+          <div>
+            <CustomExerciseForm
+              categories={categories}
+              origin={{ category: null, group: exercise.groupName }}
+              editing={exercise}
+              submitLabel="저장"
+              onSaved={(saved) => {
+                setExercise(saved)
+                setSheet(null)
+                showToast({ message: '고쳤어요' })
+              }}
+            />
+          </div>
+        )}
+      </BottomSheet>
+
+      <BottomSheet open={sheet === 'delete'} onClose={() => setSheet(null)} title={<span className={cx.sheetTitle}>종목 지우기</span>}>
+        <p className={cx.confirmText}>
+          {recent && recent.page.totalElements > 0 ? (
+            <>
+              <b>{exercise.nameKo}</b>을(를) 목록에서 숨기고 지난 기록은 남겨요.
+            </>
+          ) : (
+            <>
+              <b>{exercise.nameKo}</b>을(를) 지울까요? 되돌릴 수 없어요.
+            </>
+          )}
+        </p>
+        <button type="button" className={cx.confirmDanger} disabled={deleting} onClick={() => void removeMine()}>
+          지우기
+        </button>
+      </BottomSheet>
     </>
   )
 }

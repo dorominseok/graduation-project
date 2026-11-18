@@ -19,6 +19,10 @@ export const ErrorCodes = {
   TOKEN_EXPIRED: 'TOKEN_EXPIRED',
   TOKEN_INVALID: 'TOKEN_INVALID',
   EMAIL_ALREADY_EXISTS: 'EMAIL_ALREADY_EXISTS',
+  /** 내 종목 이름이 기본 종목이나 내 다른 종목과 겹친다 */
+  EXERCISE_NAME_TAKEN: 'EXERCISE_NAME_TAKEN',
+  /** 내 종목 100개 초과 */
+  EXERCISE_LIMIT_EXCEEDED: 'EXERCISE_LIMIT_EXCEEDED',
   /** 기록을 옮기려는 날짜에 이미 기록이 있다. 하루에 기록은 하나다 */
   DAY_ALREADY_RECORDED: 'DAY_ALREADY_RECORDED',
   /** 종목의 측정 유형이 요구하는 값이 빠졌다 */

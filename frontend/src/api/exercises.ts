@@ -3,6 +3,7 @@ import type {
   BodyPart,
   BrowseCategory,
   CategoryCount,
+  CustomExerciseRequest,
   Equipment,
   Exercise,
   ExerciseHistoryDay,
@@ -31,6 +32,8 @@ export interface ExerciseQuery {
   measureType?: MeasureType
   /** 즐겨찾기한 종목만. 비인증 요청에서는 무시된다 */
   favorite?: boolean
+  /** 계열 없이 만든 내 종목만 — 부위 화면의 "내 종목" 칸 */
+  ungroupedMine?: boolean
   page?: number
   size?: number
 }
@@ -73,6 +76,21 @@ export function groups(category: BrowseCategory): Promise<GroupCount[]> {
 /** 종목 상세. */
 export function get(exerciseId: number): Promise<Exercise> {
   return request<Exercise>(`/exercises/${exerciseId}`)
+}
+
+/** 내 종목 만들기. 숨긴 내 종목과 이름이 같으면 서버가 그 종목을 되살린다 */
+export function create(body: CustomExerciseRequest): Promise<Exercise> {
+  return request<Exercise>('/exercises', { method: 'POST', body })
+}
+
+/** 내 종목 고치기 */
+export function update(exerciseId: number, body: CustomExerciseRequest): Promise<Exercise> {
+  return request<Exercise>(`/exercises/${exerciseId}`, { method: 'PUT', body })
+}
+
+/** 내 종목 지우기. 기록이 있으면 서버가 지우지 않고 숨긴다 */
+export function remove(exerciseId: number): Promise<void> {
+  return request<void>(`/exercises/${exerciseId}`, { method: 'DELETE' })
 }
 
 /** 즐겨찾기 등록. 이미 등록돼 있어도 오류가 아니다. */

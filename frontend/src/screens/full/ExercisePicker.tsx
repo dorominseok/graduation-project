@@ -4,9 +4,29 @@ import { exerciseApi, isApiError, workoutApi } from '../../api'
 import type { BrowseCategory, CategoryCount, Exercise, GroupCount, MuscleGroupKey } from '../../api'
 import { BODY_PART_LABEL, EQUIPMENT_LABEL, MEASURE_CHIP_LABEL } from './exerciseLabels'
 import { exerciseImage, hideOnError } from './exerciseImage'
+import { CustomExerciseForm } from './CustomExerciseForm'
 import styles from './exercise.module.css'
+import cx from './customExercise.module.css'
 
 const PAGE_SIZE = 30
+
+/**
+ * 부위 화면에서 계열 없이 만든 내 종목을 모은 칸. 계열처럼 단계(`group`)로 들어가고 주소에도 그대로 실린다.
+ * 기본 종목의 계열 이름과 겹치지 않는다
+ */
+export const MINE_GROUP = '내 종목'
+
+function Dumbbell({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="1" y="9" width="4" height="6" rx="1.5" fill="currentColor" />
+      <rect x="19" y="9" width="4" height="6" rx="1.5" fill="currentColor" />
+      <rect x="7" y="10.5" width="10" height="3" rx="1" fill="currentColor" />
+      <rect x="4" y="7.5" width="2" height="9" rx="1" fill="currentColor" />
+      <rect x="18" y="7.5" width="2" height="9" rx="1" fill="currentColor" />
+    </svg>
+  )
+}
 /** 최근 사용에 올릴 종목 수. 목록이 길어지면 "최근"이 아니게 된다 */
 const RECENT_LIMIT = 8
 
@@ -46,6 +66,11 @@ interface ExercisePickerProps {
    * (즐겨찾기에서 연달아 고르는 사람을 부위별로 옮기지 않게)
    */
   clearSearchOnPick?: boolean
+  /**
+   * 내 종목 만들기 창의 버튼 이름. 기록 화면은 "만들고 오늘 기록에 넣기", 둘러보기는 "만들기".
+   * 만든 종목은 {@code onPick}으로 넘긴다 — 기록 화면은 오늘 기록에 넣고, 둘러보기는 상세로 간다
+   */
+  createLabel?: string
 }
 
 /**
@@ -70,8 +95,11 @@ export function ExercisePicker({
   onInfo,
   addedIds,
   clearSearchOnPick = false,
+  createLabel = '만들기',
 }: ExercisePickerProps) {
   const { showToast } = useToast()
+  // 내 종목 만들기 창. 연 자리(부위·계열)를 기억해 그 부위를 미리 고르고, 만든 종목이 그 자리에 들어간다
+  const [creating, setCreating] = useState<{ category: BrowseCategory | null; group: string | null } | null>(null)
 
   const [keyword, setKeyword] = useState('')
   const [debouncedKeyword, setDebouncedKeyword] = useState('')
@@ -107,7 +135,8 @@ export function ExercisePicker({
         const result = await exerciseApi.search({
           q: debouncedKeyword || undefined,
           category: !searching && tab === 'part' && step.category ? step.category : undefined,
-          group: !searching && tab === 'part' && step.group ? step.group : undefined,
+          group: !searching && tab === 'part' && step.group && step.group !== MINE_GROUP ? step.group : undefined,
+          ungroupedMine: !searching && tab === 'part' && step.group === MINE_GROUP ? true : undefined,
           muscleGroup: !searching && tab === 'part' && step.muscleGroup ? step.muscleGroup : undefined,
           favorite: !searching && tab === 'favorite' ? true : undefined,
           page: nextPage,
@@ -231,6 +260,25 @@ export function ExercisePicker({
   const showItems = !showParts && !showGroups
   /** 부위로 좁혀 들어온 목록. 부위 알약은 이미 아는 값이라 넣지 않는다 */
   const scopedToPart = (!searching && tab === 'part' && step.group !== null) || byMuscle
+  const inMine = !searching && tab === 'part' && step.group === MINE_GROUP
+  /** 만들기 버튼을 둘 수 있는 곳 — 부위별 탭의 세 단계. 검색·최근·즐겨찾기·약점에서 온 목록은 부위를 미리 고를 수 없다 */
+  const canCreate = !searching && tab === 'part' && !byMuscle
+
+  const openCreate = () => setCreating({ category: step.category, group: step.group === MINE_GROUP ? null : step.group })
+
+  /** 만든 종목은 고른 것과 같다 — 기록 화면은 오늘 기록에 넣고, 둘러보기는 상세로 간다. 칸 숫자도 다시 읽는다 */
+  const handleCreated = (exercise: Exercise) => {
+    setCreating(null)
+    void loadCategories()
+    if (step.category !== null && step.group === null) void loadGroups(step.category)
+    onPick(exercise)
+  }
+
+  const createButton = (wide = false) => (
+    <button type="button" className={`${cx.newButton} ${wide ? cx.span2 : ''}`} onClick={openCreate}>
+      + 새 종목 만들기
+    </button>
+  )
 
   const emptyMessage = searching
     ? '검색 결과가 없어요'
@@ -273,6 +321,7 @@ export function ExercisePicker({
           <span className={styles.itemName}>{exercise.nameKo}</span>
           <span className={styles.chips}>
             {addedIds?.has(exercise.id) && <span className={`${styles.chip} ${styles.chipAdded}`}>추가됨</span>}
+            {exercise.mine && <span className={`${styles.chip} ${styles.chipMine}`}>내 종목</span>}
             {!scopedToPart && (
               <span className={styles.chip}>
                 {BODY_PART_LABEL[exercise.bodyPart] ?? exercise.bodyPart}
@@ -349,8 +398,33 @@ export function ExercisePicker({
         </div>
       )}
 
+      {/* 내 종목 만들기 창. 탭 아래를 이 창이 차지하고, ←로 연 자리에 돌아간다 */}
+      {creating !== null && (
+        <>
+          <div className={styles.crumb}>
+            <button
+              type="button"
+              className={styles.crumbBack}
+              onClick={() => setCreating(null)}
+              aria-label="만들기 닫기"
+            >
+              ←
+            </button>
+            <span className={styles.crumbLabel}>새 종목 만들기</span>
+          </div>
+          <div className={styles.scroll}>
+            <CustomExerciseForm
+              categories={categories}
+              origin={creating}
+              submitLabel={createLabel}
+              onSaved={handleCreated}
+            />
+          </div>
+        </>
+      )}
+
       {/* 약점에서 바로 들어온 목록. 뒤로 가면 부위 그리드다 */}
-      {byMuscle && (
+      {creating === null && byMuscle && (
         <div className={styles.crumb}>
           <button
             type="button"
@@ -365,7 +439,7 @@ export function ExercisePicker({
       )}
 
       {/* 부위로 들어온 뒤에는 나가는 길과 지금 자리를 같은 줄에 둔다. */}
-      {!searching && tab === 'part' && step.category !== null && (
+      {creating === null && !searching && tab === 'part' && step.category !== null && (
         <div className={styles.crumb}>
           <button
             type="button"
@@ -385,7 +459,7 @@ export function ExercisePicker({
         </div>
       )}
 
-      {showParts && (
+      {creating === null && showParts && (
         <div className={styles.partGrid}>
           {categories.map((item) => (
             <button
@@ -406,43 +480,71 @@ export function ExercisePicker({
               </span>
             </button>
           ))}
+          {/* 부위 고르기 맨 아래 — 부위를 미리 고르지 않는다 */}
+          {canCreate && categories.length > 0 && createButton(true)}
         </div>
       )}
 
-      {!showParts && (
+      {creating === null && !showParts && (
         <div className={styles.scroll}>
           {showGroups &&
-            groups.map((item) => (
-              <button
-                key={item.groupName}
-                type="button"
-                className={styles.groupCard}
-                onClick={() => {
-                  setItems([])
-                  onStepChange({ category: step.category, group: item.groupName })
-                }}
-              >
-                {/* 계열을 대표하는 종목 한 장. 이름만으로는 어떤 동작인지 모른다 */}
-                <img
-                  className={styles.groupThumb}
-                  src={exerciseImage(item.representativeNameEn) ?? ''}
-                  alt=""
-                  loading="lazy"
-                  onError={hideOnError}
-                />
-                <span className={styles.groupName}>{item.groupName}</span>
-                <span className={styles.chip}>{item.count}가지</span>
-                <span className={styles.groupArrow}>›</span>
-              </button>
-            ))}
+            groups.map((item) =>
+              item.mine ? (
+                // 계열 없이 만든 내 종목을 모은 칸. 계열 카드와 같은 모양으로 맨 끝에 하나
+                <button
+                  key="mine"
+                  type="button"
+                  className={styles.groupCard}
+                  onClick={() => {
+                    setItems([])
+                    onStepChange({ category: step.category, group: MINE_GROUP })
+                  }}
+                >
+                  <span className={cx.groupNoShot}>
+                    <Dumbbell size={26} />
+                  </span>
+                  <span className={`${styles.groupName} ${styles.groupNameMine}`}>{MINE_GROUP}</span>
+                  <span className={styles.chip}>{item.count}가지</span>
+                  <span className={styles.groupArrow}>›</span>
+                </button>
+              ) : (
+                <button
+                  key={item.groupName}
+                  type="button"
+                  className={styles.groupCard}
+                  onClick={() => {
+                    setItems([])
+                    onStepChange({ category: step.category, group: item.groupName })
+                  }}
+                >
+                  {/* 계열을 대표하는 종목 한 장. 이름만으로는 어떤 동작인지 모른다 */}
+                  <img
+                    className={styles.groupThumb}
+                    src={exerciseImage(item.representativeNameEn) ?? ''}
+                    alt=""
+                    loading="lazy"
+                    onError={hideOnError}
+                  />
+                  <span className={styles.groupName}>{item.groupName}</span>
+                  <span className={styles.chip}>{item.count}가지</span>
+                  <span className={styles.groupArrow}>›</span>
+                </button>
+              ),
+            )}
+
+          {/* 계열 목록 맨 아래 — 이 부위가 골라진 채 열린다. 만든 종목은 "내 종목" 칸으로 */}
+          {showGroups && canCreate && groups.length > 0 && createButton()}
 
           {showItems && <div className={styles.itemGrid}>{items.map(renderItem)}</div>}
 
           {loading && <div className={styles.empty}>불러오는 중…</div>}
 
           {!loading && showItems && items.length === 0 && (
-            <div className={styles.empty}>{emptyMessage}</div>
+            <div className={styles.empty}>{inMine ? '아직 만든 종목이 없어요' : emptyMessage}</div>
           )}
+
+          {/* 종목 목록 맨 아래 — 이 부위와 계열이 골라진 채 열린다. 만든 종목은 이 계열에(내 종목 칸이면 그 칸에) */}
+          {showItems && scopedToPart && canCreate && !loading && createButton()}
 
           {!loading && showGroups && groups.length === 0 && (
             <div className={styles.empty}>{emptyMessage}</div>
