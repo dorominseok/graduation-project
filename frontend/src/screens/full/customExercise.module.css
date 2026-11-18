@@ -1,0 +1,154 @@
+/* 내 종목(「내종목_설계서」 3장) — 만들기 버튼, 부위 화면의 "내 종목" 칸, 만들기·고치기 창.
+   새 모양을 만들지 않고 기존 조각을 가져다 쓴다: 점선 버튼은 기록 화면 "+ 세트 추가", 고르는 버튼은 알림 설정의 요일 버튼,
+   입력칸은 설정의 입력칸, 저장 버튼은 기록 화면의 초록 버튼 */
+
+/* ── 만들기 버튼 */
+
+.newButton {
+  composes: addSet from './session.module.css';
+  width: 100%;
+}
+
+/* 가져온 .addSet의 flex: 1(세트 추가·일괄 수정 두 칸 나누기용)이 세로 목록에서는 버튼을 늘린다 */
+button.newButton {
+  flex: none;
+  height: 44px;
+  margin: var(--space-10) 0 0;
+}
+
+/* 부위 그리드(두 칸) 맨 아래에서는 한 줄을 다 쓴다 */
+.span2 {
+  grid-column: 1 / -1;
+}
+
+/* ── 부위 화면의 "내 종목" 칸 — 계열 카드와 같은 모양 */
+
+/* 계열 카드의 대표 그림 자리(56px)에 회색 덤벨. 종목 카드의 그림 자리는 빈칸으로 둔다(사용자 결정) */
+.groupNoShot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--chip-bg);
+  color: var(--text-tertiary);
+}
+
+/* ── 만들기·고치기 창 */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding-bottom: var(--space-16);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.label {
+  font-size: var(--font-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.labelNote {
+  margin-left: var(--space-6);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-tertiary);
+}
+
+.subLabel {
+  margin-top: var(--space-4);
+  font-size: var(--font-xs);
+  color: var(--text-secondary);
+}
+
+.input {
+  composes: input from './settings.module.css';
+}
+
+.error {
+  font-size: var(--font-xs);
+  color: var(--danger);
+}
+
+.choices3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+}
+
+.choices2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-6);
+}
+
+.choice {
+  composes: day from './notification.module.css';
+  padding: 0 var(--space-4);
+  font-size: 13px;
+  word-break: keep-all;
+}
+
+.choiceOn {
+  composes: dayOn from './notification.module.css';
+}
+
+.save {
+  composes: emptyAdd from './session.module.css';
+  width: 100%;
+}
+
+.save:disabled {
+  opacity: 0.45;
+}
+
+.caption {
+  text-align: center;
+  font-size: var(--font-xs);
+  line-height: 1.5;
+  color: var(--text-tertiary);
+  word-break: keep-all;
+}
+
+/* ── 종목 상세의 고치기·지우기 */
+
+.ownActions {
+  display: flex;
+  gap: var(--space-8);
+  margin-top: var(--space-12);
+}
+
+.ownAction {
+  composes: batchButton from './session.module.css';
+}
+
+.ownDelete {
+  composes: batchButton from './session.module.css';
+  color: var(--danger);
+}
+
+/* 유리 테마의 .batchButton 글자색보다 앞서게 한 단계 더 좁힌다 — 같은 무게면 불러오는 순서에 따라 진다 */
+:global(:root[data-theme='glass']) button.ownDelete {
+  color: var(--danger);
+}
+
+.sheetTitle {
+  composes: sheetTitle from './session.module.css';
+}
+
+.confirmText {
+  composes: confirmText from './session.module.css';
+}
+
+.confirmDanger {
+  composes: confirmDanger from './session.module.css';
+}

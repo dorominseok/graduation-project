@@ -109,11 +109,14 @@ export interface CategoryCount {
 
 /** 계열 목록의 한 칸. `representativeId`는 카드 이미지에 쓸 대표 종목이다. */
 export interface GroupCount {
-  groupName: string
+  /** 계열 이름. `mine` 칸이면 `null` */
+  groupName: string | null
   count: number
   representativeId: number | null
   /** 계열 카드 그림의 파일명을 만드는 데 쓴다 */
   representativeNameEn: string | null
+  /** 계열 없이 만든 내 종목을 모은 칸. 맨 끝에 하나, 그런 종목이 있을 때만 온다 */
+  mine: boolean
 }
 
 /** 종목 한 건. `isFavorite`는 인증된 요청에만 담긴다. */
@@ -129,7 +132,21 @@ export interface Exercise {
   deltRegion: 'FRONT' | 'REAR' | null
   /** 같은 동작의 변형 묶음 */
   groupName: string | null
+  /** 내가 직접 만든 종목(「내종목_설계서」). 남의 것은 내려오지 않는다 */
+  mine: boolean
   isFavorite?: boolean
+}
+
+/** 내 종목 만들기·고치기. 고칠 때도 전체를 보낸다 */
+export interface CustomExerciseRequest {
+  nameKo: string
+  category: BrowseCategory
+  /** 하체일 때만, 그때는 필수 — 분석이 앞허벅지·뒤허벅지를 나눠 본다 */
+  legSide: 'FRONT' | 'BACK' | null
+  equipment: Equipment
+  measureType: MeasureType
+  /** 계열 안에서 만들 때 그 계열. 없으면 그 부위의 "내 종목" 칸 */
+  groupName: string | null
 }
 
 /** 페이지 envelope. */

@@ -1313,6 +1313,7 @@ export function SessionScreen() {
             onPick={handlePick}
             addedIds={addedIds}
             clearSearchOnPick
+            createLabel="만들고 오늘 기록에 넣기"
           />
         </div>
       </BottomSheet>

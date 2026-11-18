@@ -26,6 +26,7 @@ export type {
   CheerState,
   ChangePasswordRequest,
   CreateSetRequest,
+  CustomExerciseRequest,
   DayOfWeek,
   Equipment,
   Exercise,
