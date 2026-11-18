@@ -283,6 +283,49 @@
   padding: var(--space-14) var(--space-16) var(--space-24);
 }
 
+/* 종목을 넘기면(‹ › 또는 밀기) 새 종목이 넘긴 쪽에서 짧게 밀려 들어온다 — 어느 쪽으로 갔는지 보이게.
+   끝나면 transform이 남지 않아 유리 테마의 backdrop-filter에 영향이 없다 */
+@keyframes slideFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+
+@keyframes slideFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+}
+
+.slideNext {
+  animation: slideFromRight 180ms ease-out;
+}
+
+.slidePrev {
+  animation: slideFromLeft 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slideNext,
+  .slidePrev {
+    animation: none;
+  }
+}
+
+/* 종목 화면은 가로 밀기를 앱이 받는다(이전·다음 종목). 브라우저에는 세로 스크롤과 확대만 맡긴다 —
+   그러지 않으면 가로 밀기를 지원하는 브라우저(데스크톱 크롬의 터치 화면, 삼성 인터넷의 밀어서 이동 등)가
+   같은 손짓을 "뒤로 가기"로 읽어 목록으로 나가 버린다 */
+.swipeArea {
+  touch-action: pan-y pinch-zoom;
+}
+
+/* 밀기를 받지 않는 자리의 표시용 감싸개. 상자를 만들지 않아 안의 배치(휴식 띠)를 바꾸지 않는다 */
+.noSwipe {
+  display: contents;
+}
+
 .setList {
   display: flex;
   flex-direction: column;

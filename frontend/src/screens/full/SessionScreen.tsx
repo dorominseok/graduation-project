@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import type { TouchEvent as ReactTouchEvent } from 'react'
 import { BottomSheet, RestBar, useRestTimer, useToast } from '../../components'
 import { isApiError, routineApi, statsApi, workoutApi } from '../../api'
 import type { Exercise, MeasureType, MuscleGroupKey, Routine, SessionIntensity, WorkoutSession } from '../../api'
@@ -38,6 +39,16 @@ const STEP_WEIGHT = 2.5
 const STEP_REST = 30
 /** 저장된 줄이 초록으로 물들어 있는 시간 */
 const FLASH_MS = 600
+
+/**
+ * 종목 화면을 옆으로 밀어 이전·다음 종목으로(사용자 요청, 2026-11-18). 위아래 스크롤하다 살짝 옆으로 간 것을
+ * 넘기기로 읽지 않게, 충분히 길고(가로 60px) 가로가 세로의 1.5배 넘고 빠른(0.8초 안) 밀기만 받는다.
+ * 화면 양 끝은 비운다 — 아이폰 사파리와 안드로이드 제스처 내비게이션의 "뒤로" 밀기 자리다.
+ */
+const SWIPE_MIN_PX = 60
+const SWIPE_RATIO = 1.5
+const SWIPE_MAX_MS = 800
+const SWIPE_EDGE_PX = 24
 
 /** 측정 유형이 실제로 쓰는 입력 칸만 고른다. */
 function fieldsOf(measureType: MeasureType): Field[] {
@@ -79,6 +90,10 @@ export function SessionScreen() {
   const location = useLocation()
   // 처음 열 때만 본다. 날짜를 옮겨 다시 읽을 때는 뺀 종목을 되살리지 않는다
   const restoreRoutine = useRef((location.state as { fromRoutine?: boolean } | null)?.fromRoutine === true)
+  // 종목 화면 밀기의 시작점. 넘길 수 없는 곳에서 시작했으면 비어 있다
+  const swipeStart = useRef<{ x: number; y: number; at: number } | null>(null)
+  // 종목을 넘긴 방향. 새 종목이 그쪽에서 밀려 들어온다. 목록에서 열 때는 없다
+  const [slide, setSlide] = useState<'next' | 'prev' | null>(null)
   // 경로에 id가 있으면 지난 기록을 여는 것이고, 없으면 오늘 운동이다.
   const { sessionId: sessionIdParam } = useParams()
   const { showToast } = useToast()
@@ -556,6 +571,20 @@ export function SessionScreen() {
   const openedIndex = cards.findIndex((card) => String(card.exerciseId) === openedId)
   const opened = openedIndex >= 0 ? cards[openedIndex] : null
 
+  // 종목 화면이 열려 있는 동안 브라우저의 "가로로 밀어 뒤로·앞으로 가기"를 끈다. 이 화면의 가로 밀기는
+  // 이전·다음 종목이다 — 끄지 않으면 터치 화면의 크롬 등은 같은 손짓으로 목록까지 나가 버린다.
+  // 이 동작은 문서 맨 위(html)의 overscroll-behavior로만 끌 수 있어(touch-action으로는 안 된다) 여기서 켜고 끈다
+  const cardOpen = opened !== null
+  useEffect(() => {
+    if (!cardOpen) return
+    const root = document.documentElement
+    const before = root.style.overscrollBehaviorX
+    root.style.overscrollBehaviorX = 'none'
+    return () => {
+      root.style.overscrollBehaviorX = before
+    }
+  }, [cardOpen])
+
   /**
    * 종목 열기·닫기와 방문 기록.
    *
@@ -572,9 +601,41 @@ export function SessionScreen() {
     // 새로고침·주소로 바로 들어와 쌓아 둔 목록이 없으면 지금 자리를 목록으로 바꾼다
     else setParams(listParams, { replace: true })
   }
-  const openCard = (exerciseId: number) => setParams(cardParams(exerciseId), { state: { fromList: true } })
-  const switchCard = (exerciseId: number) =>
+  const openCard = (exerciseId: number) => {
+    setSlide(null)
+    setParams(cardParams(exerciseId), { state: { fromList: true } })
+  }
+  const switchCard = (exerciseId: number, direction: 'next' | 'prev') => {
+    setSlide(direction)
     setParams(cardParams(exerciseId), { replace: true, state: location.state })
+  }
+
+  /**
+   * 밀기 시작. 입력칸·시트·휴식 띠에서 시작했거나, 화면 끝(브라우저·휴대폰의 뒤로 밀기 자리)이거나,
+   * 키보드가 떠 있으면(숫자를 치는 중) 넘기지 않는다 — 치던 값이 종목과 함께 사라진다.
+   */
+  const onSwipeStart = (e: ReactTouchEvent) => {
+    swipeStart.current = null
+    if (e.touches.length !== 1) return
+    const touch = e.touches[0]
+    const target = e.target as Element
+    if (touch.clientX < SWIPE_EDGE_PX || touch.clientX > window.innerWidth - SWIPE_EDGE_PX) return
+    if (target.closest('input, textarea, select, [role="dialog"], [data-no-swipe]')) return
+    if (document.activeElement instanceof HTMLInputElement) return
+    swipeStart.current = { x: touch.clientX, y: touch.clientY, at: e.timeStamp }
+  }
+  /** 밀기 끝. 오른쪽에서 왼쪽으로 밀면 다음 종목, 왼쪽에서 오른쪽이면 이전 종목 */
+  const swipeDirection = (e: ReactTouchEvent): 'next' | 'prev' | null => {
+    const start = swipeStart.current
+    swipeStart.current = null
+    if (!start || e.changedTouches.length === 0) return null
+    const touch = e.changedTouches[0]
+    const dx = touch.clientX - start.x
+    const dy = touch.clientY - start.y
+    if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * SWIPE_RATIO) return null
+    if (e.timeStamp - start.at > SWIPE_MAX_MS) return null
+    return dx < 0 ? 'next' : 'prev'
+  }
 
   const dayKey = session?.performedOn ?? dateParam ?? toDateString(new Date())
   // 머리말 아래 한 줄. 시간은 사후 입력만 있는 날이면 없다
@@ -639,9 +700,23 @@ export function SessionScreen() {
         : String(opened.rows.slice(0, index + 1).filter((it) => !it.isWarmup).length),
     )
 
+    // 넘긴 쪽에서 새 종목이 밀려 들어온다. key가 바뀌어야 애니메이션이 다시 돈다
+    const slideClass = slide === 'next' ? styles.slideNext : slide === 'prev' ? styles.slidePrev : ''
+
     return (
       <>
-        <div className={styles.page}>
+        <div
+          className={`${styles.page} ${styles.swipeArea}`}
+          onTouchStart={onSwipeStart}
+          onTouchEnd={(e) => {
+            const direction = swipeDirection(e)
+            if (direction === 'next' && nextCard) switchCard(nextCard.exerciseId, 'next')
+            if (direction === 'prev' && prevCard) switchCard(prevCard.exerciseId, 'prev')
+          }}
+          onTouchCancel={() => {
+            swipeStart.current = null
+          }}
+        >
           <div className={styles.header}>
             <button
               type="button"
@@ -656,7 +731,7 @@ export function SessionScreen() {
                 type="button"
                 className={styles.navArrow}
                 disabled={!prevCard}
-                onClick={() => prevCard && switchCard(prevCard.exerciseId)}
+                onClick={() => prevCard && switchCard(prevCard.exerciseId, 'prev')}
                 aria-label="이전 종목"
               >
                 ‹
@@ -666,7 +741,7 @@ export function SessionScreen() {
                 type="button"
                 className={styles.navArrow}
                 disabled={!nextCard}
-                onClick={() => nextCard && switchCard(nextCard.exerciseId)}
+                onClick={() => nextCard && switchCard(nextCard.exerciseId, 'next')}
                 aria-label="다음 종목"
               >
                 ›
@@ -691,7 +766,7 @@ export function SessionScreen() {
             볼륨은 본세트의 무게×횟수 합이다. 종목 하나 안이라 무게를 그대로 더해도 비교가 된다.
           */}
           {showStats && (
-            <div className={styles.stats}>
+            <div key={`stats-${opened.exerciseId}`} className={`${styles.stats} ${slideClass}`}>
               {[
                 {
                   label: '최대 무게',
@@ -730,9 +805,16 @@ export function SessionScreen() {
             </div>
           )}
 
-          {opened.routineTarget && <div className={styles.routineBar}>오늘 루틴 · {opened.routineTarget}</div>}
+          {opened.routineTarget && (
+            <div key={`routine-${opened.exerciseId}`} className={`${styles.routineBar} ${slideClass}`}>
+              오늘 루틴 · {opened.routineTarget}
+            </div>
+          )}
 
-          <div className={`${styles.setScroll} ${restShowing ? styles.scrollWithRest : ''}`}>
+          <div
+            key={`sets-${opened.exerciseId}`}
+            className={`${styles.setScroll} ${restShowing ? styles.scrollWithRest : ''} ${slideClass}`}
+          >
             <div className={styles.setList}>
               {opened.rows.map((row, rowIndex) => {
                 const done = row.savedId !== null
@@ -1011,7 +1093,10 @@ export function SessionScreen() {
             </div>
           </div>
 
-          <RestBar />
+          {/* 휴식 띠의 버튼(−30s·+30s·건너뛰기)을 누르다 미끄러져도 종목이 넘어가지 않게 */}
+          <div data-no-swipe className={styles.noSwipe}>
+            <RestBar />
+          </div>
         </div>
 
         {/*
