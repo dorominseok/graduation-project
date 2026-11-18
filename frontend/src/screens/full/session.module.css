@@ -607,13 +607,6 @@
   color: var(--text-primary);
 }
 
-/* "· 2개 넣음" — 시트를 연 채로 연달아 넣을 때 몇 개 넣었는지 */
-.sheetTitleNote {
-  font-size: var(--font-sm);
-  font-weight: var(--weight-medium);
-  color: var(--accent-strong);
-}
-
 /* 일괄 수정. 같은 무게로 여러 세트를 한 번에 맞추는 자리다. */
 .batchList {
   display: flex;

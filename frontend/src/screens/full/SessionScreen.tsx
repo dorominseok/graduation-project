@@ -119,12 +119,6 @@ export function SessionScreen() {
       ? { category: null, group: null, muscleGroup: pickParam, muscleLabel: params.get('pickLabel') ?? undefined }
       : { category: null, group: null },
   )
-  // 시트를 연 뒤 넣은 종목 수. 시트를 닫지 않고 연달아 넣으므로 머리줄에 보인다
-  const [addedInSheet, setAddedInSheet] = useState(0)
-  const openPicker = () => {
-    setAddedInSheet(0)
-    setPickerOpen(true)
-  }
 
   // 일괄 수정도 같은 이유로 시트다.
   const [batchOpen, setBatchOpen] = useState(false)
@@ -277,9 +271,8 @@ export function SessionScreen() {
    */
   const handlePick = (exercise: Exercise) => {
     setPickerStep({ category: null, group: null })
-    // 넣었다는 표시는 시트 머리줄의 "· N개 넣음"과 목록의 "추가됨" 알약으로 한다. 아래 알림은 띄우지 않는다
-    // (사용자 의견 2026-11-18 — 연달아 넣을 때 알림이 계속 떠서 번거롭다)
-    setAddedInSheet((count) => count + 1)
+    // 넣었다는 표시는 목록의 "추가됨" 알약 하나다. 화면 아래 알림과 시트 머리줄의 개수는 두지 않는다
+    // (사용자 의견 2026-11-18 — 연달아 넣을 때 번거롭고, 알약으로 충분하다)
     addQueue.current = addQueue.current
       .then(() => addExercise(exercise))
       .catch((err: unknown) => console.error('종목 추가 실패', err))
@@ -1163,7 +1156,7 @@ export function SessionScreen() {
               <div className={styles.emptyTitle}>기록된 운동이 없어요</div>
               <div className={styles.emptyNote}>종목을 추가하면 세트를 기록할 수 있어요</div>
             </div>
-            <button type="button" className={styles.emptyAdd} onClick={openPicker}>
+            <button type="button" className={styles.emptyAdd} onClick={() => setPickerOpen(true)}>
               + 종목 추가
             </button>
           </div>
@@ -1214,7 +1207,7 @@ export function SessionScreen() {
               )
             })}
 
-            <button type="button" className={styles.addExercise} onClick={openPicker}>
+            <button type="button" className={styles.addExercise} onClick={() => setPickerOpen(true)}>
               + 종목 추가
             </button>
           </div>
@@ -1226,12 +1219,7 @@ export function SessionScreen() {
       <BottomSheet
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        title={
-          <span className={styles.sheetTitle}>
-            종목 추가
-            {addedInSheet > 0 && <span className={styles.sheetTitleNote}> · {addedInSheet}개 넣음</span>}
-          </span>
-        }
+        title={<span className={styles.sheetTitle}>종목 추가</span>}
       >
         <div className={styles.pickerBox}>
           <ExercisePicker
