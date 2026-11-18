@@ -277,8 +277,9 @@ export function SessionScreen() {
    */
   const handlePick = (exercise: Exercise) => {
     setPickerStep({ category: null, group: null })
+    // 넣었다는 표시는 시트 머리줄의 "· N개 넣음"과 목록의 "추가됨" 알약으로 한다. 아래 알림은 띄우지 않는다
+    // (사용자 의견 2026-11-18 — 연달아 넣을 때 알림이 계속 떠서 번거롭다)
     setAddedInSheet((count) => count + 1)
-    showToast({ message: `${exercise.nameKo} 추가했어요`, durationMs: 1500 })
     addQueue.current = addQueue.current
       .then(() => addExercise(exercise))
       .catch((err: unknown) => console.error('종목 추가 실패', err))
