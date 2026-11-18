@@ -72,7 +72,7 @@ public class StatsService {
 
     /** 1RM 추이. 그날 세트들의 추정값 중 최댓값 하나를 점으로 찍는다. */
     public OneRmTrendResponse oneRmTrend(Long userId, Long exerciseId, LocalDate fromParam, LocalDate toParam) {
-        Exercise exercise = exerciseRepository.findById(exerciseId)
+        Exercise exercise = exerciseRepository.findVisible(exerciseId, userId)
                 .orElseThrow(() -> ApiException.notFound("종목"));
         if (!exercise.getMeasureType().supportsOneRm()) {
             // 맨몸·시간 종목은 Epley 공식의 전제인 중량이 없다. 0으로 계산해 0.0kg

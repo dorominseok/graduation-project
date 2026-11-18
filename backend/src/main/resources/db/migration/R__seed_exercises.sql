@@ -7,6 +7,8 @@
 --
 -- 자연키 name_ko 기준 UPSERT. CSV를 고치고 재생성하면 체크섬이 바뀌어
 -- Flyway가 자동으로 재실행한다.
+-- 사용자가 만든 종목(owner_id 있음)은 이름이 사람마다 따로라, 기본 종목끼리의
+-- 부분 유일 인덱스(uq_exercises_builtin_name, V16)로만 겹침을 본다.
 -- delt_region 배분 근거: 「설계 변경 로그」 LOG-09
 -- =====================================================
 
@@ -273,7 +275,7 @@ VALUES
     ('사이드 플랭크', 'Side Bridge', 'CORE', 'abdominals', 'NONE', 'TIME', 'BODYWEIGHT', NULL, '플랭크', NULL, '2'),
     ('데드버그', 'Dead Bug', 'CORE', 'abdominals', 'NONE', 'BODYWEIGHT_REPS', 'BODYWEIGHT', NULL, '데드버그', NULL, NULL),
     ('케이블 우드찹', 'Standing Cable Wood Chop', 'CORE', 'abdominals', 'PULL', 'WEIGHT_REPS', 'CABLE', NULL, '우드찹', NULL, NULL)
-ON CONFLICT (name_ko) DO UPDATE SET
+ON CONFLICT (name_ko) WHERE owner_id IS NULL DO UPDATE SET
     name_en        = EXCLUDED.name_en,
     body_part      = EXCLUDED.body_part,
     primary_muscle = EXCLUDED.primary_muscle,

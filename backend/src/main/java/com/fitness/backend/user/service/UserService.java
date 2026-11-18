@@ -9,6 +9,7 @@ import com.fitness.backend.notification.repository.PushSubscriptionRepository;
 import com.fitness.backend.user.domain.User;
 import com.fitness.backend.user.repository.UserRepository;
 import com.fitness.backend.user.web.UserDtos;
+import com.fitness.backend.workout.repository.WorkoutSessionRepository;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +27,7 @@ public class UserService {
     private final GoogleTokenVerifier googleTokenVerifier;
     private final GroupService groupService;
     private final PushSubscriptionRepository pushSubscriptionRepository;
+    private final WorkoutSessionRepository sessionRepository;
     private final Clock clock;
 
     public UserService(UserRepository userRepository,
@@ -34,6 +36,7 @@ public class UserService {
                        GoogleTokenVerifier googleTokenVerifier,
                        GroupService groupService,
                        PushSubscriptionRepository pushSubscriptionRepository,
+                       WorkoutSessionRepository sessionRepository,
                        Clock clock) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -41,6 +44,7 @@ public class UserService {
         this.googleTokenVerifier = googleTokenVerifier;
         this.groupService = groupService;
         this.pushSubscriptionRepository = pushSubscriptionRepository;
+        this.sessionRepository = sessionRepository;
         this.clock = clock;
     }
 
@@ -58,7 +62,8 @@ public class UserService {
 
     /**
      * 회원 탈퇴. {@code users} 행을 지우면 FK {@code ON DELETE CASCADE}로
-     * 리프레시 토큰·즐겨찾기·세션·세트가 함께 지워진다.
+     * 리프레시 토큰·즐겨찾기·세션·세트·내 종목이 함께 지워진다. 하루 기록은 그보다 먼저 지운다 — 내 종목으로 한
+     * 세트가 남아 있으면 내 종목의 연쇄 삭제가 막힌다({@link WorkoutSessionRepository#deleteAllOfUser}).
      *
      * <p>소프트 삭제를 쓰지 않는다 — 탈퇴의 목적이 개인정보를 남기지 않는 것이다.
      *
@@ -74,6 +79,7 @@ public class UserService {
             throw new ApiException(ErrorCode.INVALID_CREDENTIALS);
         }
         groupService.releaseOwnership(userId);
+        sessionRepository.deleteAllOfUser(userId);
         userRepository.delete(user);
     }
 

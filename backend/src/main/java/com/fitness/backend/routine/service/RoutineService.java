@@ -154,7 +154,7 @@ public class RoutineService {
         // 왜 오늘 이 부위인지는 규칙이 쓴다 — LLM이 켜져 있어도. LLM의 설명은 종목을 그렇게 고른 이유뿐이다
         String reason = RoutineReason.of(plan, imbalances, today, policy);
 
-        Map<Long, Exercise> exercises = allExercises();
+        Map<Long, Exercise> exercises = exercisesFor(userId);
         Map<MuscleGroup, List<ExerciseOption>> candidates = candidates(userId, today, slots, exercises);
         LlmRoutineRequest.Today todayWhy = RoutineReason.brief(plan, imbalances)
                 .map(why -> new LlmRoutineRequest.Today(plan.basis().bundle().orElseThrow().label(), why))
@@ -311,7 +311,12 @@ public class RoutineService {
         Set<Long> doneBefore = new HashSet<>(historyRepository.exercisesDoneBefore(userId, today));
 
         Map<MuscleGroup, List<ExerciseOption>> pools = new EnumMap<>(MuscleGroup.class);
+        // 내 종목은 후보에 넣지 않는다 — 규칙과 LLM은 다듬어 둔 기본 종목을 전제로 짠다(「내종목_설계서」 결정 8).
+        // 기록·즐겨찾기에 내 종목이 있어도 마찬가지다
         for (Exercise e : exercises.values()) {
+            if (e.isCustom()) {
+                continue;
+            }
             MuscleGroup.of(e.getPrimaryMuscle(), e.getDeltRegion()).ifPresent(group ->
                     pools.computeIfAbsent(group, g -> new ArrayList<>()).add(new ExerciseOption(
                             e.getId(), e.getGroupName(), e.getEquipment(), favorites.contains(e.getId()),
@@ -367,7 +372,7 @@ public class RoutineService {
      */
     public Optional<RoutineResponse> feedbackPending(Long userId) {
         LocalDate today = LocalDate.now(clock);
-        Map<Long, Exercise> exercises = allExercises();
+        Map<Long, Exercise> exercises = exercisesFor(userId);
         for (Routine routine : routineRepository.findRecent(
                 userId, today.minusDays(properties.feedbackLookbackDays()), today)) {
             List<RoutineItem> items = itemRepository.findByRoutineIdOrderByPositionAsc(routine.getId());
@@ -383,7 +388,7 @@ public class RoutineService {
     public List<AlternativeResponse> alternatives(Long userId, Long routineId, Long itemId) {
         Routine routine = mustFind(userId, routineId);
         RoutineItem item = mustFindItem(routine, itemId);
-        Map<Long, Exercise> exercises = allExercises();
+        Map<Long, Exercise> exercises = exercisesFor(userId);
         Exercise current = exercises.get(item.getExerciseId());
         Set<Long> inRoutine = itemRepository.findByRoutineIdOrderByPositionAsc(routine.getId()).stream()
                 .filter(i -> !i.isRemoved())
@@ -393,6 +398,7 @@ public class RoutineService {
         Set<Long> doneBefore = new HashSet<>(historyRepository.exercisesDoneBefore(userId, routine.getRoutineDate()));
 
         return exercises.values().stream()
+                .filter(e -> !e.isCustom()) // 내 종목은 루틴에 넣지 않는다(후보와 같은 이유)
                 .filter(e -> MuscleGroup.of(e.getPrimaryMuscle(), e.getDeltRegion())
                         .map(g -> g == item.getMuscleGroup()).orElse(false))
                 .filter(e -> !inRoutine.contains(e.getId()))
@@ -418,8 +424,11 @@ public class RoutineService {
         RoutineItem item = mustFindItem(routine, itemId);
 
         if (request.exerciseId() != null) {
-            Exercise exercise = exerciseRepository.findById(request.exerciseId())
+            Exercise exercise = exerciseRepository.findVisible(request.exerciseId(), userId)
                     .orElseThrow(() -> ApiException.notFound("종목"));
+            if (exercise.isCustom()) {
+                throw new ApiException(ErrorCode.VALIDATION_ERROR, "직접 만든 종목은 루틴에 넣을 수 없어요.");
+            }
             boolean sameMuscle = MuscleGroup.of(exercise.getPrimaryMuscle(), exercise.getDeltRegion())
                     .map(g -> g == item.getMuscleGroup()).orElse(false);
             if (!sameMuscle) {
@@ -477,8 +486,14 @@ public class RoutineService {
         return properties.policy(analysisProperties.volume().optimalThrough());
     }
 
-    private Map<Long, Exercise> allExercises() {
-        return exerciseRepository.findAll().stream().collect(Collectors.toMap(Exercise::getId, Function.identity()));
+    /**
+     * 이 사용자의 루틴·기록에서 이름과 부위를 찾을 종목 — 기본 종목과 자기 종목(숨긴 것까지). 남의 내 종목은 읽지 않는다.
+     * 자기 종목도 읽는 것은 "루틴 부위를 운동했는가"(만족도 질문)를 셀 때 내 종목으로 한 세트도 세어야 해서다.
+     * 후보·교체 후보에서는 내 종목을 뺀다.
+     */
+    private Map<Long, Exercise> exercisesFor(Long userId) {
+        return exerciseRepository.findAllForUser(userId).stream()
+                .collect(Collectors.toMap(Exercise::getId, Function.identity()));
     }
 
     private Routine mustFind(Long userId, Long routineId) {
@@ -514,7 +529,8 @@ public class RoutineService {
     }
 
     private RoutineResponse toResponse(Routine routine) {
-        return toResponse(routine, itemRepository.findByRoutineIdOrderByPositionAsc(routine.getId()), allExercises());
+        return toResponse(routine, itemRepository.findByRoutineIdOrderByPositionAsc(routine.getId()),
+                exercisesFor(routine.getUserId()));
     }
 
     private RoutineResponse toResponse(Routine routine, List<RoutineItem> items, Map<Long, Exercise> exercises) {

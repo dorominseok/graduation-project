@@ -33,6 +33,8 @@ public enum ErrorCode {
     DAY_ALREADY_RECORDED(HttpStatus.CONFLICT, "그 날짜에는 이미 기록이 있습니다."),
     GROUP_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "그룹 한도를 넘었습니다."),
     ROUTINE_FEEDBACK_EXISTS(HttpStatus.CONFLICT, "이미 답한 루틴입니다."),
+    EXERCISE_NAME_TAKEN(HttpStatus.CONFLICT, "이미 있는 종목 이름이에요."),
+    EXERCISE_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "직접 만든 종목은 100개까지예요."),
 
     UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "요청 본문은 JSON이어야 합니다."),
     RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),

@@ -52,6 +52,16 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
     int insertIfAbsent(@Param("userId") Long userId, @Param("performedOn") LocalDate performedOn);
 
     /**
+     * 탈퇴 때 그 사람의 하루 기록을 먼저 지운다(세트는 연쇄 삭제). {@code users}를 지우면 원래 함께 지워지지만,
+     * 내 종목이 있으면 순서가 문제다 — PostgreSQL은 연쇄 삭제를 단계마다 검사해서, {@code users → exercises}가
+     * {@code users → workout_sessions → workout_sets}보다 먼저 검사되면 아직 남은 세트가 종목 외래키에 걸린다
+     * (「내종목_설계서」 4장).
+     */
+    @Modifying(flushAutomatically = true)
+    @Query(value = "delete from workout_sessions where user_id = :userId", nativeQuery = true)
+    int deleteAllOfUser(@Param("userId") Long userId);
+
+    /**
      * 여러 사람의 기간 내 운동한 날. 그룹 멤버마다 조회하면 멤버 수만큼 쿼리가 나가므로
      * 한 번에 읽어 메모리에서 사람별로 묶는다. 일주일 치라 많아야 수십 건이다.
      */
