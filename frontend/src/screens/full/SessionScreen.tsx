@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { BottomSheet, RestBar, useRestTimer, useToast } from '../../components'
 import { isApiError, routineApi, statsApi, workoutApi } from '../../api'
@@ -261,11 +261,23 @@ export function SessionScreen() {
     ])
   }, [])
 
+  // 고른 순서대로 카드가 쌓이게 앞의 추가가 끝난 뒤 넣는다. 직전 기록을 읽는 시간이 종목마다 달라
+  // 연달아 고르면 순서가 뒤바뀐다
+  const addQueue = useRef<Promise<void>>(Promise.resolve())
+
+  /**
+   * 종목을 고르면 시트는 그대로 두고 처음 단계(부위 고르기)로 돌아간다 — 여러 종목을 넣을 때마다
+   * 목록으로 나갔다가 "+ 종목 추가"부터 다시 누르지 않게(사용자 요청, 2026-11-18). 다 넣으면 ✕로 닫는다.
+   */
   const handlePick = (exercise: Exercise) => {
-    setPickerOpen(false)
     setPickerStep({ category: null, group: null })
-    void addExercise(exercise)
+    // 넣었다는 표시는 목록의 "추가됨" 알약 하나다. 화면 아래 알림과 시트 머리줄의 개수는 두지 않는다
+    // (사용자 의견 2026-11-18 — 연달아 넣을 때 번거롭고, 알약으로 충분하다)
+    addQueue.current = addQueue.current
+      .then(() => addExercise(exercise))
+      .catch((err: unknown) => console.error('종목 추가 실패', err))
   }
+  const addedIds = useMemo(() => new Set(cards.map((card) => card.exerciseId)), [cards])
 
   /** 그날 기록. 들어올 때 열지 못했으면(신호가 약했으면) 지금 다시 연다 */
   const ensureSession = async (): Promise<WorkoutSession> => {
@@ -1210,7 +1222,13 @@ export function SessionScreen() {
         title={<span className={styles.sheetTitle}>종목 추가</span>}
       >
         <div className={styles.pickerBox}>
-          <ExercisePicker step={pickerStep} onStepChange={setPickerStep} onPick={handlePick} />
+          <ExercisePicker
+            step={pickerStep}
+            onStepChange={setPickerStep}
+            onPick={handlePick}
+            addedIds={addedIds}
+            clearSearchOnPick
+          />
         </div>
       </BottomSheet>
 

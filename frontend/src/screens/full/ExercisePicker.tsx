@@ -35,6 +35,17 @@ interface ExercisePickerProps {
    * 화면이 사라지면 아직 체크하지 않은 종목이 같이 사라지므로 넘기지 않는다.
    */
   onInfo?: (exercise: Exercise) => void
+  /**
+   * 기록 화면에서 오늘 이미 넣은 종목. 시트를 열어 둔 채 여러 종목을 넣으므로 무엇을 넣었는지 알약으로
+   * 보인다. 같은 종목을 또 넣는 것은 막지 않는다
+   */
+  addedIds?: ReadonlySet<number>
+  /**
+   * 고른 뒤 검색어를 비운다. 기록 화면은 시트를 닫지 않고 처음 단계로 돌아가 다음 종목을 고르게 한다 —
+   * 단계(부위·계열)는 바깥이 되돌리고, 검색어는 여기 있어 여기서 비운다. 탭은 그대로 둔다
+   * (즐겨찾기에서 연달아 고르는 사람을 부위별로 옮기지 않게)
+   */
+  clearSearchOnPick?: boolean
 }
 
 /**
@@ -52,7 +63,14 @@ function partImage(category: BrowseCategory): string {
   return `/parts/${category.toLowerCase().replaceAll('_', '-')}.webp`
 }
 
-export function ExercisePicker({ step, onStepChange, onPick, onInfo }: ExercisePickerProps) {
+export function ExercisePicker({
+  step,
+  onStepChange,
+  onPick,
+  onInfo,
+  addedIds,
+  clearSearchOnPick = false,
+}: ExercisePickerProps) {
   const { showToast } = useToast()
 
   const [keyword, setKeyword] = useState('')
@@ -222,10 +240,18 @@ export function ExercisePicker({ step, onStepChange, onPick, onInfo }: ExerciseP
         ? '즐겨찾기한 종목이 없어요'
         : '찾는 종목이 없어요'
 
+  const pick = (exercise: Exercise) => {
+    onPick(exercise)
+    if (clearSearchOnPick) {
+      setKeyword('')
+      setDebouncedKeyword('')
+    }
+  }
+
   /** 종목 한 장. 시작·끝 자세를 나란히 올리고 그 아래 이름과 알약을 둔다 */
   const renderItem = (exercise: Exercise) => (
     <div key={exercise.id} className={styles.item}>
-      <button type="button" className={styles.itemMain} onClick={() => onPick(exercise)}>
+      <button type="button" className={styles.itemMain} onClick={() => pick(exercise)}>
         <span className={styles.shots}>
           {([1, 2] as const).map((shot) => {
             const src = exerciseImage(exercise.nameEn, shot)
@@ -246,6 +272,7 @@ export function ExercisePicker({ step, onStepChange, onPick, onInfo }: ExerciseP
         <span className={styles.itemBody}>
           <span className={styles.itemName}>{exercise.nameKo}</span>
           <span className={styles.chips}>
+            {addedIds?.has(exercise.id) && <span className={`${styles.chip} ${styles.chipAdded}`}>추가됨</span>}
             {!scopedToPart && (
               <span className={styles.chip}>
                 {BODY_PART_LABEL[exercise.bodyPart] ?? exercise.bodyPart}
