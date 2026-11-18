@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { BottomSheet, RestBar, useRestTimer, useToast } from '../../components'
 import { isApiError, routineApi, statsApi, workoutApi } from '../../api'
@@ -119,6 +119,12 @@ export function SessionScreen() {
       ? { category: null, group: null, muscleGroup: pickParam, muscleLabel: params.get('pickLabel') ?? undefined }
       : { category: null, group: null },
   )
+  // 시트를 연 뒤 넣은 종목 수. 시트를 닫지 않고 연달아 넣으므로 머리줄에 보인다
+  const [addedInSheet, setAddedInSheet] = useState(0)
+  const openPicker = () => {
+    setAddedInSheet(0)
+    setPickerOpen(true)
+  }
 
   // 일괄 수정도 같은 이유로 시트다.
   const [batchOpen, setBatchOpen] = useState(false)
@@ -261,11 +267,23 @@ export function SessionScreen() {
     ])
   }, [])
 
+  // 고른 순서대로 카드가 쌓이게 앞의 추가가 끝난 뒤 넣는다. 직전 기록을 읽는 시간이 종목마다 달라
+  // 연달아 고르면 순서가 뒤바뀐다
+  const addQueue = useRef<Promise<void>>(Promise.resolve())
+
+  /**
+   * 종목을 고르면 시트는 그대로 두고 처음 단계(부위 고르기)로 돌아간다 — 여러 종목을 넣을 때마다
+   * 목록으로 나갔다가 "+ 종목 추가"부터 다시 누르지 않게(사용자 요청, 2026-11-18). 다 넣으면 ✕로 닫는다.
+   */
   const handlePick = (exercise: Exercise) => {
-    setPickerOpen(false)
     setPickerStep({ category: null, group: null })
-    void addExercise(exercise)
+    setAddedInSheet((count) => count + 1)
+    showToast({ message: `${exercise.nameKo} 추가했어요`, durationMs: 1500 })
+    addQueue.current = addQueue.current
+      .then(() => addExercise(exercise))
+      .catch((err: unknown) => console.error('종목 추가 실패', err))
   }
+  const addedIds = useMemo(() => new Set(cards.map((card) => card.exerciseId)), [cards])
 
   /** 그날 기록. 들어올 때 열지 못했으면(신호가 약했으면) 지금 다시 연다 */
   const ensureSession = async (): Promise<WorkoutSession> => {
@@ -1144,7 +1162,7 @@ export function SessionScreen() {
               <div className={styles.emptyTitle}>기록된 운동이 없어요</div>
               <div className={styles.emptyNote}>종목을 추가하면 세트를 기록할 수 있어요</div>
             </div>
-            <button type="button" className={styles.emptyAdd} onClick={() => setPickerOpen(true)}>
+            <button type="button" className={styles.emptyAdd} onClick={openPicker}>
               + 종목 추가
             </button>
           </div>
@@ -1195,7 +1213,7 @@ export function SessionScreen() {
               )
             })}
 
-            <button type="button" className={styles.addExercise} onClick={() => setPickerOpen(true)}>
+            <button type="button" className={styles.addExercise} onClick={openPicker}>
               + 종목 추가
             </button>
           </div>
@@ -1207,10 +1225,21 @@ export function SessionScreen() {
       <BottomSheet
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        title={<span className={styles.sheetTitle}>종목 추가</span>}
+        title={
+          <span className={styles.sheetTitle}>
+            종목 추가
+            {addedInSheet > 0 && <span className={styles.sheetTitleNote}> · {addedInSheet}개 넣음</span>}
+          </span>
+        }
       >
         <div className={styles.pickerBox}>
-          <ExercisePicker step={pickerStep} onStepChange={setPickerStep} onPick={handlePick} />
+          <ExercisePicker
+            step={pickerStep}
+            onStepChange={setPickerStep}
+            onPick={handlePick}
+            addedIds={addedIds}
+            clearSearchOnPick
+          />
         </div>
       </BottomSheet>
 

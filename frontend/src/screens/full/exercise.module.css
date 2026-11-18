@@ -251,6 +251,13 @@
   color: var(--text-secondary);
 }
 
+/* 오늘 기록에 이미 넣은 종목. 시트를 연 채로 여러 개를 넣을 때 무엇을 넣었는지 보인다 */
+.chipAdded {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: var(--weight-bold);
+}
+
 /* ⓘ·★는 카드를 누르는 것과 다른 동작이라 줄을 나눠 아래에 둔다. */
 .itemActions {
   display: flex;
