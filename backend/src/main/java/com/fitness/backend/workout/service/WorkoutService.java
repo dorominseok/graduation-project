@@ -132,7 +132,8 @@ public class WorkoutService {
             return new SetSaveResult(toSetResponse(duplicate.get()), false);
         }
 
-        Exercise exercise = exerciseRepository.findById(request.exerciseId())
+        // 남의 내 종목·숨긴 내 종목은 없는 종목이다(「내종목_설계서」 5.2)
+        Exercise exercise = exerciseRepository.findVisible(request.exerciseId(), userId)
                 .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "종목을 찾을 수 없습니다."));
         MeasureType measureType = exercise.getMeasureType();
         validateMeasureInput(measureType, request);
@@ -204,7 +205,7 @@ public class WorkoutService {
      * "처음 하는 종목"이라는 정상 상태다.
      */
     public Optional<LastPerformanceResponse> findLastPerformance(Long userId, Long exerciseId) {
-        Exercise exercise = exerciseRepository.findById(exerciseId)
+        Exercise exercise = exerciseRepository.findVisible(exerciseId, userId)
                 .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "종목을 찾을 수 없습니다."));
 
         List<WorkoutSession> sessions = sessionRepository.findLastPerformed(
@@ -229,7 +230,7 @@ public class WorkoutService {
      * <p>세트는 페이지의 날들을 한 번에 읽는다. 날마다 읽으면 페이지 크기만큼 쿼리가 나간다.
      */
     public Page<ExerciseHistoryDay> exerciseHistory(Long userId, Long exerciseId, Pageable pageable) {
-        if (!exerciseRepository.existsById(exerciseId)) {
+        if (exerciseRepository.findVisible(exerciseId, userId).isEmpty()) {
             throw new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "종목을 찾을 수 없습니다.");
         }
         Page<WorkoutSession> page = sessionRepository.findPerformed(userId, exerciseId, pageable);

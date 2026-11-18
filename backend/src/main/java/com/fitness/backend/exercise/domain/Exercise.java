@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.OffsetDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,9 +17,13 @@ import lombok.NoArgsConstructor;
 /**
  * 운동 종목.
  *
- * <p><b>읽기 전용이다.</b> 종목 CSV에서 만든 {@code R__seed_exercises.sql}로 넣고,
- * 애플리케이션에는 종목을 만들거나 고치는 경로가 없다. 그래서 변경
- * 메서드를 두지 않는다 — 즐겨찾기만 사용자별로 {@link UserFavoriteExercise}에 쓴다.
+ * <p>두 가지가 한 테이블에 있다.
+ * <ul>
+ *   <li><b>기본 종목</b>({@code ownerId == null}) — 종목 CSV에서 만든 {@code R__seed_exercises.sql}로 넣는다.
+ *       애플리케이션은 고치지 않는다.
+ *   <li><b>내 종목</b>({@code ownerId}가 사용자) — 사용자가 직접 만든다(「내종목_설계서」). 만든 사람에게만 보이고,
+ *       기록이 있는 채로 지우면 숨긴다({@code hiddenAt}). 같은 테이블이라 세트·분석·1RM이 손대지 않고 그대로 읽는다.
+ * </ul>
  *
  * <p>enum은 {@code EnumType.STRING}으로 저장한다. 순서 기반({@code ORDINAL})은
  * 상수를 중간에 추가하는 순간 기존 행의 의미가 바뀌고, 스키마의 CHECK 제약도
@@ -34,7 +39,7 @@ public class Exercise extends BaseCreatedEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** 한글 명칭. 종목의 자연키이며 UNIQUE. */
+    /** 한글 명칭. 기본 종목끼리, 그리고 한 사람의 내 종목끼리 겹치지 않는다(V16의 부분 유일 인덱스 둘). */
     @Column(name = "name_ko", nullable = false, length = 100)
     private String nameKo;
 
@@ -91,4 +96,67 @@ public class Exercise extends BaseCreatedEntity {
      */
     @Column(name = "common_rank")
     private Short commonRank;
+
+    /** 내 종목의 주인. 기본 종목은 {@code null} */
+    @Column(name = "owner_id")
+    private Long ownerId;
+
+    /** 기록이 있는 내 종목을 지운 시각. 숨긴 종목은 목록에 안 나오고 새 세트를 받지 않지만, 지난 기록의 이름은 남는다 */
+    @Column(name = "hidden_at")
+    private OffsetDateTime hiddenAt;
+
+    /** 내 종목. 그림·영문명·흔한 정도·입문 순위는 없다 */
+    public static Exercise custom(Long ownerId, String nameKo, CustomTarget target, Equipment equipment,
+                                  MeasureType measureType, String groupName) {
+        Exercise exercise = new Exercise();
+        exercise.ownerId = ownerId;
+        exercise.change(nameKo, target, equipment, measureType, groupName);
+        return exercise;
+    }
+
+    /** 내 종목 고치기. 고치기도 만들기와 같은 값을 모두 받는다 */
+    public void change(String nameKo, CustomTarget target, Equipment equipment, MeasureType measureType,
+                       String groupName) {
+        if (ownerId == null) {
+            throw new IllegalStateException("기본 종목은 고치지 않는다");
+        }
+        this.nameKo = nameKo;
+        this.primaryMuscle = target.primaryMuscle();
+        this.deltRegion = target.deltRegion();
+        this.bodyPart = target.bodyPart();
+        this.pushPull = target.pushPull();
+        this.equipment = equipment;
+        this.measureType = measureType;
+        this.groupName = groupName;
+    }
+
+    /** 기록이 있는 내 종목을 지울 때 */
+    public void hide(OffsetDateTime now) {
+        if (ownerId == null) {
+            throw new IllegalStateException("기본 종목은 숨기지 않는다");
+        }
+        this.hiddenAt = now;
+    }
+
+    /** 숨긴 이름으로 다시 만들면 되살린다 — 지난 기록이 다시 이어진다 */
+    public void restore() {
+        this.hiddenAt = null;
+    }
+
+    public boolean isCustom() {
+        return ownerId != null;
+    }
+
+    public boolean isHidden() {
+        return hiddenAt != null;
+    }
+
+    public boolean ownedBy(Long userId) {
+        return ownerId != null && ownerId.equals(userId);
+    }
+
+    /** 이 사용자가 고르고 열 수 있는가 — 기본 종목, 또는 숨기지 않은 자기 종목 */
+    public boolean visibleTo(Long userId) {
+        return ownerId == null || (ownedBy(userId) && hiddenAt == null);
+    }
 }

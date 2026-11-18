@@ -17,6 +17,7 @@
 > 개정: 2026-11-16 종목 261종 — 5.6 분류별 종목 수(내전근은 하체), 11.5 교체 순서에 흔한 종목
 > 개정: 2026-11-17 잘못된 요청이 500이던 것 — 1.5에 `405 METHOD_NOT_ALLOWED` · `415 UNSUPPORTED_MEDIA_TYPE` 추가, 없는 정렬·범위 밖 날짜는 400, 비밀번호 72바이트(4.1·4.8), 닉네임 공백(4.6), `reps` 상한(6.4), 달력 `year` 범위(6.8), 탈퇴한 사용자의 토큰(4.7)
 > 개정: 2026-11-17 보안 점검 — 4.9 구글 계정을 묶을 때 비밀번호 삭제·기존 로그인 끊기, 12.3 푸시 주소 허용 호스트·계정당 10개, 1.5 요청 제한은 인코딩을 푼 경로로
+> 추가: 내 종목(5.9, 2026-11-18, 「내종목_설계서」) — 만들기·고치기·지우기. 5.1·5.2·5.3·5.7 보이는 범위와 `mine`, 1.5 새 오류 코드 2개, 4.7 탈퇴, 6.4·7.1·11.5·11.6. 엔드포인트 58→61개
 
 ---
 
@@ -166,6 +167,8 @@ Authorization: Bearer {accessToken}
 | 409 | `DAY_ALREADY_RECORDED` | 기록의 날짜를 옮기려는데 그 날짜에 기록이 이미 있음 (6.9, LOG-39) |
 | 409 | `GROUP_LIMIT_EXCEEDED` | 그룹 인원 20명 또는 한 사람의 그룹 10개 초과 (10장) |
 | 409 | `ROUTINE_FEEDBACK_EXISTS` | 이미 만족도를 답했거나 건너뛴 루틴 (11.8) |
+| 409 | `EXERCISE_NAME_TAKEN` | 내 종목 이름이 기본 종목이나 내 다른 종목과 겹침 (5.9) |
+| 409 | `EXERCISE_LIMIT_EXCEEDED` | 내 종목 100개 초과 (5.9) |
 | 429 | `RATE_LIMITED` | 요청 한도 초과 — 로그인·가입·구글 로그인만 IP마다 센다(아래). `Retry-After` 헤더에 다시 해도 되는 초 |
 | 500 | `INTERNAL_ERROR` | 서버 내부 오류 |
 
@@ -315,6 +318,9 @@ Authorization: Bearer {accessToken}
 | GET | `/exercises/groups` | 종목 고르기 2단계 — 한 분류의 계열 목록 (5.7) | — |
 | GET | `/exercises/{id}/last-performance` | 이 종목의 **직전 수행 기록** (종목 프리필용) | ✔ |
 | GET | `/exercises/{id}/history` | 이 종목의 **날짜별 기록** (종목 상세·종목 기록 페이지) | ✔ |
+| POST | `/exercises` | **내 종목** 만들기 (5.9) | ✔ |
+| PUT | `/exercises/{id}` | 내 종목 고치기 (5.9) | ✔ |
+| DELETE | `/exercises/{id}` | 내 종목 지우기 — 기록이 있으면 숨김 (5.9) | ✔ |
 | PUT | `/users/me/favorite-exercises/{exerciseId}` | 즐겨찾기 추가 (멱등) | ✔ |
 | DELETE | `/users/me/favorite-exercises/{exerciseId}` | 즐겨찾기 해제 (멱등) | ✔ |
 
@@ -584,11 +590,14 @@ Authorization: Bearer {accessToken}
 | `workout_sets` | `session_id` → `workout_sessions` (V1) |
 | `friend_group_members` · `cheers` | `user_id` → `users` (V8) |
 | `routines` · `routine_items` | `user_id` → `users`, `routine_id` → `routines` (V10) |
+| `exercises`(내 종목만) | `owner_id` → `users` (V16) |
+
+- **하루 기록을 먼저 지운다**(2026-11-18) — 내 종목으로 한 세트가 남아 있으면 `users → exercises` 연쇄 삭제가 세트의 종목 외래키에 걸린다. PostgreSQL은 연쇄 삭제를 단계마다 검사해 `workout_sessions → workout_sets`보다 먼저 검사될 수 있다(「내종목_설계서」 4장).
 
 - 지우기 전에 **방장인 그룹을 넘긴다** — 남은 멤버 중 가장 먼저 들어온 사람이 방장이 되고, 남은 멤버가 없으면 그룹을 지운다(10.8과 같은 규칙). `friend_groups.owner_id`는 CASCADE가 아니라서 이 단계가 먼저다.
 
 - 리프레시 쿠키를 만료시킨다(`Set-Cookie: refreshToken=; Max-Age=0`). 액세스 토큰은 남은 만료 시간 동안 형식상 유효하지만 `sub`에 해당하는 사용자가 없으므로 모든 요청이 `401`이 된다.
-- `exercises`는 영향받지 않는다. 종목은 사용자 소유 데이터가 아니다.
+- 기본 종목은 영향받지 않는다. 그 사람이 만든 내 종목만 함께 지워진다.
 - **소프트 삭제를 쓰지 않는다.** 탈퇴의 목적이 개인정보를 남기지 않는 것이므로 행을 실제로 지운다. 같은 이메일로 다시 가입할 수 있다.
 
 **오류**
@@ -688,12 +697,14 @@ Authorization: Bearer {accessToken}
 
 ### 5.1 종목 데이터 개요
 
-`exercises` 테이블(`V1` + `V2` + `V3`). 종목 데이터 정제는 8월 2주 작업 산출물이며, **종목 데이터 자체는 읽기 전용**이다(즐겨찾기 5.4는 별도 테이블에 쓴다).
+`exercises` 테이블(`V1` + `V2` + `V3` … `V16`). 종목 데이터 정제는 8월 2주 작업 산출물이며, **기본 종목은 읽기 전용**이다(즐겨찾기 5.4는 별도 테이블에 쓴다). 2026-11-18부터 사용자가 직접 만드는 **내 종목**이 같은 테이블에 있다(`owner_id`, 5.9) — 만든 사람에게만 보인다.
+
+**보이는 범위**(5.2·5.3·5.4·5.5·5.6·5.7·5.8·6.4·7.1 공통): 기본 종목과, 요청한 사람이 만든 숨기지 않은 내 종목. 남의 내 종목은 목록에 없고 id로 직접 와도 `404`다(1.3과 같은 원칙). 비로그인은 기본 종목만.
 
 | 필드 | 타입 | 값 |
 |---|---|---|
 | `id` | number | |
-| `nameKo` | string | 한글 명칭. 종목의 자연키이며 UNIQUE (`V3`) |
+| `nameKo` | string | 한글 명칭. 기본 종목끼리, 그리고 한 사람의 내 종목끼리 겹치지 않는다(`V16` 부분 유일 인덱스 둘. 처음엔 전체 UNIQUE `V3`) |
 | `nameEn` | string \| null | 영문 명칭 |
 | `bodyPart` | enum | `CHEST` `BACK` `LEGS` `SHOULDERS` `ARMS` `CORE` (저장·검색·차트용 6종) |
 | `primaryMuscle` | string \| null | 주동근 원자값 (`chest`, `lats`, `triceps` …). 판정 부위 산출 근거 (8.1) |
@@ -701,6 +712,7 @@ Authorization: Bearer {accessToken}
 | `measureType` | enum | `WEIGHT_REPS` `BODYWEIGHT_REPS` `WEIGHTED_BODYWEIGHT` `TIME` |
 | `equipment` | enum | `BARBELL` `DUMBBELL` `MACHINE` `CABLE` `BODYWEIGHT` `PULLUP_BAR` |
 | `deltRegion` | enum \| null | `FRONT` \| `REAR`. `primaryMuscle = shoulders`인 13종목만 값을 갖고 그 외는 `null` (`V3`, 8.1). 어깨 앞·뒤 판정 분리의 근거 컬럼 |
+| `mine` | boolean | 내가 만든 종목인가(5.9). 남의 내 종목은 내려가지 않으므로 `true`면 언제나 요청한 사람의 것 |
 
 **`measureType`별 세트 입력 항목** (6.4의 검증 근거)
 
@@ -725,6 +737,7 @@ Authorization: Bearer {accessToken}
 | `equipment` | enum | 기구로 필터 |
 | `measureType` | enum | 측정 유형으로 필터 |
 | `favorite` | boolean | `true`면 내 즐겨찾기 종목만. 인증 없이 호출하면 무시 |
+| `ungroupedMine` | boolean | `true`면 **계열 없이 만든 내 종목만**(5.7의 `mine` 칸 목록). `category`와 함께 쓴다 |
 | `page`, `size`, `sort` | | 1.4 참조. 기본 `sort=nameKo,asc` |
 
 **응답 `200 OK`** — 1.4의 페이지 envelope. `content` 항목:
@@ -741,6 +754,7 @@ Authorization: Bearer {accessToken}
   "equipment": "BARBELL",
   "deltRegion": null,
   "groupName": "벤치프레스",
+  "mine": false,
   "isFavorite": true
 }
 ```
@@ -748,7 +762,8 @@ Authorization: Bearer {accessToken}
 | 필드 | 설명 |
 |---|---|
 | `deltRegion` | `FRONT` \| `REAR` \| `null`. `primaryMuscle`가 `shoulders`인 종목만 값(8.1). 화면 종목 분류엔 쓰지 않고, 분석 판정 참고용 |
-| `groupName` | 같은 동작의 변형 묶음 (`V6`, LOG-24). 모든 종목(261종)이 값을 갖는다 |
+| `groupName` | 같은 동작의 변형 묶음 (`V6`, LOG-24). 기본 종목(261종)은 모두 값을 갖는다. 내 종목은 계열 안에서 만들었을 때만 |
+| `mine` | 내가 만든 종목(5.9) |
 | `isFavorite` | 내 즐겨찾기 여부. **인증된 요청에만** 포함하고, 비인증 요청에선 키 생략 |
 
 **종목 목록의 세 탭 (목업)**
@@ -761,7 +776,7 @@ Authorization: Bearer {accessToken}
 
 ### 5.3 GET /exercises/{id}
 
-**응답 `200 OK`** — 5.2의 단일 객체(`deltRegion`, 인증 시 `isFavorite` 포함). 없으면 `404 RESOURCE_NOT_FOUND`.
+**응답 `200 OK`** — 5.2의 단일 객체(`deltRegion`, 인증 시 `isFavorite` 포함). 없으면 `404 RESOURCE_NOT_FOUND` — 남의 내 종목과 숨긴 내 종목도 없는 종목이다(5.1 보이는 범위).
 
 ### 5.4 PUT / DELETE /users/me/favorite-exercises/{exerciseId}
 
@@ -896,6 +911,9 @@ Authorization: Bearer {accessToken}
 | `count` | 그 계열의 변형 수 |
 | `representativeId` | 계열 카드에 쓸 대표 종목 id |
 | `representativeNameEn` | 그 대표 종목의 영문명. 계열 카드 **동작 그림의 파일명**을 만드는 데 쓴다 — 그림이 `{영문명 슬러그}-{1,2}.webp`라서 id만으로는 어느 그림인지 알 수 없다 |
+| `mine` | `true`면 **계열 없이 만든 내 종목을 모은 칸**(5.9). 맨 끝에 하나만, 그런 종목이 있을 때만 나온다. `groupName`·대표 종목은 `null`. 화면은 "내 종목" 가로 칸으로 그리고, 목록은 `GET /exercises?category=&ungroupedMine=true` |
+
+계열 안에서 만든 내 종목은 그 계열의 `count`에 들어간다(만든 사람에게만).
 
 > 동작 그림은 백엔드를 거치지 않는다. `exercises`에 `image_url` 컬럼을 두지 않고 프론트의 정적 파일로 두었다 — 사용자가 올리는 것이 아니라 제품에 딸려오는 고정 자산이라 코드와 같이 버전이 매겨지는 편이 맞고, 컬럼을 두면 그림이 없는 종목까지 채워야 한다. 출처와 라이선스는 `frontend/public/exercises/CREDITS.md`에 있다.
 
@@ -942,6 +960,45 @@ Authorization: Bearer {accessToken}
 | `size`가 1~50 밖 | `400 VALIDATION_ERROR` |
 
 기록이 없으면 오류가 아니라 빈 페이지다. 개인 기록이라 인증이 필요하다.
+
+### 5.9 POST /exercises · PUT / DELETE /exercises/{id} — 내 종목
+
+> 2026-11-18 신설. 「내종목_설계서」. 261종에 없는 운동을 사용자가 직접 만든다. 만든 사람에게만 보이고, 그림은 없다.
+
+**요청 본문** (POST·PUT 공통 — 고칠 때도 전체를 보낸다)
+
+```json
+{ "nameKo": "케이블 Y 레이즈", "category": "SHOULDERS_FRONT", "legSide": null,
+  "equipment": "CABLE", "measureType": "WEIGHT_REPS", "groupName": "레터럴 레이즈" }
+```
+
+| 필드 | 규칙 |
+|---|---|
+| `nameKo` | 필수, 1\~50자. 앞뒤 공백을 걷고 여러 칸 띄어쓰기는 한 칸으로 저장·비교한다. 기본 종목이나 내 다른 종목(숨긴 것 포함)과 같으면 `409 EXERCISE_NAME_TAKEN` |
+| `category` | 필수. 5.6의 13종. 저장은 기본 종목과 같은 칸(`primaryMuscle`·`deltRegion`·`bodyPart`·`pushPull`)으로 바꾼다 — 대응표는 설계서 4장 |
+| `legSide` | `FRONT`(앞허벅지)·`BACK`(뒤허벅지). `category`가 `LEGS`일 때만, 그때는 필수 — 분석이 하체를 앞·뒤로 나눠 본다 |
+| `equipment` · `measureType` | 필수. 5.1의 값 |
+| `groupName` | 선택. 계열 안에서 만들 때 그 계열 — 그 분류에 실제로 있는 계열이어야 한다. 없으면 5.7의 "내 종목" 칸으로 |
+
+**응답**
+
+| 요청 | 응답 |
+|---|---|
+| `POST /exercises` | `201` 5.2의 종목 객체(`mine: true`). **숨긴 내 종목과 이름이 같으면** 새로 만들지 않고 그 종목을 되살려 값을 바꾼다 — 지난 기록이 다시 이어진다 |
+| `PUT /exercises/{id}` | `200` 종목 객체. 부위를 바꾸면 지난 기록도 새 부위로 분석된다(분석은 그때그때 기록으로 계산) |
+| `DELETE /exercises/{id}` | `204`. 그 종목으로 기록한 세트가 **없으면 지우고**(즐겨찾기도 함께), **있으면 숨긴다**(`hidden_at`) — 목록·단건·세트 저장에서 빠지지만 지난 기록의 종목 이름은 남는다 |
+
+**오류**
+
+| 상황 | 응답 |
+|---|---|
+| 이름 비었음·50자 초과, 부위·기구·기록 방식 없음, 하체인데 `legSide` 없음, 그 분류에 없는 계열 | `400 VALIDATION_ERROR` |
+| 이름 겹침 | `409 EXERCISE_NAME_TAKEN` |
+| 한 계정 100개 초과(숨긴 것 포함) | `409 EXERCISE_LIMIT_EXCEEDED` |
+| 기본 종목·남의 종목·숨긴 종목을 고치거나 지움 | `404` |
+| 비로그인 | `401` (조회만 열려 있다 — 1.3) |
+
+- 내 종목은 **오늘의 루틴에 들어가지 않는다** — 후보·교체 후보에서 빠지고(11.5), 교체로 넣으면 `400`(11.6). 기록은 분석·회복·1RM에 기본 종목과 똑같이 들어간다.
 
 ---
 
@@ -1032,7 +1089,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | 필드 | 규칙 |
 |---|---|
 | `clientSetId` | **필수. 멱등 키** — 클라이언트가 완료 체크 시점에 생성한 UUID(`crypto.randomUUID()`). 같은 세션에서 같은 값이 다시 오면 새로 저장하지 않는다 (아래 참조) |
-| `exerciseId` | 필수 |
+| `exerciseId` | 필수. 남의 내 종목·숨긴 내 종목이면 `404`(5.1 보이는 범위) |
 | `weightKg` | 종목 `measureType`에 따라 필수/무시 (5.1 표). 0 이상, 소수 2자리 |
 | `reps` | 종목에 따라 필수/무시. 1 이상 32767 이하(세트 수정 6.11도 같다) |
 | `durationSec` | `TIME` 종목만 필수. 1 이상 |
@@ -1283,7 +1340,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 
 | 파라미터 | 규칙 |
 |---|---|
-| `exerciseId` | 필수. `measureType`이 `WEIGHT_REPS`가 아니면 `400 VALIDATION_ERROR` |
+| `exerciseId` | 필수. `measureType`이 `WEIGHT_REPS`가 아니면 `400 VALIDATION_ERROR`. 남의 내 종목·숨긴 내 종목이면 `404`(5.1 보이는 범위) |
 | `from`, `to` | 날짜 범위. 생략 시 `to`는 오늘, `from`은 `to`를 **포함해** 과거로 84일(12주 × 7). 8.2의 집계 구간과 같은 셈법이다 |
 
 **산출 규칙** (분석 1.3, LOG-07 — 서버가 전부 계산)
@@ -2060,7 +2117,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 
 ### 11.5 GET /routines/{routineId}/items/{itemId}/alternatives
 
-교체 후보. **같은 판정 부위**에서 루틴에 이미 있는 종목을 빼고, 최대 10개.
+교체 후보. **같은 판정 부위**에서 루틴에 이미 있는 종목을 빼고, 최대 10개. 내 종목(5.9)은 나오지 않는다(2026-11-18).
 
 ```json
 [{ "exerciseId": 34, "exerciseName": "랫풀다운: 와이드 그립", "exerciseNameEn": "Wide-Grip Lat Pulldown",
@@ -2087,6 +2144,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | 상황 | 응답 |
 |---|---|
 | 다른 부위의 종목 | `400 VALIDATION_ERROR` — 다른 부위로 바꾸면 루틴의 근거("이 부위가 부족하다")가 성립하지 않는다. 다른 부위는 기록 화면에서 직접 추가한다 |
+| 내 종목(5.9) | `400 VALIDATION_ERROR` — 직접 만든 종목은 루틴에 넣지 않는다(「내종목_설계서」 결정 8). 남의 내 종목은 `404` |
 | 빼지 않은 다른 항목에 이미 있는 종목 | `400 VALIDATION_ERROR` — 같은 종목이 두 항목이면 그날 세트가 두 항목에 다 잡혀 진행(`doneSets`)이 두 번 세어진다. 교체 후보(11.5)도 이런 종목은 빼고 보인다(2026-11-17) |
 | `plannedSets`가 1~10 밖 | `400 VALIDATION_ERROR` |
 | 지난 루틴 | `400 VALIDATION_ERROR` — 고치면 이미 쌓인 수행률이 바뀐다 |
