@@ -174,7 +174,6 @@ export function useDragReorder({ count, onReorder, onLift }: Options) {
     } catch {
       // 이미 손을 뗀 포인터면 잡지 못한다. 그래도 끌기는 이어진다
     }
-    navigator.vibrate?.(10)
     swallowClick.current = true
     callbacks.current.onLift?.()
     setView({ from: p.index, over: p.index, dy: 0, dropping: false, shift: layout.heights[p.index] + layout.gap })
