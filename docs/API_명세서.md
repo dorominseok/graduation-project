@@ -18,6 +18,7 @@
 > 개정: 2026-11-17 잘못된 요청이 500이던 것 — 1.5에 `405 METHOD_NOT_ALLOWED` · `415 UNSUPPORTED_MEDIA_TYPE` 추가, 없는 정렬·범위 밖 날짜는 400, 비밀번호 72바이트(4.1·4.8), 닉네임 공백(4.6), `reps` 상한(6.4), 달력 `year` 범위(6.8), 탈퇴한 사용자의 토큰(4.7)
 > 개정: 2026-11-17 보안 점검 — 4.9 구글 계정을 묶을 때 비밀번호 삭제·기존 로그인 끊기, 12.3 푸시 주소 허용 호스트·계정당 10개, 1.5 요청 제한은 인코딩을 푼 경로로
 > 추가: 내 종목(5.9, 2026-11-18, 「내종목_설계서」) — 만들기·고치기·지우기. 5.1·5.2·5.3·5.7 보이는 범위와 `mine`, 1.5 새 오류 코드 2개, 4.7 탈퇴, 6.4·7.1·11.5·11.6. 엔드포인트 58→61개
+> 추가: 기록 가져오기(13장, 2026-11-19, 「기록가져오기_설계서」) — 다른 앱(바디캘린더) 기록 글 미리보기·저장. 1.5 새 오류 코드 `IMPORT_FORMAT_UNKNOWN`, 4.7 탈퇴, 부록 A. 엔드포인트 61→63개
 
 ---
 
@@ -34,6 +35,7 @@
 | 약점·불균형 분석 | UC-03-01, UC-03-02 | 8장 |
 | 친구 그룹 | UC-05-01 ~ UC-05-07 | 10장 |
 | 오늘의 루틴 (추천·후보정·만족도) | UC-03-03 ~ UC-03-06 | 11장 |
+| 다른 앱 기록 가져오기 | — (사용 후기 요청) | 13장 |
 
 ### 0.2 설계 결정 반영 대응표
 
@@ -154,6 +156,7 @@ Authorization: Bearer {accessToken}
 | 400 | `VALIDATION_ERROR` | 필수값 누락, 형식 오류, 범위 초과 (`errors` 포함). 없는 정렬 기준(`sort=nope` → `errors[].field`가 `sort`), DB가 담지 못하는 값(예: 9억 년의 날짜 — `errors` 없이)도 |
 | 400 | `INVALID_MEASURE_INPUT` | 종목의 `measureType`에 맞지 않는 세트 입력 (5.1·6.4 참조) |
 | 400 | `INVALID_DATE_RANGE` | `from > to`, 미래 날짜 등 |
+| 400 | `IMPORT_FORMAT_UNKNOWN` | 붙여넣은 글에 바디캘린더 날짜 줄이 하나도 없음 (13.1) |
 | 401 | `AUTHENTICATION_REQUIRED` | `Authorization` 헤더 없음 |
 | 401 | `INVALID_CREDENTIALS` | 로그인 시 이메일·비밀번호 불일치 |
 | 401 | `TOKEN_EXPIRED` | 액세스 토큰 만료 → 클라이언트는 `/auth/refresh` 시도 |
@@ -397,6 +400,13 @@ Authorization: Bearer {accessToken}
 | POST | `/users/me/push-subscriptions` | 기기 등록(푸시 구독) | ✔ |
 | DELETE | `/users/me/push-subscriptions` | 기기 등록 해제 | ✔ |
 
+### 3.9 기록 가져오기 (13장, 2026-11-19)
+
+| 메서드 | 경로 | 설명 | 인증 |
+|---|---|---|---|
+| POST | `/imports/preview` | 다른 앱 기록 글을 날짜별로 읽고 우리 종목에 맞춘다 (저장 안 함) | ✔ |
+| POST | `/imports` | 미리보기에서 정한 대로 그날 기록에 넣는다 | ✔ |
+
 ---
 
 ## 4. 인증·프로필 API
@@ -591,6 +601,7 @@ Authorization: Bearer {accessToken}
 | `friend_group_members` · `cheers` | `user_id` → `users` (V8) |
 | `routines` · `routine_items` | `user_id` → `users`, `routine_id` → `routines` (V10) |
 | `exercises`(내 종목만) | `owner_id` → `users` (V16) |
+| `exercise_import_aliases` | `user_id` → `users`, `exercise_id` → `exercises` (V17, 13.2) |
 
 - **하루 기록을 먼저 지운다**(2026-11-18) — 내 종목으로 한 세트가 남아 있으면 `users → exercises` 연쇄 삭제가 세트의 종목 외래키에 걸린다. PostgreSQL은 연쇄 삭제를 단계마다 검사해 `workout_sessions → workout_sets`보다 먼저 검사될 수 있다(「내종목_설계서」 4장).
 
@@ -2279,6 +2290,134 @@ LLM 설정은 `app.llm.*`(`enabled`, `model`, `timeout-ms`, `temperature`, `max-
 
 ---
 
+## 13. 기록 가져오기 API
+
+> 2026-11-19 신설. 「기록가져오기_설계서」. 엔드포인트 2개 — 전체 61→63개.
+
+다른 운동 앱의 기록 글을 붙여넣어 우리 기록에 넣는다. 첫 판은 **바디캘린더의 "운동 일지 내보내기" 글**만 읽는다. 미리보기가 날짜별로 읽고 우리 종목에 맞춘 결과를 주면, 화면이 사용자가 고친 대로 저장을 보낸다. 들어간 세트는 직접 기록한 세트와 같다 — 분석·회복·1RM·히스토리에 그대로 들어간다.
+
+### 13.1 POST /imports/preview
+
+글을 읽고 맞추기만 한다. 저장하지 않는다.
+
+**요청**
+
+```json
+{ "text": "2026-11-18 바디캘린더 472번째 운동 일지\n\n유산소1 복부1 등1 가슴1\n\n자유 운동 3분 10세트 2.8톤\n\n풀업: 중량\n1세트 40kg 10회\n…" }
+```
+
+**응답 `200 OK`**
+
+```json
+{
+  "days": [
+    {
+      "date": "2026-11-18",
+      "minutes": 3,
+      "exercises": [
+        {
+          "source": "풀업: 중량",
+          "status": "MATCHED",
+          "exercise": { "id": 23, "nameKo": "중량 풀업", "measureType": "WEIGHTED_BODYWEIGHT", "mine": false },
+          "guess": null,
+          "allowedMeasureTypes": ["WEIGHT_REPS", "BODYWEIGHT_REPS", "WEIGHTED_BODYWEIGHT"],
+          "sets": [ { "kind": "SET", "weightKg": 40, "reps": 10, "durationSec": null } ]
+        },
+        {
+          "source": "월 슬라이드",
+          "status": "UNREGISTERED",
+          "exercise": null,
+          "guess": { "equipment": "BODYWEIGHT", "measureType": "BODYWEIGHT_REPS" },
+          "allowedMeasureTypes": ["BODYWEIGHT_REPS"],
+          "sets": [ { "kind": "SET", "weightKg": null, "reps": 30, "durationSec": null } ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+| 필드 | 설명 |
+|---|---|
+| `days` | 날짜 순. **미래 날짜와 근력 종목이 없는 날(유산소만)은 없다.** 같은 날짜가 두 번 나오면 한 날로 합친다 |
+| `minutes` | 요약 줄의 `N분`. 없으면 `null` |
+| `source` | 원래 이름 전체 — 띄어쓰기를 정리하고 `(슈퍼세트)`를 뗀 것. 저장 요청에 그대로 돌려보낸다 |
+| `status` | `MATCHED` 맞춤 · `SIMILAR` 비슷한 종목(짐작, 추가를 막지 않는다) · `UNREGISTERED` 미등록 운동(만들거나 골라야 추가할 수 있다) |
+| `exercise` | 맞춘 종목. 미등록 운동이면 `null` |
+| `guess` | 미등록 운동일 때만 — 내 종목 만들기 창을 채울 기구·기록 방식. 모르면 그 칸이 `null` |
+| `allowedMeasureTypes` | 이 세트를 담을 수 있는 기록 방식(그 방식이 꼭 받는 값이 모든 세트에 있다). "바꾸기"·"비슷한 종목 고르기"는 이 방식의 종목만 보인다 |
+| `sets[].kind` | `SET` 본세트 · `WARMUP` 웜업(워밍업 세트로 저장) · `DROP` 드랍(본세트로 저장) |
+| `sets[]` 값 | 글에 적힌 그대로다 — 맨몸 종목의 kg(체중)도 있다. 고른 종목이 쓰지 않는 값은 화면이 보이지 않고 저장할 때 버린다. 시간은 초 |
+
+**이름 맞추기** — 앞 순서에서 맞으면 끝난다. 후보는 그 사람에게 보이는 종목(기본 종목 + 숨기지 않은 내 종목)이고, 세트를 담을 수 있는 기록 방식이어야 한다.
+
+| 순서 | 방법 | 결과 |
+|---|---|---|
+| 1 | 내가 맞춘 짝(13.2 `remember`) | `MATCHED` |
+| 2 | 이름이 똑같음 — 원래 이름 전체, 또는 수식어가 없거나 `기본`·`스탠딩`·`맨몸`뿐이면 `:` 앞 이름. 띄어쓰기·수식어 순서 무시. 내 종목 먼저 | `MATCHED` |
+| 3 | 미리 만든 짝 표(`data/import_bodycalendar.csv`) | `MATCHED` |
+| 4 | `:` 앞 이름이 계열 이름으로 끝나면 그 계열 안에서 수식어 낱말이 가장 많이 든 종목. 비기면 `:` 앞 이름의 낱말 수, 흔한 종목, id 순. kg가 적힌 세트는 맨몸 종목으로 짐작하지 않는다(수식어에 "맨몸"이 있으면 본다) | `SIMILAR` |
+| 5 | 없음 | `UNREGISTERED` |
+
+**읽는 규칙** — 날짜 줄(`2026-11-18 바디캘린더 …`)이 새 날을 열고, 세트 줄이 아닌 줄이 종목 이름이며 그 아래 `1세트 40kg 10회` · `1세트 30회` · `1세트 02:00` · `웜업 …` · `드랍 …`이 세트다. `1구간 …`(유산소)이 있는 종목은 통째로 뺀다. 읽지 못한 줄은 건너뛰고 서버 로그에 개수와 앞의 몇 줄을 남긴다(「기록가져오기_설계서」 3장).
+
+| 상황 | 응답 |
+|---|---|
+| 날짜 줄이 하나도 없음 | `400 IMPORT_FORMAT_UNKNOWN` |
+| `text`가 비었거나 10만 자를 넘음 | `400 VALIDATION_ERROR` |
+| 미래 날짜를 뺀 날이 31일을 넘음 | `400 VALIDATION_ERROR` |
+
+### 13.2 POST /imports
+
+미리보기에서 정한 대로 넣는다. 미등록 운동은 화면이 먼저 내 종목을 만들고(5.9) 그 id를 넣는다.
+
+**요청**
+
+```json
+{
+  "days": [
+    {
+      "date": "2026-11-18",
+      "minutes": 3,
+      "exercises": [
+        { "source": "풀업: 중량", "exerciseId": 23, "remember": false,
+          "sets": [ { "kind": "SET", "weightKg": 40, "reps": 10, "durationSec": null } ] }
+      ]
+    }
+  ]
+}
+```
+
+| 필드 | 규칙 |
+|---|---|
+| `days` | 1\~31개, 날짜가 겹치면 안 된다 |
+| `minutes` | 미리보기 값 그대로(0\~1440, 없으면 `null`) |
+| `exercises` | 하루 1\~100개. `source`(200자까지)·`exerciseId` 필수 |
+| `remember` | "바꾸기"로 고쳤거나 미리보기에서 만든 종목이면 `true` — 이 짝을 기억한다(있으면 바꾼다). 다음 미리보기에서 1번으로 맞는다 |
+| `sets` | 한 종목 1\~100개. 미리보기의 `sets` 그대로. 값의 범위는 6.4와 같다 |
+
+**응답 `201 Created`**
+
+```json
+{ "days": [ { "date": "2026-11-18", "sessionId": 812, "added": 12, "alreadyThere": 0 } ] }
+```
+
+- **하나라도 막히면 아무것도 넣지 않는다**(한 트랜잭션).
+- 그날 기록이 없으면 연다(6.2). 세트는 6.4와 같은 규칙이다 — 보이는 종목만, 기록 방식이 꼭 받는 값이 있어야 하고, 쓰지 않는 값은 버리며, `setNo`는 서버가 매긴다.
+- **같은 글을 다시 넣으면 한 번만 들어간다** — 세트마다 고정 `clientSetId`를 만든다: 사용자·날짜·원래 이름·그 이름이 그날 몇 번째로 나왔는지·몇 번째 세트로 정해지는 UUID(v5). 두 번째는 `added: 0`, `alreadyThere`가 전부다.
+- **저장 시각**(`recordedAt`) — 그날 정오(Asia/Seoul)부터 세트마다 1초씩. 그날 세트가 정오보다 늦게 있으면 그 1초 뒤부터(이어 붙인다), 오늘 정오 전이면 마지막 세트가 지금 1초 전에 오게 당긴다. 자정에서 멀어 "자정 넘겨 이어지는 어제 기록"(6.2)에 끼지 않는다.
+- **운동 시간** — 그날 세트가 하나도 없었고 `minutes`가 1 이상이면 `durationOverrideSec = minutes × 60`(6.9의 시간 보정과 같은 칸). 이미 기록이 있던 날은 덮지 않는다 — 가져온 세트는 몇 초 사이에 저장돼 산출 시간이 1분 남짓이 된다.
+- 기억한 짝은 `exercise_import_aliases`(V17)에 사람마다 남는다. 탈퇴하거나 그 내 종목을 지우면 함께 지워지고, 그 종목을 숨기면(기록이 있는 내 종목 지우기) 짝은 없는 것으로 본다.
+
+| 상황 | 응답 |
+|---|---|
+| 보이지 않는 종목(남의 내 종목, 숨긴 내 종목, 없는 id) | `404 RESOURCE_NOT_FOUND` |
+| 기록 방식이 꼭 받는 값이 없음(예: 시간 종목에 횟수만) | `400 INVALID_MEASURE_INPUT` |
+| 미래 날짜 | `400 INVALID_DATE_RANGE` |
+| 날짜가 겹침, 개수 초과, 필수값 없음 | `400 VALIDATION_ERROR` |
+
+---
+
 ## 부록 A. Enum 정의 모음
 
 | 그룹 | 값 |
@@ -2299,6 +2438,8 @@ LLM 설정은 `app.llm.*`(`enabled`, `model`, `timeout-ms`, `temperature`, `max-
 | `routine.feedback.rating` | `GOOD`, `OKAY`, `BAD` |
 | `routine.feedback.reason` | `EXERCISE`, `TOO_MUCH`, `TOO_LITTLE`, `OTHER` |
 | `routines.fallback_reason` (응답 없음) | `LLM_DISABLED`, `LLM_ERROR`, `VALIDATION_FAILED` |
+| `import.status` | `MATCHED`, `SIMILAR`, `UNREGISTERED` (13.1) |
+| `import.sets[].kind` | `SET`, `WARMUP`, `DROP` (13.1) |
 | 에러 `code` | 1.5의 표 참조 |
 
 ---

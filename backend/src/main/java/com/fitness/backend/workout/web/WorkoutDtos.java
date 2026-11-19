@@ -159,6 +159,23 @@ public final class WorkoutDtos {
     }
 
     /**
+     * 다른 앱에서 가져온 세트 하나(「기록가져오기_설계서」). 세트 저장과 같은 규칙으로 저장한다 — 보이는 종목만,
+     * 기록 방식이 꼭 받는 값이 있어야 하고, 쓰지 않는 값은 버리며, 같은 {@code clientSetId}는 한 번만.
+     */
+    public record ImportedSet(UUID clientSetId, Long exerciseId, BigDecimal weightKg, Integer reps,
+                              Integer durationSec, boolean warmup) {
+    }
+
+    /**
+     * 가져온 하루의 결과.
+     *
+     * @param added        새로 넣은 세트 수
+     * @param alreadyThere 같은 글을 전에 넣어 이미 있던 세트 수
+     */
+    public record ImportDayResult(Long sessionId, int added, int alreadyThere) {
+    }
+
+    /**
      * 세션 수정. 보내지 않은 항목은 건드리지 않는다.
      *
      * <p><b>값을 비우는 방법</b>: 메모는 빈 문자열, 시간 보정은 {@code 0}을 보낸다.

@@ -144,6 +144,13 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
     @Query("select e from Exercise e where e.ownerId is null or e.ownerId = :userId")
     List<Exercise> findAllForUser(@Param("userId") Long userId);
 
+    /** 이 사용자가 고를 수 있는 종목 전부 — 기본 종목과 숨기지 않은 자기 종목. 기록 가져오기의 이름 맞추기 후보 */
+    @Query("""
+            select e from Exercise e
+             where e.ownerId is null or (e.ownerId = :userId and e.hiddenAt is null)
+            """)
+    List<Exercise> findAllVisible(@Param("userId") Long userId);
+
     boolean existsByOwnerIdIsNullAndNameKo(String nameKo);
 
     /** 숨긴 것까지 — 숨긴 이름으로 다시 만들면 되살린다 */
