@@ -6,6 +6,7 @@ import com.fitness.backend.common.error.ErrorCode;
 import com.fitness.backend.exercise.domain.Exercise;
 import com.fitness.backend.exercise.domain.MeasureType;
 import com.fitness.backend.exercise.repository.ExerciseRepository;
+import com.fitness.backend.workout.domain.ImportedSetTimes;
 import com.fitness.backend.workout.domain.SessionDuration;
 import com.fitness.backend.workout.domain.WorkoutSession;
 import com.fitness.backend.workout.domain.WorkoutSet;
@@ -18,6 +19,8 @@ import com.fitness.backend.workout.web.WorkoutDtos.DayTimes;
 import com.fitness.backend.workout.web.WorkoutDtos.ExerciseGroup;
 import com.fitness.backend.workout.web.WorkoutDtos.ExerciseHistoryDay;
 import com.fitness.backend.workout.web.WorkoutDtos.ExerciseRef;
+import com.fitness.backend.workout.web.WorkoutDtos.ImportDayResult;
+import com.fitness.backend.workout.web.WorkoutDtos.ImportedSet;
 import com.fitness.backend.workout.web.WorkoutDtos.LastPerformanceResponse;
 import com.fitness.backend.workout.web.WorkoutDtos.LastPerformanceSet;
 import com.fitness.backend.workout.web.WorkoutDtos.OpenDayRequest;
@@ -29,6 +32,7 @@ import com.fitness.backend.workout.web.WorkoutDtos.SetResponse;
 import com.fitness.backend.workout.web.WorkoutDtos.SetSaveResult;
 import com.fitness.backend.workout.web.WorkoutDtos.UpdateSessionRequest;
 import com.fitness.backend.workout.web.WorkoutDtos.UpdateSetRequest;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -36,6 +40,7 @@ import java.time.OffsetDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -136,7 +141,7 @@ public class WorkoutService {
         Exercise exercise = exerciseRepository.findVisible(request.exerciseId(), userId)
                 .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "종목을 찾을 수 없습니다."));
         MeasureType measureType = exercise.getMeasureType();
-        validateMeasureInput(measureType, request);
+        validateMeasureInput(measureType, request.weightKg(), request.reps(), request.durationSec());
 
         // 순번은 서버가 매긴다. 클라이언트가 정하게 두면 같은 번호를 두 번 보내
         // 1세트가 두 줄이 된다 — 화면이 세트를 셀 근거가 없어진다.
@@ -156,6 +161,53 @@ public class WorkoutService {
         WorkoutSet saved = setRepository.findBySessionIdAndClientSetId(sessionId, request.clientSetId())
                 .orElseThrow(() -> new IllegalStateException("방금 저장한 세트가 없다"));
         return new SetSaveResult(SetResponse.of(saved, exercise.getNameKo()), created);
+    }
+
+    /**
+     * 다른 앱에서 가져온 하루를 넣는다(「기록가져오기_설계서」 7장). 기록 열기와 세트 저장을 한 번에 한다.
+     *
+     * <p>세트 하나하나는 {@link #addSet}과 같은 규칙이다 — 보이는 종목만(아니면 {@code 404}), 기록 방식이 꼭 받는
+     * 값이 있어야 하고({@code 400}), 쓰지 않는 값은 버리며, 같은 {@code clientSetId}는 다시 넣지 않는다.
+     * 저장 시각은 {@link ImportedSetTimes}가 정한다.
+     *
+     * <p>그날 세트가 하나도 없었으면 {@code minutes}를 그날 운동 시간으로 둔다(결정 5) — 가져온 세트는 몇 초 사이에
+     * 저장돼 산출 시간이 1분 남짓이 된다. 이미 기록이 있던 날은 그 시간을 덮지 않는다.
+     */
+    @Transactional
+    public ImportDayResult importDay(Long userId, LocalDate date, Integer minutes, List<ImportedSet> sets) {
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        if (date.isAfter(LocalDate.now(clock))) {
+            throw new ApiException(ErrorCode.INVALID_DATE_RANGE, "미래 날짜로는 기록할 수 없습니다.");
+        }
+        sessionRepository.insertIfAbsent(userId, date);
+        WorkoutSession session = sessionRepository.findByUserIdAndPerformedOn(userId, date)
+                .orElseThrow(() -> new IllegalStateException("방금 연 기록이 없다"));
+        List<WorkoutSet> existing = setRepository.findBySessionIdOrderByRecordedAtAsc(session.getId());
+        OffsetDateTime start = ImportedSetTimes.start(date, clock.getZone(),
+                existing.isEmpty() ? null : existing.get(existing.size() - 1).getRecordedAt(), sets.size(), now);
+
+        Map<Long, Exercise> exercises = new HashMap<>();
+        int added = 0;
+        for (int i = 0; i < sets.size(); i++) {
+            ImportedSet set = sets.get(i);
+            Exercise exercise = exercises.computeIfAbsent(set.exerciseId(), id -> exerciseRepository
+                    .findVisible(id, userId)
+                    .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "종목을 찾을 수 없습니다.")));
+            MeasureType measureType = exercise.getMeasureType();
+            validateMeasureInput(measureType, set.weightKg(), set.reps(), set.durationSec());
+
+            short setNo = (short) (setRepository.countBySessionIdAndExerciseId(session.getId(), exercise.getId()) + 1);
+            added += setRepository.insertIfAbsent(session.getId(), exercise.getId(), setNo,
+                    measureType.requiresWeight() ? set.weightKg() : null,
+                    measureType.requiresReps() ? toShort(set.reps()) : null,
+                    measureType.requiresDuration() ? set.durationSec() : null,
+                    set.warmup(), start.plusSeconds(i), set.clientSetId());
+        }
+
+        if (existing.isEmpty() && added > 0 && minutes != null && minutes > 0) {
+            session.changeDurationOverrideSec(minutes * 60);
+        }
+        return new ImportDayResult(session.getId(), added, sets.size() - added);
     }
 
     /**
@@ -379,14 +431,15 @@ public class WorkoutService {
                 .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "운동 기록을 찾을 수 없습니다."));
     }
 
-    private void validateMeasureInput(MeasureType measureType, CreateSetRequest request) {
-        if (measureType.requiresWeight() && request.weightKg() == null) {
+    private static void validateMeasureInput(MeasureType measureType, BigDecimal weightKg, Integer reps,
+                                             Integer durationSec) {
+        if (measureType.requiresWeight() && weightKg == null) {
             throw new ApiException(ErrorCode.INVALID_MEASURE_INPUT, "이 종목은 중량이 필요합니다.");
         }
-        if (measureType.requiresReps() && request.reps() == null) {
+        if (measureType.requiresReps() && reps == null) {
             throw new ApiException(ErrorCode.INVALID_MEASURE_INPUT, "이 종목은 횟수가 필요합니다.");
         }
-        if (measureType.requiresDuration() && request.durationSec() == null) {
+        if (measureType.requiresDuration() && durationSec == null) {
             throw new ApiException(ErrorCode.INVALID_MEASURE_INPUT, "이 종목은 수행 시간이 필요합니다.");
         }
     }

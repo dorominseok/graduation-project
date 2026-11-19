@@ -18,6 +18,7 @@ public enum ErrorCode {
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "입력값을 확인해주세요."),
     INVALID_MEASURE_INPUT(HttpStatus.BAD_REQUEST, "이 종목에 맞지 않는 입력입니다."),
     INVALID_DATE_RANGE(HttpStatus.BAD_REQUEST, "날짜 범위가 올바르지 않습니다."),
+    IMPORT_FORMAT_UNKNOWN(HttpStatus.BAD_REQUEST, "바디캘린더 운동 일지 형식이 아니에요."),
 
     AUTHENTICATION_REQUIRED(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
