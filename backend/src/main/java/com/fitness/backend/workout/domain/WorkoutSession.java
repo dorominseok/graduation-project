@@ -8,9 +8,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * 사용자의 하루 운동 기록.
@@ -56,6 +60,14 @@ public class WorkoutSession extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String memo;
 
+    /**
+     * 사용자가 정한 종목 순서(종목 id). 없으면 세트 저장 시각 순이다. 여기 있는 종목이 이 순서대로 먼저, 없는 종목은
+     * 그 뒤에 원래 순서로 온다({@link ExerciseOrder}). 세트가 없는 종목의 id가 남아 있어도 읽을 때 걸러진다
+     */
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "exercise_order", columnDefinition = "bigint[]")
+    private List<Long> exerciseOrder;
+
     /** 그날 루틴을 잇는다. 루틴과 하루 기록은 날짜로 1:1이다 */
     public void linkRoutine(Long routineId) {
         this.routineId = routineId;
@@ -68,6 +80,19 @@ public class WorkoutSession extends BaseTimeEntity {
     /** 날짜 정정. 옮길 날짜에 기록이 이미 있는지는 호출 전에 본다 */
     public void changePerformedOn(LocalDate performedOn) {
         this.performedOn = performedOn;
+    }
+
+    /** 종목 순서를 정한다. 겹친 id는 앞의 것만 남긴다. 비우면 세트 저장 시각 순으로 돌아간다 */
+    public void changeExerciseOrder(List<Long> order) {
+        List<Long> distinct = order == null ? List.of() : order.stream().distinct().toList();
+        this.exerciseOrder = distinct.isEmpty() ? null : new ArrayList<>(distinct);
+    }
+
+    /** 그 종목을 순서에서 뺀다 — 종목을 통째로 지울 때. 다시 넣으면 맨 뒤로 온다 */
+    public void dropFromExerciseOrder(Long exerciseId) {
+        if (exerciseOrder != null && exerciseOrder.contains(exerciseId)) {
+            changeExerciseOrder(exerciseOrder.stream().filter(id -> !id.equals(exerciseId)).toList());
+        }
     }
 
     /** 사용자가 직접 넣는 운동 시간. {@code null}이면 보정을 해제하고 산출값으로 돌아간다 */

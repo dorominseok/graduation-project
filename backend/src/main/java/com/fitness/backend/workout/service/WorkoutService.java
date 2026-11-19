@@ -6,6 +6,7 @@ import com.fitness.backend.common.error.ErrorCode;
 import com.fitness.backend.exercise.domain.Exercise;
 import com.fitness.backend.exercise.domain.MeasureType;
 import com.fitness.backend.exercise.repository.ExerciseRepository;
+import com.fitness.backend.workout.domain.ExerciseOrder;
 import com.fitness.backend.workout.domain.ImportedSetTimes;
 import com.fitness.backend.workout.domain.SessionDuration;
 import com.fitness.backend.workout.domain.WorkoutSession;
@@ -352,6 +353,12 @@ public class WorkoutService {
             session.changeDurationOverrideSec(override == 0 ? null : override);
         }
 
+        if (request.exerciseOrder() != null) {
+            // 종목 id만 담는다. 세트가 없는 종목(화면의 계획 종목)도 받는다 — 그 종목에 세트가 생기면 그 자리에 온다.
+            // 남의 종목 id가 섞여도 내 기록에는 그 종목의 세트가 없어 읽을 때 걸러진다
+            session.changeExerciseOrder(request.exerciseOrder());
+        }
+
         return toResponse(session, setRepository.findBySessionIdOrderByRecordedAtAsc(sessionId));
     }
 
@@ -401,11 +408,13 @@ public class WorkoutService {
      */
     @Transactional
     public void deleteExercise(Long userId, Long sessionId, Long exerciseId) {
-        mustFindSession(userId, sessionId);
+        WorkoutSession session = mustFindSession(userId, sessionId);
         int deleted = setRepository.deleteBySessionIdAndExerciseId(sessionId, exerciseId);
         if (deleted == 0) {
             throw new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "이 기록에 해당 종목이 없습니다.");
         }
+        // 다시 넣으면 화면처럼 맨 뒤에 오게 순서에서도 뺀다
+        session.dropFromExerciseOrder(exerciseId);
     }
 
     private WorkoutSet mustFindSet(Long sessionId, Long setId) {
@@ -415,12 +424,12 @@ public class WorkoutService {
 
     private SessionSummary toSummary(WorkoutSession session, List<WorkoutSet> sets,
                                      Map<Long, Exercise> exercises) {
-        // sets가 저장 시각 순이므로 distinct()가 곧 수행 순서다.
-        List<ExerciseRef> refs = sets.stream()
+        // sets가 저장 시각 순이므로 distinct()가 곧 수행 순서다. 사용자가 정한 순서가 있으면 그것이 앞선다
+        List<ExerciseRef> refs = ExerciseOrder.apply(sets.stream()
                 .map(WorkoutSet::getExerciseId)
                 .distinct()
                 .map(id -> new ExerciseRef(id, exercises.containsKey(id) ? exercises.get(id).getNameKo() : null))
-                .toList();
+                .toList(), ExerciseRef::id, session.getExerciseOrder());
 
         return new SessionSummary(session.getId(), session.getPerformedOn(),
                 times(session, sets).effectiveSec(session), sets.size(), refs.size(), refs);
@@ -466,7 +475,8 @@ public class WorkoutService {
      * 하루 기록과 세트를 상세 응답의 형태로 묶는다.
      *
      * <p>세트가 저장 시각 오름차순으로 들어오므로 {@link LinkedHashMap}에 쌓으면
-     * 종목 순서가 곧 <b>수행 순서</b>가 된다(각 종목의 가장 이른 저장 시각 순).
+     * 종목 순서가 곧 <b>수행 순서</b>가 된다(각 종목의 가장 이른 저장 시각 순). 사용자가 순서를 바꿨으면
+     * 그 순서가 앞선다({@link ExerciseOrder}).
      */
     private SessionResponse toResponse(WorkoutSession session, List<WorkoutSet> sets) {
         return toResponse(session, sets, loadExercises(sets));
@@ -478,7 +488,7 @@ public class WorkoutService {
             byExercise.computeIfAbsent(set.getExerciseId(), key -> new ArrayList<>()).add(set);
         }
 
-        List<ExerciseGroup> groups = byExercise.entrySet().stream()
+        List<ExerciseGroup> groups = ExerciseOrder.apply(byExercise.entrySet().stream()
                 .map(entry -> {
                     Exercise exercise = exercises.get(entry.getKey());
                     return new ExerciseGroup(entry.getKey(),
@@ -486,7 +496,7 @@ public class WorkoutService {
                             exercise == null ? null : exercise.getMeasureType(),
                             entry.getValue().stream().map(SetInGroup::of).toList());
                 })
-                .toList();
+                .toList(), ExerciseGroup::exerciseId, session.getExerciseOrder());
 
         return SessionResponse.of(session, times(session, sets), groups);
     }

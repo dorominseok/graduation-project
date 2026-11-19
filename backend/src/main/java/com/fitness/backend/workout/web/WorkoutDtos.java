@@ -124,7 +124,8 @@ public final class WorkoutDtos {
      * 하루 기록 상세.
      *
      * <p>{@code exercises}는 <b>수행 순서</b>로 정렬한다 — 각 종목의 가장 이른
-     * 저장 시각 오름차순이다. 화면이 운동한 차례대로 그리기 때문이다.
+     * 저장 시각 오름차순이다. 화면이 운동한 차례대로 그리기 때문이다. 사용자가 순서를 바꿨으면
+     * ({@code exerciseOrder}, V18) 그 순서가 앞선다 — 화면은 세트 없는 계획 종목도 이 순서로 놓는다.
      *
      * <p>{@code startedAt}·{@code endedAt}·{@code durationSec}은 세트 저장 시각으로 계산한 값이다.
      */
@@ -139,13 +140,18 @@ public final class WorkoutDtos {
                                   String memo,
                                   OffsetDateTime createdAt,
                                   OffsetDateTime updatedAt,
-                                  List<ExerciseGroup> exercises) {
+                                  List<ExerciseGroup> exercises,
+                                  List<Long> exerciseOrder) {
 
+        /**
+         * @param exercises 이미 순서대로 놓인 종목들
+         */
         public static SessionResponse of(WorkoutSession s, DayTimes times, List<ExerciseGroup> exercises) {
             return new SessionResponse(s.getId(), s.getPerformedOn(), s.getRoutineId(),
                     times.startedAt(), times.endedAt(), times.durationSec(),
                     s.getDurationOverrideSec(), times.effectiveSec(s), s.getMemo(),
-                    s.getCreatedAt(), s.getUpdatedAt(), exercises);
+                    s.getCreatedAt(), s.getUpdatedAt(), exercises,
+                    s.getExerciseOrder() == null ? List.of() : List.copyOf(s.getExerciseOrder()));
         }
     }
 
@@ -182,11 +188,15 @@ public final class WorkoutDtos {
      * JSON에서 "필드가 없음"과 "null로 보냄"은 Jackson이 똑같이 {@code null}로 주기
      * 때문에, null을 "지우기"로 쓰면 날짜만 고치려는 요청에 메모가 날아간다.
      * 두 필드 모두 빈 문자열·0이 실제 값으로 쓰일 일이 없어 비움 신호로 삼았다.
+     *
+     * <p>{@code exerciseOrder}는 종목 순서(종목 id, V18). 빈 배열이 "세트 저장 시각 순으로 되돌리기"다.
      */
     public record UpdateSessionRequest(
             @Size(max = 2000, message = "2000자 이하여야 합니다.") String memo,
             LocalDate performedOn,
-            @Min(value = 0, message = "0 이상이어야 합니다.") Integer durationOverrideSec) {
+            @Min(value = 0, message = "0 이상이어야 합니다.") Integer durationOverrideSec,
+            @Size(max = 100, message = "100개 이하여야 합니다.")
+            List<@NotNull(message = "필수 항목입니다.") Long> exerciseOrder) {
     }
 
     /**

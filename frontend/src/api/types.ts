@@ -203,7 +203,10 @@ export interface WorkoutSession {
   memo: string | null
   createdAt: string
   updatedAt: string
+  /** 그날 종목. 사용자가 정한 순서가 있으면 그 순서, 아니면 첫 세트가 이른 순 */
   exercises: ExerciseGroup[]
+  /** 사용자가 정한 종목 순서(종목 id). 없으면 빈 배열. 세트 없는 계획 종목도 이 순서로 놓는다 */
+  exerciseOrder: number[]
 }
 
 /** 세트 저장 응답. */
@@ -260,6 +263,8 @@ export interface UpdateSessionRequest {
   memo?: string
   performedOn?: string
   durationOverrideSec?: number
+  /** 종목 순서(종목 id). 빈 배열이면 첫 세트가 이른 순으로 되돌린다 */
+  exerciseOrder?: number[]
 }
 
 /** 히스토리 한 건. 운동한 날 하나다. 세트는 담기지 않는다. */
