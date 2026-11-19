@@ -40,10 +40,11 @@ public final class BodyCalendarParser {
     /** {@code 자유 운동 110분 18.4톤}, {@code 자유 운동 3분 10세트 2.8톤}. 앞의 이름은 루틴마다 다를 수 있다 */
     private static final Pattern SUMMARY =
             Pattern.compile("^(?:.+ )?(\\d+)분(?: \\d+세트)?(?: [\\d.,]+(?:톤|kg))?$");
-    /** 세트 줄의 머리 — {@code 1세트}, {@code 웜업}, {@code 드랍}. 뒤는 값 */
-    private static final Pattern SET = Pattern.compile("^(?:\\d+세트|(웜업|드랍)) (.+)$");
-    private static final Pattern WEIGHT_REPS = Pattern.compile("^(\\d+(?:\\.\\d+)?) ?kg (\\d+) ?회$");
-    private static final Pattern REPS = Pattern.compile("^(\\d+) ?회$");
+    /** 세트 줄의 머리 — {@code 1세트}, {@code 웜업}, {@code 드랍}, {@code 실패}. 뒤는 값 */
+    private static final Pattern SET = Pattern.compile("^(?:\\d+세트|(웜업|드랍|실패)) (.+)$");
+    /** 횟수는 {@code 10회}, 또는 목표가 붙은 {@code 5/10회}(10회 중 5회 — 실패 세트에 나온다). 앞의 해낸 횟수를 쓴다 */
+    private static final Pattern WEIGHT_REPS = Pattern.compile("^(\\d+(?:\\.\\d+)?) ?kg (\\d+)(?:/\\d+)? ?회$");
+    private static final Pattern REPS = Pattern.compile("^(\\d+)(?:/\\d+)? ?회$");
     private static final Pattern TIME = Pattern.compile("^(?:(\\d+):)?(\\d{1,2}):(\\d{2})$");
     /** 유산소 구간 — {@code 1구간 9.0km/h 04:30 1}. 이 줄이 있는 종목은 통째로 뺀다(결정 3) */
     private static final Pattern CARDIO = Pattern.compile("^\\d+구간 ");
@@ -153,9 +154,14 @@ public final class BodyCalendarParser {
         return PARTS.matcher(line).matches();
     }
 
-    /** 세트 값. 모르는 꼴이거나 저장할 수 없는 값(0회, 0초, 너무 큰 수)이면 null */
+    /** 세트 값. 모르는 꼴이거나 저장할 수 없는 값(0회 — 하나도 못 한 실패 세트 포함, 0초, 너무 큰 수)이면 null */
     private static ParsedSet setOf(String kindWord, String values) {
-        SetKind kind = kindWord == null ? SetKind.SET : kindWord.equals("웜업") ? SetKind.WARMUP : SetKind.DROP;
+        SetKind kind = kindWord == null ? SetKind.SET
+                : switch (kindWord) {
+                    case "웜업" -> SetKind.WARMUP;
+                    case "드랍" -> SetKind.DROP;
+                    default -> SetKind.FAIL;
+                };
 
         Matcher weightReps = WEIGHT_REPS.matcher(values);
         if (weightReps.matches()) {

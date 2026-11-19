@@ -37,7 +37,10 @@ public final class ExerciseMatcher {
     private static final Map<String, String> MODIFIER_WORDS = Map.of(
             "언더핸드", "언더그립",
             "번갈아가며", "얼터네이트",
-            "핀머신", "머신");
+            "핀머신", "머신",
+            "원판머신", "머신",
+            "앉아서", "시티드",
+            "T바", "티바");
 
     /** 이것뿐이면 {@code :} 앞 이름만으로 똑같은지 본다 — {@code 플랭크: 기본}, {@code 푸시업: 맨몸} */
     private static final Set<String> PLAIN_MODIFIERS = Set.of("기본", "스탠딩", "맨몸");
