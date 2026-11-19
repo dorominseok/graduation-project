@@ -74,6 +74,10 @@ interface CustomExerciseFormProps {
   origin: { category: BrowseCategory | null; group: string | null }
   /** 고치기면 그 종목. 값이 채워진 채 열린다 */
   editing?: Exercise
+  /** 붙여넣기에서 열 때 — 글의 이름과, 글에서 짐작한 기구·기록 방식으로 미리 채운다 */
+  prefill?: { name: string; equipment: Equipment | null; measureType: MeasureType | null }
+  /** 고를 수 있는 기록 방식. 붙여넣기에서 열면 그 세트를 담을 수 있는 방식만 — 나머지는 누를 수 없다 */
+  allowedMeasureTypes?: readonly MeasureType[]
   /** "만들고 오늘 기록에 넣기"·"만들기"·"저장" */
   submitLabel: string
   onSaved: (exercise: Exercise) => void
@@ -85,15 +89,26 @@ interface CustomExerciseFormProps {
  * <p>부위는 부위 고르기 화면과 같은 13개로 고르고, 하체만 앞·뒤를 한 번 더 고른다. 아래 안내에 만든 종목이
  * 들어갈 자리를 적는다 — 계열 안에서 열었고 부위를 그대로 두면 그 계열, 아니면 그 부위의 "내 종목" 칸.
  */
-export function CustomExerciseForm({ categories, origin, editing, submitLabel, onSaved }: CustomExerciseFormProps) {
+export function CustomExerciseForm({
+  categories,
+  origin,
+  editing,
+  prefill,
+  allowedMeasureTypes,
+  submitLabel,
+  onSaved,
+}: CustomExerciseFormProps) {
+  const allows = (value: MeasureType) => !allowedMeasureTypes || allowedMeasureTypes.includes(value)
   const { showToast } = useToast()
   const initialTarget = editing ? targetOf(editing) : { category: origin.category, legSide: null }
 
-  const [name, setName] = useState(editing?.nameKo ?? '')
+  const [name, setName] = useState(editing?.nameKo ?? prefill?.name ?? '')
   const [category, setCategory] = useState<BrowseCategory | null>(initialTarget.category)
   const [legSide, setLegSide] = useState<LegSide | null>(initialTarget.legSide)
-  const [equipment, setEquipment] = useState<Equipment | null>(editing?.equipment ?? null)
-  const [measureType, setMeasureType] = useState<MeasureType | null>(editing?.measureType ?? null)
+  const [equipment, setEquipment] = useState<Equipment | null>(editing?.equipment ?? prefill?.equipment ?? null)
+  const [measureType, setMeasureType] = useState<MeasureType | null>(
+    editing?.measureType ?? prefill?.measureType ?? null,
+  )
   const [nameError, setNameError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -111,9 +126,13 @@ export function CustomExerciseForm({ categories, origin, editing, submitLabel, o
     equipment !== null &&
     measureType !== null
 
+  // 기구의 기본 방식을 이 기록에 쓸 수 없으면 고른 방식을 그대로 두거나, 쓸 수 있는 첫 방식으로
   const pickEquipment = (value: Equipment) => {
     setEquipment(value)
-    setMeasureType(measureFor(value))
+    const preferred = measureFor(value)
+    setMeasureType((current) =>
+      allows(preferred) ? preferred : current !== null && allows(current) ? current : (allowedMeasureTypes?.[0] ?? null),
+    )
   }
 
   const submit = async () => {
@@ -226,7 +245,10 @@ export function CustomExerciseForm({ categories, origin, editing, submitLabel, o
 
       <div className={styles.field}>
         <span className={styles.label}>
-          기록 방식<span className={styles.labelNote}>기구를 고르면 정해져요</span>
+          기록 방식
+          <span className={styles.labelNote}>
+            {allowedMeasureTypes ? '가져온 기록에 맞는 방식만 고를 수 있어요' : '기구를 고르면 정해져요'}
+          </span>
         </span>
         <div className={styles.choices2}>
           {MEASURE_CHOICES.map((choice) => (
@@ -235,6 +257,7 @@ export function CustomExerciseForm({ categories, origin, editing, submitLabel, o
               type="button"
               className={`${styles.choice} ${measureType === choice.value ? styles.choiceOn : ''}`}
               aria-pressed={measureType === choice.value}
+              disabled={!allows(choice.value)}
               onClick={() => setMeasureType(choice.value)}
             >
               {choice.label}

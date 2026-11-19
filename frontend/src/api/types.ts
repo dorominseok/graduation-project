@@ -731,3 +731,63 @@ export interface PushSubscriptionRequest {
   endpoint: string
   keys: { p256dh: string; auth: string }
 }
+
+// ── 기록 가져오기 (API 명세 13장)
+
+/** 이름 맞추기 결과. `SIMILAR`는 추가를 막지 않고, `UNREGISTERED`만 막는다 */
+export type ImportStatus = 'MATCHED' | 'SIMILAR' | 'UNREGISTERED'
+
+/** 웜업은 워밍업 세트로, 드랍은 본세트로 저장된다 */
+export type ImportSetKind = 'SET' | 'WARMUP' | 'DROP'
+
+/** 세트 하나. 미리보기 응답과 저장 요청이 같은 모양이다 — 받은 그대로 돌려보낸다 */
+export interface ImportSet {
+  kind: ImportSetKind
+  weightKg: number | null
+  reps: number | null
+  durationSec: number | null
+}
+
+export interface ImportExerciseBrief {
+  id: number
+  nameKo: string
+  measureType: MeasureType
+  mine: boolean
+}
+
+export interface ImportPreviewExercise {
+  /** 원래 이름 전체(띄어쓰기 정리, "(슈퍼세트)" 뗌) */
+  source: string
+  status: ImportStatus
+  /** 맞춘 종목. 미등록 운동이면 null */
+  exercise: ImportExerciseBrief | null
+  /** 미등록 운동일 때만 — 내 종목 만들기 창을 채울 값 */
+  guess: { equipment: Equipment | null; measureType: MeasureType | null } | null
+  /** 이 세트를 담을 수 있는 기록 방식. 바꾸기 목록과 만들기 창은 이 방식만 */
+  allowedMeasureTypes: MeasureType[]
+  /** 글에 적힌 값 그대로(맨몸 kg 포함). 고른 종목이 쓰지 않는 값은 저장할 때 버려진다 */
+  sets: ImportSet[]
+}
+
+export interface ImportPreviewDay {
+  date: string
+  /** 요약 줄의 "N분". 없으면 null */
+  minutes: number | null
+  exercises: ImportPreviewExercise[]
+}
+
+export interface ImportPreview {
+  days: ImportPreviewDay[]
+}
+
+export interface ImportRequest {
+  days: {
+    date: string
+    minutes: number | null
+    exercises: { source: string; exerciseId: number; remember: boolean; sets: ImportSet[] }[]
+  }[]
+}
+
+export interface ImportResult {
+  days: { date: string; sessionId: number; added: number; alreadyThere: number }[]
+}

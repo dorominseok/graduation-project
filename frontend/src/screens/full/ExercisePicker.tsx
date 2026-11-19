@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useToast } from '../../components'
 import { exerciseApi, isApiError, workoutApi } from '../../api'
-import type { BrowseCategory, CategoryCount, Exercise, GroupCount, MuscleGroupKey } from '../../api'
+import type { BrowseCategory, CategoryCount, Exercise, GroupCount, MeasureType, MuscleGroupKey } from '../../api'
 import { BODY_PART_LABEL, EQUIPMENT_LABEL, MEASURE_CHIP_LABEL } from './exerciseLabels'
 import { exerciseImage, hideOnError } from './exerciseImage'
 import { CustomExerciseForm } from './CustomExerciseForm'
@@ -71,6 +71,11 @@ interface ExercisePickerProps {
    * 만든 종목은 {@code onPick}으로 넘긴다 — 기록 화면은 오늘 기록에 넣고, 둘러보기는 상세로 간다
    */
   createLabel?: string
+  /**
+   * 이 기록 방식의 종목만 보인다 — 붙여넣기의 "바꾸기"는 가져온 세트를 담을 수 있는 종목만 고른다.
+   * 넘기면 만들기 버튼은 두지 않는다(붙여넣기 화면에 글로 미리 채우는 만들기가 따로 있다)
+   */
+  measureTypes?: readonly MeasureType[]
 }
 
 /**
@@ -96,7 +101,10 @@ export function ExercisePicker({
   addedIds,
   clearSearchOnPick = false,
   createLabel = '만들기',
+  measureTypes,
 }: ExercisePickerProps) {
+  // 하나뿐이면 서버가 거른다(쪽 나눔이 맞게). 여럿이면 받은 뒤 여기서 거른다
+  const onlyMeasure = measureTypes?.length === 1 ? measureTypes[0] : undefined
   const { showToast } = useToast()
   // 내 종목 만들기 창. 연 자리(부위·계열)를 기억해 그 부위를 미리 고르고, 만든 종목이 그 자리에 들어간다
   const [creating, setCreating] = useState<{ category: BrowseCategory | null; group: string | null } | null>(null)
@@ -139,6 +147,7 @@ export function ExercisePicker({
           ungroupedMine: !searching && tab === 'part' && step.group === MINE_GROUP ? true : undefined,
           muscleGroup: !searching && tab === 'part' && step.muscleGroup ? step.muscleGroup : undefined,
           favorite: !searching && tab === 'favorite' ? true : undefined,
+          measureType: onlyMeasure,
           page: nextPage,
           size: PAGE_SIZE,
         })
@@ -151,7 +160,7 @@ export function ExercisePicker({
         setLoading(false)
       }
     },
-    [debouncedKeyword, searching, tab, step.category, step.group, step.muscleGroup, fail],
+    [debouncedKeyword, searching, tab, step.category, step.group, step.muscleGroup, onlyMeasure, fail],
   )
 
   /**
@@ -262,7 +271,8 @@ export function ExercisePicker({
   const scopedToPart = (!searching && tab === 'part' && step.group !== null) || byMuscle
   const inMine = !searching && tab === 'part' && step.group === MINE_GROUP
   /** 만들기 버튼을 둘 수 있는 곳 — 부위별 탭의 세 단계. 검색·최근·즐겨찾기·약점에서 온 목록은 부위를 미리 고를 수 없다 */
-  const canCreate = !searching && tab === 'part' && !byMuscle
+  const canCreate = !searching && tab === 'part' && !byMuscle && !measureTypes
+  const shownItems = measureTypes ? items.filter((item) => measureTypes.includes(item.measureType)) : items
 
   const openCreate = () => setCreating({ category: step.category, group: step.group === MINE_GROUP ? null : step.group })
 
@@ -280,7 +290,9 @@ export function ExercisePicker({
     </button>
   )
 
-  const emptyMessage = searching
+  const emptyMessage = measureTypes
+    ? '이 기록에 맞는 종목이 없어요'
+    : searching
     ? '검색 결과가 없어요'
     : tab === 'recent'
       ? '최근 사용한 종목이 없어요'
@@ -535,11 +547,11 @@ export function ExercisePicker({
           {/* 계열 목록 맨 아래 — 이 부위가 골라진 채 열린다. 만든 종목은 "내 종목" 칸으로 */}
           {showGroups && canCreate && groups.length > 0 && createButton()}
 
-          {showItems && <div className={styles.itemGrid}>{items.map(renderItem)}</div>}
+          {showItems && <div className={styles.itemGrid}>{shownItems.map(renderItem)}</div>}
 
           {loading && <div className={styles.empty}>불러오는 중…</div>}
 
-          {!loading && showItems && items.length === 0 && (
+          {!loading && showItems && shownItems.length === 0 && (
             <div className={styles.empty}>{inMine ? '아직 만든 종목이 없어요' : emptyMessage}</div>
           )}
 

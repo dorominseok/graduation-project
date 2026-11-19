@@ -14,6 +14,7 @@ export * as analysisApi from './analysis'
 export * as groupApi from './groups'
 export * as routineApi from './routines'
 export * as notificationApi from './notifications'
+export * as importApi from './imports'
 export type {
   Balance,
   BalanceSide,
@@ -35,6 +36,15 @@ export type {
   GroupCount,
   GroupDetail,
   GroupSummary,
+  ImportExerciseBrief,
+  ImportPreview,
+  ImportPreviewDay,
+  ImportPreviewExercise,
+  ImportRequest,
+  ImportResult,
+  ImportSet,
+  ImportSetKind,
+  ImportStatus,
   InvitePreview,
   JoinResult,
   LastPerformance,

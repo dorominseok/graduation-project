@@ -102,6 +102,11 @@ button.newButton {
   composes: dayOn from './notification.module.css';
 }
 
+/* 가져온 기록에 쓸 수 없는 기록 방식(붙여넣기에서 열 때) */
+button.choice:disabled {
+  opacity: 0.35;
+}
+
 .save {
   composes: emptyAdd from './session.module.css';
   width: 100%;

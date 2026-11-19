@@ -28,6 +28,8 @@ export const ErrorCodes = {
   /** 종목의 측정 유형이 요구하는 값이 빠졌다 */
   INVALID_MEASURE_INPUT: 'INVALID_MEASURE_INPUT',
   RESOURCE_NOT_FOUND: 'RESOURCE_NOT_FOUND',
+  /** 붙여넣은 글이 바디캘린더 운동 일지가 아니다(날짜 줄이 없다) */
+  IMPORT_FORMAT_UNKNOWN: 'IMPORT_FORMAT_UNKNOWN',
   /** 통신 자체가 실패한 경우. 서버가 준 코드가 아니라 클라이언트가 붙인다. */
   NETWORK_ERROR: 'NETWORK_ERROR',
 } as const

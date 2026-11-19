@@ -20,6 +20,8 @@ export const paths = {
   // 탭 밖 — 하단바를 보일지는 router.tsx가 정한다
   session: '/session',
   sessionDetail: (sessionId: number | string = ':sessionId') => `/session/${sessionId}`,
+  /** 다른 앱 기록 붙여넣기(「기록가져오기_설계서」) */
+  sessionImport: '/session/import',
   /** 오늘의 루틴을 만드는 동안 보이는 화면. 다 만들면 routineDetail로 바꿔 간다 */
   routineCreating: '/routines/new',
   routineDetail: (routineId: number | string = ':routineId') => `/routines/${routineId}`,

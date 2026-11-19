@@ -135,6 +135,9 @@ export function SessionScreen() {
       : { category: null, group: null },
   )
 
+  // 머리줄 ⋮ 메뉴 — 지금은 다른 앱 기록 붙여넣기 하나
+  const [moreOpen, setMoreOpen] = useState(false)
+
   // 일괄 수정도 같은 이유로 시트다.
   const [batchOpen, setBatchOpen] = useState(false)
   const [batchPicked, setBatchPicked] = useState<Record<string, boolean>>({})
@@ -1232,7 +1235,10 @@ export function SessionScreen() {
               ›
             </button>
           </div>
-          <div className={styles.headerSpacer} />
+          {/* 더 보기 — 다른 앱 기록 붙여넣기(「기록가져오기_설계서」 5장) */}
+          <button type="button" className={styles.headerBack} onClick={() => setMoreOpen(true)} aria-label="더 보기">
+            ⋮
+          </button>
         </div>
 
         {cards.length === 0 ? (
@@ -1316,6 +1322,14 @@ export function SessionScreen() {
             createLabel="만들고 오늘 기록에 넣기"
           />
         </div>
+      </BottomSheet>
+
+      {/* ⋮ 메뉴 */}
+      <BottomSheet open={moreOpen} onClose={() => setMoreOpen(false)} title={<span className={styles.sheetTitle}>더 보기</span>}>
+        <button type="button" className={styles.menuItem} onClick={() => navigate(paths.sessionImport)}>
+          <span className={styles.menuItemTitle}>다른 앱 기록 붙여넣기</span>
+          <span className={styles.menuItemNote}>바디캘린더에서 내보낸 운동 일지를 그대로 붙여넣어요</span>
+        </button>
       </BottomSheet>
 
       {/* 기록이 있는 종목을 뺄 때만 열린다. 세트까지 함께 지워지는 일이라 한 번 묻는다 */}
