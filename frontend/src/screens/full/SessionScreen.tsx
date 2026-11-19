@@ -139,7 +139,7 @@ export function SessionScreen() {
       : { category: null, group: null },
   )
 
-  // 머리줄 ⋮ 메뉴 — 한눈에 보기, 다른 앱 기록 붙여넣기
+  // 머리줄 ⋮ 메뉴 — 운동 일지 보기, 다른 앱 기록 붙여넣기
   const [moreOpen, setMoreOpen] = useState(false)
 
   // 일괄 수정도 같은 이유로 시트다.
@@ -1395,8 +1395,8 @@ export function SessionScreen() {
             disabled={!session}
             onClick={() => session && navigate(paths.sessionOverview(session.id))}
           >
-            <span className={styles.menuItemTitle}>한눈에 보기</span>
-            <span className={styles.menuItemNote}>이날 운동을 종목 그림과 세트로 한 화면에 모아 봐요</span>
+            <span className={styles.menuItemTitle}>운동 일지 보기</span>
+            <span className={styles.menuItemNote}>이날 운동을 종목 그림과 세트로 한 장에 모아 봐요</span>
           </button>
           <button type="button" className={styles.menuItem} onClick={() => navigate(paths.sessionImport)}>
             <span className={styles.menuItemTitle}>다른 앱 기록 붙여넣기</span>

@@ -67,7 +67,7 @@ function MemberDayView({ groupId, memberId, date }: { groupId: number; memberId:
   )
 }
 
-/** 그날 기록에 따봉을 붙인다. 카드 모양은 내 "한눈에 보기"와 같다(DaySessionView) */
+/** 그날 기록에 따봉을 붙인다. 카드 모양은 내 "운동 일지 보기"와 같다(DaySessionView) */
 function SessionBlock({ groupId, session, mine }: { groupId: number; session: MemberSession; mine: boolean }) {
   return (
     <DaySessionView

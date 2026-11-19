@@ -6,7 +6,7 @@ import { SetGrid } from '../full/SetGrid'
 import type { GridSet } from '../full/SetGrid'
 import styles from './group.module.css'
 
-/** 하루 기록의 종목 하나 — 그룹 멤버의 하루 기록과 내 "한눈에 보기"가 같은 모양으로 넘긴다 */
+/** 하루 기록의 종목 하나 — 그룹 멤버의 하루 기록과 내 "운동 일지 보기"가 같은 모양으로 넘긴다 */
 export interface DayExercise {
   exerciseId: number
   exerciseName: string
