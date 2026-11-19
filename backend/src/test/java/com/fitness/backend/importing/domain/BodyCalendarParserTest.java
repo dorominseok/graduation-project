@@ -64,6 +64,22 @@ class BodyCalendarParserTest {
     }
 
     @Test
+    @DisplayName("실패 세트는 해낸 횟수로 — '실패 35kg 5/10회'는 35kg 5회. 목표가 붙은 횟수는 어느 세트든 앞의 수, 0회 실패는 버림")
+    void failureSets() {
+        String text = BodyCalendarSamples.one(D1, "숄더 프레스: 앉아서, 핀 머신",
+                "1세트 35kg 7회", "2세트 35kg 8/10회", "실패 35kg 5/10회", "실패 35kg 0/10회", "실패 12/15회");
+        ParsedLog log = BodyCalendarParser.parse(text);
+        List<ParsedSet> sets = log.days().get(0).exercises().get(0).sets();
+
+        assertThat(sets).containsExactly(
+                new ParsedSet(SetKind.SET, new BigDecimal("35"), 7, null),
+                new ParsedSet(SetKind.SET, new BigDecimal("35"), 8, null),
+                new ParsedSet(SetKind.FAIL, new BigDecimal("35"), 5, null),
+                new ParsedSet(SetKind.FAIL, null, 12, null));
+        assertThat(log.unknownLines()).containsExactly("실패 35kg 0/10회");
+    }
+
+    @Test
     @DisplayName("날짜 줄이 없으면 IMPORT_FORMAT_UNKNOWN")
     void unknownFormat() {
         assertThatThrownBy(() -> BodyCalendarParser.parse("오늘 벤치 3세트 했음\n1세트 40kg 10회"))

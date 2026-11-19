@@ -117,7 +117,7 @@ class ImportApiTest {
     @Test
     @DisplayName("짝 표의 대상은 모두 기본 종목에 있다")
     void curatedTargetsExist() {
-        assertThat(curatedNames.rows()).hasSize(11);
+        assertThat(curatedNames.rows()).hasSize(17);
         assertThat(curatedNames.rows().values())
                 .allSatisfy(target -> assertThat(exerciseRepository.existsByOwnerIdIsNullAndNameKo(target))
                         .as(target).isTrue());
@@ -152,6 +152,40 @@ class ImportApiTest {
         assertThat(matchOf(me, "덤벨 컬: 번갈아가며, 인클라인", "1세트 10kg 12회")).isEqualTo("SIMILAR:인클라인 덤벨 컬");
         assertThat(matchOf(me, "케이블 컬: 원암", "1세트 10kg 12회")).isEqualTo("SIMILAR:원암 케이블 컬");
         assertThat(matchOf(me, "카프 레이즈: 스탠딩, 바벨", "1세트 60kg 15회")).isEqualTo("SIMILAR:바벨 스탠딩 카프레이즈");
+    }
+
+    @Test
+    @DisplayName("실제 일지(2026-11-20) — 짝 표로 머신 숄더프레스, 실패 세트는 해낸 횟수의 본세트로 들어간다")
+    void failureSetSavedAsWorkingSet() throws Exception {
+        LocalDate day = today.minusDays(1);
+        String text = day + " 바디캘린더 473번째 운동 일지\n\n어깨1\n\n자유 운동 1분 3세트 0.8톤\n\n"
+                + "숄더 프레스: 앉아서, 핀 머신\n1세트 35kg 7회\n2세트 35kg 10회\n실패 35kg 5/10회\n";
+        String previewBody = preview(me, text)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days[0].exercises[0].status").value("MATCHED"))
+                .andExpect(jsonPath("$.days[0].exercises[0].exercise.nameKo").value("머신 숄더프레스"))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertThat((List<String>) JsonPath.read(previewBody, "$.days[0].exercises[0].sets[*].kind"))
+                .containsExactly("SET", "SET", "FAIL");
+
+        String saved = save(me, requestFromPreview(previewBody, source -> {
+            throw new AssertionError("미등록 운동이 없어야 한다: " + source);
+        }))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.days[0].added").value(3))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String body = session(me, ((Number) JsonPath.read(saved, "$.days[0].sessionId")).longValue());
+        assertThat((List<Integer>) JsonPath.read(body, "$.exercises[0].sets[*].reps")).containsExactly(7, 10, 5);
+        assertThat((List<Boolean>) JsonPath.read(body, "$.exercises[0].sets[*].isWarmup"))
+                .containsExactly(false, false, false);
+    }
+
+    @Test
+    @DisplayName("바꿔 읽는 수식어 — 앉아서 → 시티드, 원판 머신 → 머신, T바 → 티바")
+    void modifierWords() throws Exception {
+        assertThat(matchOf(me, "숄더 프레스: 앉아서, 바벨", "1세트 40kg 10회")).isEqualTo("SIMILAR:시티드 바벨 숄더프레스");
+        assertThat(matchOf(me, "숄더 프레스: 원판 머신", "1세트 40kg 10회")).isEqualTo("SIMILAR:머신 숄더프레스");
+        assertThat(matchOf(me, "로우: T바, 스탠딩", "1세트 40kg 10회")).isEqualTo("SIMILAR:스탠딩 티바 로우");
     }
 
     @Test

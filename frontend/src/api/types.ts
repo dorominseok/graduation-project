@@ -744,8 +744,8 @@ export interface PushSubscriptionRequest {
 /** 이름 맞추기 결과. `SIMILAR`는 추가를 막지 않고, `UNREGISTERED`만 막는다 */
 export type ImportStatus = 'MATCHED' | 'SIMILAR' | 'UNREGISTERED'
 
-/** 웜업은 워밍업 세트로, 드랍은 본세트로 저장된다 */
-export type ImportSetKind = 'SET' | 'WARMUP' | 'DROP'
+/** 웜업은 워밍업 세트로, 드랍·실패는 본세트로 저장된다(실패는 해낸 횟수로) */
+export type ImportSetKind = 'SET' | 'WARMUP' | 'DROP' | 'FAIL'
 
 /** 세트 하나. 미리보기 응답과 저장 요청이 같은 모양이다 — 받은 그대로 돌려보낸다 */
 export interface ImportSet {

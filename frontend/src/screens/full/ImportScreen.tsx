@@ -152,7 +152,7 @@ export function ImportScreen() {
           >
             {reading ? '읽는 중…' : '미리보기'}
           </button>
-          <p className={styles.note}>유산소는 기록하지 않아요. 웜업은 워밍업 세트로, 드랍은 본세트로 넣어요.</p>
+          <p className={styles.note}>유산소는 기록하지 않아요. 웜업은 워밍업 세트로, 드랍·실패는 본세트로 넣어요.</p>
         </div>
       </>
     )
