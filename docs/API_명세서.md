@@ -20,6 +20,7 @@
 > 추가: 내 종목(5.9, 2026-11-18, 「내종목_설계서」) — 만들기·고치기·지우기. 5.1·5.2·5.3·5.7 보이는 범위와 `mine`, 1.5 새 오류 코드 2개, 4.7 탈퇴, 6.4·7.1·11.5·11.6. 엔드포인트 58→61개
 > 추가: 기록 가져오기(13장, 2026-11-19, 「기록가져오기_설계서」) — 다른 앱(바디캘린더) 기록 글 미리보기·저장. 1.5 새 오류 코드 `IMPORT_FORMAT_UNKNOWN`, 4.7 탈퇴, 부록 A. 엔드포인트 61→63개
 > 개정: 2026-11-20 사용자 요청 — 기록의 종목 순서를 끌어서 바꾼다(V18 `exercise_order`). 6.5·6.6 정렬, 6.9 `exerciseOrder`, 6.13, 9.2. 엔드포인트 수는 그대로
+> 개정: 2026-11-20 사용자 요청 — 기록 화면의 "운동 일지 보기"(그룹 멤버의 하루 기록과 같은 모양으로 내 기록). 6.5 `exercises[].exerciseNameEn`
 
 ---
 
@@ -1175,6 +1176,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
     {
       "exerciseId": 128,
       "exerciseName": "바벨 벤치프레스",
+      "exerciseNameEn": "Barbell Bench Press - Medium Grip",
       "measureType": "WEIGHT_REPS",
       "sets": [
         { "id": 901, "clientSetId": "9f1c2a44-7b30-4d6e-9a11-8e2f5c0b7d31", "setNo": 1, "weightKg": 70.0, "reps": 10, "durationSec": null, "isWarmup": false, "recordedAt": "2026-09-01T19:32:11+09:00" },
@@ -1193,6 +1195,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | `effectiveDurationSec` | **서버가 결정한 최종 시간** = `durationOverrideSec ?? durationSec`. 화면은 이 값만 쓰면 된다 |
 | `exercises[]` | 종목별로 그룹핑. **정렬 = 사용자가 정한 순서(`exerciseOrder`)에 있는 종목이 그 순서대로 먼저, 나머지는 각 종목의 가장 이른 `recordedAt` 오름차순**(= 처음 수행한 순서). 정한 순서가 없으면 모두 수행 순서다 |
 | `exerciseOrder` | 사용자가 기록 화면에서 끌어서 정한 종목 순서(종목 id, 6.9). 없으면 `[]`. 세트가 없는 종목의 id도 들어 있을 수 있다 — 화면은 아직 체크하지 않은 계획 종목도 이 순서로 놓는다 |
+| `exercises[].exerciseNameEn` | 종목 영문명 — 화면이 동작 그림 파일 이름을 만든다("운동 일지 보기"의 종목 카드, 10장 멤버의 하루 기록과 같은 모양). 영문명이 없는 종목(내 종목)은 `null` |
 | `exercises[].sets` | `setNo` 오름차순 |
 | `exercises[].sets[].clientSetId` | 저장 시 클라이언트가 보낸 멱등 키(6.4). 재전송 도중 앱이 종료된 경우, 클라이언트가 세션을 다시 받아 자기 큐와 대조해 무엇이 이미 저장됐는지 판별하는 데 쓴다 |
 

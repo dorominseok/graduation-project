@@ -303,6 +303,8 @@ class WorkoutRecordApiTest {
                 .andExpect(jsonPath("$.exercises.length()").value(2))
                 // 먼저 수행한 플랭크가 앞이다.
                 .andExpect(jsonPath("$.exercises[0].exerciseName").value("플랭크"))
+                // 운동 일지 보기의 동작 그림 파일 이름
+                .andExpect(jsonPath("$.exercises[0].exerciseNameEn").value("Plank"))
                 .andExpect(jsonPath("$.exercises[0].measureType").value("TIME"))
                 .andExpect(jsonPath("$.exercises[0].sets.length()").value(2))
                 .andExpect(jsonPath("$.exercises[1].exerciseName").value("바벨 벤치프레스"));

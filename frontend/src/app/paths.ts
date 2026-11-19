@@ -20,6 +20,8 @@ export const paths = {
   // 탭 밖 — 하단바를 보일지는 router.tsx가 정한다
   session: '/session',
   sessionDetail: (sessionId: number | string = ':sessionId') => `/session/${sessionId}`,
+  /** 그날 운동 일지 보기 — 그룹 멤버의 하루 기록과 같은 모양으로 내 기록을 본다. 기록 화면 ⋮에서 */
+  sessionOverview: (sessionId: number | string = ':sessionId') => `/session/${sessionId}/overview`,
   /** 다른 앱 기록 붙여넣기(「기록가져오기_설계서」) */
   sessionImport: '/session/import',
   /** 오늘의 루틴을 만드는 동안 보이는 화면. 다 만들면 routineDetail로 바꿔 간다 */

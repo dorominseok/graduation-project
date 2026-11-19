@@ -493,6 +493,7 @@ public class WorkoutService {
                     Exercise exercise = exercises.get(entry.getKey());
                     return new ExerciseGroup(entry.getKey(),
                             exercise == null ? null : exercise.getNameKo(),
+                            exercise == null ? null : exercise.getNameEn(),
                             exercise == null ? null : exercise.getMeasureType(),
                             entry.getValue().stream().map(SetInGroup::of).toList());
                 })
