@@ -94,6 +94,9 @@ export function SessionScreen() {
   const swipeStart = useRef<{ x: number; y: number; at: number } | null>(null)
   // 종목을 넘긴 방향. 새 종목이 그쪽에서 밀려 들어온다. 목록에서 열 때는 없다
   const [slide, setSlide] = useState<'next' | 'prev' | null>(null)
+  // 날짜를 옮긴 방향과 옮겨 갈 날. 그날 기록이 도착해 목록이 새로 그려질 때 그쪽에서 밀려 들어오고,
+  // 한 번 돌면 지운다 — 종목 화면에 다녀와 목록이 다시 그려질 때 또 돌지 않게. 처음 열 때는 없다
+  const [daySlide, setDaySlide] = useState<{ day: string; direction: 'next' | 'prev' } | null>(null)
   // 경로에 id가 있으면 지난 기록을 여는 것이고, 없으면 오늘 운동이다.
   const { sessionId: sessionIdParam } = useParams()
   const { showToast } = useToast()
@@ -555,7 +558,7 @@ export function SessionScreen() {
 
   /**
    * 다른 날짜의 기록으로 옮긴다. 날짜만 바꾸면 화면이 그날 기록을 연다 — 기록이 없던 날이면
-   * 그 날짜의 빈 기록이 열려 빠뜨린 운동을 채울 수 있다.
+   * 그 날짜의 빈 기록이 열려 빠뜨린 운동을 채울 수 있다. ‹ ›와 목록을 옆으로 밀기가 같이 쓴다.
    */
   const goToDay = (delta: number) => {
     const target = shiftDate(dayKey, delta)
@@ -563,6 +566,7 @@ export function SessionScreen() {
       showToast({ message: '아직 오지 않은 날은 기록할 수 없어요', tone: 'danger' })
       return
     }
+    setDaySlide({ day: target, direction: delta > 0 ? 'next' : 'prev' })
     navigate(`${paths.session}?date=${target}`, { replace: true })
   }
 
@@ -574,19 +578,18 @@ export function SessionScreen() {
   const openedIndex = cards.findIndex((card) => String(card.exerciseId) === openedId)
   const opened = openedIndex >= 0 ? cards[openedIndex] : null
 
-  // 종목 화면이 열려 있는 동안 브라우저의 "가로로 밀어 뒤로·앞으로 가기"를 끈다. 이 화면의 가로 밀기는
-  // 이전·다음 종목이다 — 끄지 않으면 터치 화면의 크롬 등은 같은 손짓으로 목록까지 나가 버린다.
-  // 이 동작은 문서 맨 위(html)의 overscroll-behavior로만 끌 수 있어(touch-action으로는 안 된다) 여기서 켜고 끈다
-  const cardOpen = opened !== null
+  // 기록 화면에 있는 동안 브라우저의 "가로로 밀어 뒤로·앞으로 가기"를 끈다. 이 화면의 가로 밀기는
+  // 목록에서는 이전·다음 날, 종목 화면에서는 이전·다음 종목이다 — 끄지 않으면 터치 화면의 크롬 등은 같은
+  // 손짓으로 화면을 나가 버린다. 이 동작은 문서 맨 위(html)의 overscroll-behavior로만 끌 수 있어
+  // (touch-action으로는 안 된다) 여기서 켜고 끈다
   useEffect(() => {
-    if (!cardOpen) return
     const root = document.documentElement
     const before = root.style.overscrollBehaviorX
     root.style.overscrollBehaviorX = 'none'
     return () => {
       root.style.overscrollBehaviorX = before
     }
-  }, [cardOpen])
+  }, [])
 
   /**
    * 종목 열기·닫기와 방문 기록.
@@ -627,7 +630,7 @@ export function SessionScreen() {
     if (document.activeElement instanceof HTMLInputElement) return
     swipeStart.current = { x: touch.clientX, y: touch.clientY, at: e.timeStamp }
   }
-  /** 밀기 끝. 오른쪽에서 왼쪽으로 밀면 다음 종목, 왼쪽에서 오른쪽이면 이전 종목 */
+  /** 밀기 끝. 오른쪽에서 왼쪽으로 밀면 다음(종목·날), 왼쪽에서 오른쪽이면 이전 */
   const swipeDirection = (e: ReactTouchEvent): 'next' | 'prev' | null => {
     const start = swipeStart.current
     swipeStart.current = null
@@ -1209,9 +1212,22 @@ export function SessionScreen() {
   }
 
   // ── 1단계: 그날 무슨 운동을 했는지. 세트 값은 종목을 눌러야 보인다.
+  // 옆으로 밀면 이전·다음 날(‹ ›와 같다). 옮긴 쪽에서 그날 종목이 밀려 들어온다 — 날짜가 key라 새로 그린다
+  const daySlideClass =
+    daySlide?.day !== dayKey ? '' : daySlide.direction === 'next' ? styles.slideNext : styles.slidePrev
   return (
     <>
-      <div className={styles.page}>
+      <div
+        className={`${styles.page} ${styles.swipeArea}`}
+        onTouchStart={onSwipeStart}
+        onTouchEnd={(e) => {
+          const direction = swipeDirection(e)
+          if (direction) goToDay(direction === 'next' ? 1 : -1)
+        }}
+        onTouchCancel={() => {
+          swipeStart.current = null
+        }}
+      >
         <div className={styles.header}>
           <button
             type="button"
@@ -1242,7 +1258,7 @@ export function SessionScreen() {
         </div>
 
         {cards.length === 0 ? (
-          <div className={styles.emptyBox}>
+          <div key={dayKey} className={`${styles.emptyBox} ${daySlideClass}`} onAnimationEnd={() => setDaySlide(null)}>
             <div>
               <div className={styles.emptyTitle}>기록된 운동이 없어요</div>
               <div className={styles.emptyNote}>종목을 추가하면 세트를 기록할 수 있어요</div>
@@ -1252,7 +1268,11 @@ export function SessionScreen() {
             </button>
           </div>
         ) : (
-          <div className={`${styles.listScroll} ${restShowing ? styles.scrollWithRest : ''}`}>
+          <div
+            key={dayKey}
+            className={`${styles.listScroll} ${restShowing ? styles.scrollWithRest : ''} ${daySlideClass}`}
+            onAnimationEnd={() => setDaySlide(null)}
+          >
             {cards.map((card, cardIndex) => {
               const saved = card.rows.filter((row) => row.savedId !== null)
               const planned = card.rows.length - saved.length
@@ -1304,7 +1324,9 @@ export function SessionScreen() {
           </div>
         )}
 
-        <RestBar />
+        <div data-no-swipe className={styles.noSwipe}>
+          <RestBar />
+        </div>
       </div>
 
       <BottomSheet
