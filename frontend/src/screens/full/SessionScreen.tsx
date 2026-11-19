@@ -24,6 +24,7 @@ import {
   savedCards,
 } from './sessionPlan'
 import type { ExerciseCard, SetRow } from './sessionPlan'
+import { useDragReorder } from './useDragReorder'
 import styles from './session.module.css'
 
 /** 세트에서 숫자로 입력하는 값 */
@@ -539,6 +540,34 @@ export function SessionScreen() {
     }
     setCards((prev) => prev.filter((_, ci) => ci !== cardIndex))
   }
+
+  /**
+   * 끌어서 순서를 바꿨을 때(「운동기록_방식_설계서」 3.2). 화면은 바로 바꾸고 서버에 순서를 남긴다 — 지난 기록도
+   * 이 순서로 보이게(브라우저 임시 저장은 그날 하루만이다). 세트 없는 계획 종목의 자리도 같이 보낸다
+   */
+  const moveCard = (from: number, to: number) => {
+    const next = [...cards]
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
+    setCards(next)
+    if (session) {
+      workoutApi.updateSession(session.id, { exerciseOrder: next.map((card) => card.exerciseId) }).catch(fail)
+    }
+  }
+  // 나눠 받는다 — 상자 ref와 같은 객체에서 읽으면 React 컴파일러 검사가 객체 전체를 ref로 본다
+  const {
+    containerRef: listRef,
+    rowHandlers: reorderHandlers,
+    styleOf: reorderStyle,
+    liftedIndex,
+  } = useDragReorder({
+    count: cards.length,
+    onReorder: moveCard,
+    // 들어 올린 뒤에는 옆으로 밀기(날짜 넘기기)로 보지 않는다
+    onLift: () => {
+      swipeStart.current = null
+    },
+  })
 
   const removeCard = async (cardIndex: number) => {
     const card = cards[cardIndex]
@@ -1270,6 +1299,7 @@ export function SessionScreen() {
         ) : (
           <div
             key={dayKey}
+            ref={listRef}
             className={`${styles.listScroll} ${restShowing ? styles.scrollWithRest : ''} ${daySlideClass}`}
             onAnimationEnd={() => setDaySlide(null)}
           >
@@ -1283,7 +1313,14 @@ export function SessionScreen() {
                   ? `예정 ${planned}세트 · 아직 기록 없음`
                   : `${saved.length}세트 기록${planned > 0 ? ` · ${planned}세트 예정` : ''} · ${done}%`
               return (
-                <div key={`${card.exerciseId}-${cardIndex}`} className={styles.exRow}>
+                // 꾹 누르면 들어 올려져 끌어서 순서를 바꾼다. 짧게 누르면 지금처럼 세부 기록으로
+                <div
+                  key={`${card.exerciseId}-${cardIndex}`}
+                  data-reorder-index={cardIndex}
+                  className={`${styles.exRow} ${liftedIndex === cardIndex ? styles.exRowLifted : ''}`}
+                  style={reorderStyle(cardIndex)}
+                  {...reorderHandlers}
+                >
                   {/* 카드 전체가 세부 기록으로 가는 문이라 따로 화살표를 두지 않는다 */}
                   <button
                     type="button"
@@ -1308,6 +1345,7 @@ export function SessionScreen() {
                   </button>
                   <button
                     type="button"
+                    data-no-drag
                     className={styles.exDelete}
                     onClick={() => askRemoveCard(cardIndex)}
                     aria-label={`${card.name} 빼기`}

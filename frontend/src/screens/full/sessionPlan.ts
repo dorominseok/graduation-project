@@ -187,6 +187,21 @@ export function saveDraft(userId: number, performedOn: string, routineKey: strin
 }
 
 /**
+ * 사용자가 끌어서 정한 순서(서버의 `exerciseOrder`)대로 놓는다. 거기 없는 카드는 뒤에 지금 순서대로.
+ * 임시 저장이 있으면 그 순서가 이미 이 기기에서 정한 것이라 쓰지 않는다 — 다른 기기에서 열거나 다음 날 지난 기록을
+ * 열 때 쓴다(임시 저장은 그날 하루만이다)
+ */
+function byExerciseOrder(cards: ExerciseCard[], order: number[] | undefined): ExerciseCard[] {
+  if (!order || order.length === 0) return cards
+  const rank = new Map<number, number>()
+  order.forEach((id, index) => {
+    if (!rank.has(id)) rank.set(id, index)
+  })
+  // 정렬은 안정적이라 순서에 없는 카드끼리는 지금 순서가 지켜진다
+  return [...cards].sort((a, b) => (rank.get(a.exerciseId) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.exerciseId) ?? Number.MAX_SAFE_INTEGER))
+}
+
+/**
  * 카드를 만든다.
  *
  * <ol>
@@ -234,7 +249,7 @@ export async function buildCards(
   const routineCards = routine
     ? await Promise.all(activeItems(routine).map((item) => routineCard(item, take(item.exerciseId))))
     : []
-  const cards = [...routineCards, ...saved.values()]
+  const cards = byExerciseOrder([...routineCards, ...saved.values()], session.exerciseOrder)
 
   // 루틴이 바뀌어 다시 만들었어도, 루틴 밖에서 추가해 둔 종목은 살린다
   for (const extra of draft?.cards.filter((card) => card.routineTarget === null) ?? []) {
