@@ -139,7 +139,7 @@ export function SessionScreen() {
       : { category: null, group: null },
   )
 
-  // 머리줄 ⋮ 메뉴 — 지금은 다른 앱 기록 붙여넣기 하나
+  // 머리줄 ⋮ 메뉴 — 한눈에 보기, 다른 앱 기록 붙여넣기
   const [moreOpen, setMoreOpen] = useState(false)
 
   // 일괄 수정도 같은 이유로 시트다.
@@ -1386,10 +1386,23 @@ export function SessionScreen() {
 
       {/* ⋮ 메뉴 */}
       <BottomSheet open={moreOpen} onClose={() => setMoreOpen(false)} title={<span className={styles.sheetTitle}>더 보기</span>}>
-        <button type="button" className={styles.menuItem} onClick={() => navigate(paths.sessionImport)}>
-          <span className={styles.menuItemTitle}>다른 앱 기록 붙여넣기</span>
-          <span className={styles.menuItemNote}>바디캘린더에서 내보낸 운동 일지를 그대로 붙여넣어요</span>
-        </button>
+        <div className={styles.menuList}>
+          {/* 그룹 멤버의 하루 기록과 같은 화면을 내 기록으로. 그룹이 없어도, 그룹 › 내 달력을 거치지 않아도 온다.
+              방문 기록을 쌓아 뒤로 가면 이 기록 화면이다 */}
+          <button
+            type="button"
+            className={styles.menuItem}
+            disabled={!session}
+            onClick={() => session && navigate(paths.sessionOverview(session.id))}
+          >
+            <span className={styles.menuItemTitle}>한눈에 보기</span>
+            <span className={styles.menuItemNote}>이날 운동을 종목 그림과 세트로 한 화면에 모아 봐요</span>
+          </button>
+          <button type="button" className={styles.menuItem} onClick={() => navigate(paths.sessionImport)}>
+            <span className={styles.menuItemTitle}>다른 앱 기록 붙여넣기</span>
+            <span className={styles.menuItemNote}>바디캘린더에서 내보낸 운동 일지를 그대로 붙여넣어요</span>
+          </button>
+        </div>
       </BottomSheet>
 
       {/* 기록이 있는 종목을 뺄 때만 열린다. 세트까지 함께 지워지는 일이라 한 번 묻는다 */}

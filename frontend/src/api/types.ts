@@ -180,6 +180,8 @@ export interface SetInGroup {
 export interface ExerciseGroup {
   exerciseId: number
   exerciseName: string
+  /** 동작 그림 파일 이름(exerciseImage)을 만든다 — 한눈에 보기의 종목 카드. 없으면 null */
+  exerciseNameEn: string | null
   measureType: MeasureType
   sets: SetInGroup[]
 }

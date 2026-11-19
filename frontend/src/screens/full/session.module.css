@@ -897,6 +897,13 @@
   box-shadow: var(--g-gem-shadow);
 }
 
+/* 머리줄 ⋮ 메뉴 */
+.menuList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
 /* 머리줄 ⋮ 메뉴의 한 줄 */
 .menuItem {
   display: flex;

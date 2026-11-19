@@ -5,10 +5,9 @@ import { groupApi } from '../../api'
 import type { MemberDay, MemberSession } from '../../api'
 import { useAuth } from '../../auth'
 import { paths } from '../../app/paths'
-import { formatDayLabel, formatDuration } from '../../app/dates'
-import { exerciseImage, hideOnError } from '../full/exerciseImage'
-import { SetGrid } from '../full/SetGrid'
+import { formatDayLabel } from '../../app/dates'
 import { CheerButton } from './CheerButton'
+import { DaySessionView } from './DaySessionView'
 import { isId, useGroupFail } from './useGroupFail'
 import styles from './group.module.css'
 
@@ -68,73 +67,21 @@ function MemberDayView({ groupId, memberId, date }: { groupId: number; memberId:
   )
 }
 
-/** "2026-10-11T19:12:03+09:00" → "오후 7:12" */
-function formatClock(iso: string): string {
-  return new Date(iso).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' })
-}
-
-/**
- * 운동 머리 한 줄 — "오후 7:12 시작 · 1시간 10분". 하루에 두 번 운동했으면 시간은 둘을 더한 것이다.
- *
- * <p>나중에 입력한 기록인지는 표시하지 않는다 — 기록을 의심하는 표시처럼 읽힌다. 시작 시각은
- * 운동 시간이 있을 때만 적는다. 없으면 나중에 입력한 기록이라 저장 시각이 운동한 시각이 아니다.
- */
-function metaOf(session: MemberSession): string[] {
-  const parts: string[] = []
-  if (session.durationSec != null && session.startedAt) parts.push(`${formatClock(session.startedAt)} 시작`)
-  if (session.durationSec != null) parts.push(formatDuration(session.durationSec))
-  return parts
-}
-
-type MemberExercise = MemberSession['exercises'][number]
-
-/**
- * 그날 기록 — 머리 줄(시각·시간·세트 수·따봉) 아래에 종목마다 카드 하나.
- * 세트를 칸으로 늘어놓아, 줄글보다 한눈에 들어오게 한다.
- */
+/** 그날 기록에 따봉을 붙인다. 카드 모양은 내 "한눈에 보기"와 같다(DaySessionView) */
 function SessionBlock({ groupId, session, mine }: { groupId: number; session: MemberSession; mine: boolean }) {
-  const setCount = session.exercises.reduce((sum, e) => sum + e.sets.filter((s) => !s.isWarmup).length, 0)
-
   return (
-    <section className={styles.session}>
-      <div className={styles.sessionHead}>
-        <span className={styles.sessionMeta}>{metaOf(session).join(' · ')}</span>
-        <span className={styles.sessionRight}>
-          <span className={styles.sessionSets}>{setCount}세트</span>
-          <CheerButton
-            groupId={groupId}
-            sessionId={session.id}
-            initial={{ cheerCount: session.cheerCount, cheeredByMe: session.cheeredByMe }}
-            mine={mine}
-          />
-        </span>
-      </div>
-
-      {session.exercises.map((exercise, index) => (
-        <ExerciseCard key={`${exercise.exerciseId}-${index}`} exercise={exercise} />
-      ))}
-    </section>
-  )
-}
-
-function ExerciseCard({ exercise }: { exercise: MemberExercise }) {
-  const shots = ([1, 2] as const)
-    .map((shot) => exerciseImage(exercise.exerciseNameEn, shot))
-    .filter((src): src is string => src != null)
-
-  return (
-    <div className={`${styles.card} ${styles.exerciseCard}`}>
-      <div className={styles.exerciseHead}>
-        <span className={styles.exerciseName}>{exercise.exerciseName}</span>
-        {shots.length > 0 && (
-          <span className={styles.exerciseShots} aria-hidden="true">
-            {shots.map((src) => (
-              <img key={src} src={src} alt="" className={styles.exerciseShot} onError={hideOnError} loading="lazy" />
-            ))}
-          </span>
-        )}
-      </div>
-      <SetGrid measureType={exercise.measureType} sets={exercise.sets} />
-    </div>
+    <DaySessionView
+      startedAt={session.startedAt}
+      durationSec={session.durationSec}
+      exercises={session.exercises}
+      trailing={
+        <CheerButton
+          groupId={groupId}
+          sessionId={session.id}
+          initial={{ cheerCount: session.cheerCount, cheeredByMe: session.cheeredByMe }}
+          mine={mine}
+        />
+      }
+    />
   )
 }

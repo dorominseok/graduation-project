@@ -97,9 +97,14 @@ public final class WorkoutDtos {
         }
     }
 
-    /** 하루 기록 상세 안에서 종목별로 묶은 세트 */
+    /**
+     * 하루 기록 상세 안에서 종목별로 묶은 세트.
+     *
+     * @param exerciseNameEn 동작 그림 파일 이름을 만든다(화면의 exerciseImage) — "한눈에 보기"의 종목 카드. 없으면 null
+     */
     public record ExerciseGroup(Long exerciseId,
                                 String exerciseName,
+                                String exerciseNameEn,
                                 MeasureType measureType,
                                 List<SetInGroup> sets) {
     }
