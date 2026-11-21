@@ -1,0 +1,13 @@
+/*
+ * 탭 없는 전체 화면(FullScreenLayout)의 본문 스크롤.
+ *
+ * 탭 화면은 AppShell이 본문을 스크롤해 주지만, 전체 화면 레이아웃은 높이만 채우고 스크롤하지 않는다 — 기록 화면처럼
+ * 스스로 스크롤 영역을 나누는 화면이 있어서다. 그래서 머리줄 아래가 길어질 수 있는 화면은 본문을 이것으로 감싼다.
+ * 머리줄은 위에 남고 본문만 스크롤된다
+ */
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}

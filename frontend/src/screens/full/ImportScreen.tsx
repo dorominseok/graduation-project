@@ -20,6 +20,7 @@ import { SetGrid } from './SetGrid'
 import type { GridSet } from './SetGrid'
 import group from '../group/group.module.css'
 import session from './session.module.css'
+import full from './fullScreen.module.css'
 import styles from './import.module.css'
 
 /** 내 종목 이름 상한(「내종목_설계서」). 원래 이름이 더 길면 앞부분으로 채운다 */
@@ -127,32 +128,35 @@ export function ImportScreen() {
     return (
       <>
         <ScreenHeader title="다른 앱 기록 붙여넣기" />
-        <div className={styles.page}>
-          <p className={styles.lead}>
-            바디캘린더의 <b>운동 일지 내보내기</b> 글을 그대로 붙여넣으세요. 여러 날을 이어 붙여도 날짜별로 나눠
-            읽어요.
-          </p>
-          <textarea
-            className={styles.textarea}
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value)
-              setPasteError(null)
-            }}
-            placeholder={PLACEHOLDER}
-            aria-label="붙여넣을 기록"
-            aria-invalid={pasteError !== null}
-          />
-          {pasteError && <p className={styles.error}>{pasteError}</p>}
-          <button
-            type="button"
-            className={styles.primary}
-            disabled={text.trim() === '' || reading}
-            onClick={() => void read()}
-          >
-            {reading ? '읽는 중…' : '미리보기'}
-          </button>
-          <p className={styles.note}>유산소는 기록하지 않아요. 웜업은 워밍업 세트로, 드랍·실패는 본세트로 넣어요.</p>
+        {/* 전체 화면 레이아웃은 스스로 스크롤하지 않는다 — 머리줄 아래를 감싸 스크롤한다 */}
+        <div className={full.scroll}>
+          <div className={styles.page}>
+            <p className={styles.lead}>
+              바디캘린더의 <b>운동 일지 내보내기</b> 글을 그대로 붙여넣으세요. 여러 날을 이어 붙여도 날짜별로 나눠
+              읽어요.
+            </p>
+            <textarea
+              className={styles.textarea}
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value)
+                setPasteError(null)
+              }}
+              placeholder={PLACEHOLDER}
+              aria-label="붙여넣을 기록"
+              aria-invalid={pasteError !== null}
+            />
+            {pasteError && <p className={styles.error}>{pasteError}</p>}
+            <button
+              type="button"
+              className={styles.primary}
+              disabled={text.trim() === '' || reading}
+              onClick={() => void read()}
+            >
+              {reading ? '읽는 중…' : '미리보기'}
+            </button>
+            <p className={styles.note}>유산소는 기록하지 않아요. 웜업은 워밍업 세트로, 드랍·실패는 본세트로 넣어요.</p>
+          </div>
         </div>
       </>
     )
@@ -212,90 +216,92 @@ export function ImportScreen() {
         }
       />
 
-      <div className={group.page}>
-        {preview.days.length === 0 ? (
-          <div className={`${group.card} ${styles.summary}`}>
-            <span className={styles.summaryTitle}>가져올 근력 운동 기록이 없어요</span>
-            <span className={styles.summaryNote}>유산소와 오늘 이후 날짜의 일지는 가져오지 않아요</span>
-          </div>
-        ) : (
-          <div className={`${group.card} ${styles.summary}`}>
-            <span className={styles.summaryTitle}>
-              바디캘린더 기록 {preview.days.length}일 · {all.length}종목 · {setTotal}세트를 읽었어요
-            </span>
-            {/* 다 맞췄을 때는 아무 말도 붙이지 않는다 — 초록으로 바뀌는 "추가" 버튼이 말한다(설계서 결정 11) */}
-            {unresolved > 0 && (
-              <span className={styles.summaryWarn}>미등록 운동 {unresolved}개를 만들거나 고르면 추가할 수 있어요</span>
-            )}
-          </div>
-        )}
-
-        {preview.days.map((day) => (
-          <section key={day.date} className={group.session}>
-            <div className={group.sessionHead}>
-              <span className={group.sessionMeta}>{formatDayLabel(day.date)}</span>
-              <span className={group.sessionSets}>
-                {day.minutes ? `${day.minutes}분 · ` : ''}
-                {day.exercises.reduce((sum, e) => sum + e.sets.length, 0)}세트
-              </span>
+      <div className={full.scroll}>
+        <div className={group.page}>
+          {preview.days.length === 0 ? (
+            <div className={`${group.card} ${styles.summary}`}>
+              <span className={styles.summaryTitle}>가져올 근력 운동 기록이 없어요</span>
+              <span className={styles.summaryNote}>유산소와 오늘 이후 날짜의 일지는 가져오지 않아요</span>
             </div>
-            {/* 그날 기록이 이미 있어도 따로 알리지 않고 그 뒤에 이어 붙인다(설계서 결정 6) */}
+          ) : (
+            <div className={`${group.card} ${styles.summary}`}>
+              <span className={styles.summaryTitle}>
+                바디캘린더 기록 {preview.days.length}일 · {all.length}종목 · {setTotal}세트를 읽었어요
+              </span>
+              {/* 다 맞췄을 때는 아무 말도 붙이지 않는다 — 초록으로 바뀌는 "추가" 버튼이 말한다(설계서 결정 11) */}
+              {unresolved > 0 && (
+                <span className={styles.summaryWarn}>미등록 운동 {unresolved}개를 만들거나 고르면 추가할 수 있어요</span>
+              )}
+            </div>
+          )}
 
-            {day.exercises.map((exercise, index) => {
-              const { brief, status } = resolve(exercise, choices)
-              const measureType: MeasureType =
-                brief?.measureType ?? exercise.guess?.measureType ?? exercise.allowedMeasureTypes[0] ?? 'WEIGHT_REPS'
-              const sets: GridSet[] = exercise.sets.map((set) => ({
-                weightKg: set.weightKg,
-                reps: set.reps,
-                durationSec: set.durationSec,
-                isWarmup: set.kind === 'WARMUP',
-              }))
-              return (
-                <div key={index} className={`${group.card} ${group.exerciseCard}`}>
-                  <div className={`${group.exerciseHead} ${styles.head}`}>
-                    <span className={styles.names}>
-                      <span className={group.exerciseName}>{brief?.nameKo ?? exercise.source}</span>
-                      <span className={styles.source}>바디캘린더 · {exercise.source}</span>
-                    </span>
-                    {brief === null ? (
-                      <span className={`${styles.badge} ${styles.badgeMissing}`}>미등록 운동</span>
-                    ) : (
-                      <span className={styles.headRight}>
-                        {status === 'SIMILAR' && <span className={`${styles.badge} ${styles.badgeSimilar}`}>비슷한 종목</span>}
-                        {brief.mine && <span className={`${styles.badge} ${styles.badgeMine}`}>내 종목</span>}
-                        <button type="button" className={styles.link} onClick={() => openPicker(exercise)}>
-                          바꾸기
-                        </button>
+          {preview.days.map((day) => (
+            <section key={day.date} className={group.session}>
+              <div className={group.sessionHead}>
+                <span className={group.sessionMeta}>{formatDayLabel(day.date)}</span>
+                <span className={group.sessionSets}>
+                  {day.minutes ? `${day.minutes}분 · ` : ''}
+                  {day.exercises.reduce((sum, e) => sum + e.sets.length, 0)}세트
+                </span>
+              </div>
+              {/* 그날 기록이 이미 있어도 따로 알리지 않고 그 뒤에 이어 붙인다(설계서 결정 6) */}
+
+              {day.exercises.map((exercise, index) => {
+                const { brief, status } = resolve(exercise, choices)
+                const measureType: MeasureType =
+                  brief?.measureType ?? exercise.guess?.measureType ?? exercise.allowedMeasureTypes[0] ?? 'WEIGHT_REPS'
+                const sets: GridSet[] = exercise.sets.map((set) => ({
+                  weightKg: set.weightKg,
+                  reps: set.reps,
+                  durationSec: set.durationSec,
+                  isWarmup: set.kind === 'WARMUP',
+                }))
+                return (
+                  <div key={index} className={`${group.card} ${group.exerciseCard}`}>
+                    <div className={`${group.exerciseHead} ${styles.head}`}>
+                      <span className={styles.names}>
+                        <span className={group.exerciseName}>{brief?.nameKo ?? exercise.source}</span>
+                        <span className={styles.source}>바디캘린더 · {exercise.source}</span>
                       </span>
-                    )}
-                  </div>
-                  {brief === null && (
-                    <div className={styles.missingActions}>
-                      <button
-                        type="button"
-                        className={styles.createBtn}
-                        onClick={() =>
-                          setCreating({
-                            source: exercise.source,
-                            allowed: exercise.allowedMeasureTypes,
-                            guess: exercise.guess,
-                          })
-                        }
-                      >
-                        + 새 종목 만들기
-                      </button>
-                      <button type="button" className={styles.pickBtn} onClick={() => openPicker(exercise)}>
-                        비슷한 종목 고르기
-                      </button>
+                      {brief === null ? (
+                        <span className={`${styles.badge} ${styles.badgeMissing}`}>미등록 운동</span>
+                      ) : (
+                        <span className={styles.headRight}>
+                          {status === 'SIMILAR' && <span className={`${styles.badge} ${styles.badgeSimilar}`}>비슷한 종목</span>}
+                          {brief.mine && <span className={`${styles.badge} ${styles.badgeMine}`}>내 종목</span>}
+                          <button type="button" className={styles.link} onClick={() => openPicker(exercise)}>
+                            바꾸기
+                          </button>
+                        </span>
+                      )}
                     </div>
-                  )}
-                  <SetGrid measureType={measureType} sets={sets} />
-                </div>
-              )
-            })}
-          </section>
-        ))}
+                    {brief === null && (
+                      <div className={styles.missingActions}>
+                        <button
+                          type="button"
+                          className={styles.createBtn}
+                          onClick={() =>
+                            setCreating({
+                              source: exercise.source,
+                              allowed: exercise.allowedMeasureTypes,
+                              guess: exercise.guess,
+                            })
+                          }
+                        >
+                          + 새 종목 만들기
+                        </button>
+                        <button type="button" className={styles.pickBtn} onClick={() => openPicker(exercise)}>
+                          비슷한 종목 고르기
+                        </button>
+                      </div>
+                    )}
+                    <SetGrid measureType={measureType} sets={sets} />
+                  </div>
+                )
+              })}
+            </section>
+          ))}
+        </div>
       </div>
 
       <BottomSheet
