@@ -111,8 +111,9 @@ class AnalysisApiTest {
                 // 0세트는 "판정 불가"가 아니라 "부족"이다. 안 한 것도 정보다.
                 .andExpect(jsonPath("$.tiers[0].verdict").value("INSUFFICIENT"))
                 .andExpect(jsonPath("$.tiers[0].verdictLabel").value("부족"))
-                .andExpect(jsonPath("$.displayOnly.length()").value(2))
-                .andExpect(jsonPath("$.displayOnly[0].key").value("CALVES"));
+                .andExpect(jsonPath("$.displayOnly.length()").value(3))
+                .andExpect(jsonPath("$.displayOnly[0].key").value("CALVES"))
+                .andExpect(jsonPath("$.displayOnly[2].key").value("NECK"));
     }
 
     @Test

@@ -2,7 +2,7 @@
 -- R__seed_exercises: 운동 종목 시드 (반복 마이그레이션)
 --
 -- 자동 생성 파일 — 직접 수정하지 말 것.
---   원본 : backend/src/main/resources/data/exercises.csv (261종목)
+--   원본 : backend/src/main/resources/data/exercises.csv (274종목)
 --   생성 : python scripts/gen_exercise_seed.py
 --
 -- 자연키 name_ko 기준 UPSERT. CSV를 고치고 재생성하면 체크섬이 바뀌어
@@ -274,7 +274,20 @@ VALUES
     ('휠 롤아웃', 'Ab Roller', 'CORE', 'abdominals', 'PULL', 'BODYWEIGHT_REPS', 'BODYWEIGHT', NULL, '롤아웃', NULL, '2'),
     ('사이드 플랭크', 'Side Bridge', 'CORE', 'abdominals', 'NONE', 'TIME', 'BODYWEIGHT', NULL, '플랭크', NULL, '2'),
     ('데드버그', 'Dead Bug', 'CORE', 'abdominals', 'NONE', 'BODYWEIGHT_REPS', 'BODYWEIGHT', NULL, '데드버그', NULL, NULL),
-    ('케이블 우드찹', 'Standing Cable Wood Chop', 'CORE', 'abdominals', 'PULL', 'WEIGHT_REPS', 'CABLE', NULL, '우드찹', NULL, NULL)
+    ('케이블 우드찹', 'Standing Cable Wood Chop', 'CORE', 'abdominals', 'PULL', 'WEIGHT_REPS', 'CABLE', NULL, '우드찹', NULL, NULL),
+    ('넥 컬', 'Neck Curl', 'NECK', 'neck', 'PUSH', 'BODYWEIGHT_REPS', 'BODYWEIGHT', NULL, '넥 컬', NULL, NULL),
+    ('중량 넥 컬', 'Weighted Neck Curl', 'NECK', 'neck', 'PUSH', 'WEIGHTED_BODYWEIGHT', 'BODYWEIGHT', NULL, '넥 컬', NULL, NULL),
+    ('넥 익스텐션', 'Neck Extension', 'NECK', 'neck', 'PULL', 'BODYWEIGHT_REPS', 'BODYWEIGHT', NULL, '넥 익스텐션', NULL, NULL),
+    ('중량 넥 익스텐션', 'Weighted Neck Extension', 'NECK', 'neck', 'PULL', 'WEIGHTED_BODYWEIGHT', 'BODYWEIGHT', NULL, '넥 익스텐션', NULL, NULL),
+    ('넥 사이드 벤드', 'Neck Side Bend', 'NECK', 'neck', 'NONE', 'BODYWEIGHT_REPS', 'BODYWEIGHT', NULL, '넥 사이드 벤드', NULL, NULL),
+    ('중량 넥 사이드 벤드', 'Weighted Neck Side Bend', 'NECK', 'neck', 'NONE', 'WEIGHTED_BODYWEIGHT', 'BODYWEIGHT', NULL, '넥 사이드 벤드', NULL, NULL),
+    ('넥 트위스트', 'Neck Twist', 'NECK', 'neck', 'NONE', 'BODYWEIGHT_REPS', 'BODYWEIGHT', NULL, '넥 트위스트', NULL, NULL),
+    ('전면 넥 브릿지', 'Front Neck Bridge', 'NECK', 'neck', 'PUSH', 'BODYWEIGHT_REPS', 'BODYWEIGHT', NULL, '넥 브릿지', NULL, NULL),
+    ('전면 넥 브릿지 버티기', 'Front Neck Bridge Hold', 'NECK', 'neck', 'PUSH', 'TIME', 'BODYWEIGHT', NULL, '넥 브릿지', NULL, NULL),
+    ('중량 전면 넥 브릿지', 'Weighted Front Neck Bridge', 'NECK', 'neck', 'PUSH', 'WEIGHTED_BODYWEIGHT', 'BODYWEIGHT', NULL, '넥 브릿지', NULL, NULL),
+    ('후면 넥 브릿지', 'Back Neck Bridge', 'NECK', 'neck', 'PULL', 'BODYWEIGHT_REPS', 'BODYWEIGHT', NULL, '넥 브릿지', NULL, NULL),
+    ('후면 넥 브릿지 버티기', 'Back Neck Bridge Hold', 'NECK', 'neck', 'PULL', 'TIME', 'BODYWEIGHT', NULL, '넥 브릿지', NULL, NULL),
+    ('중량 후면 넥 브릿지', 'Weighted Back Neck Bridge', 'NECK', 'neck', 'PULL', 'WEIGHTED_BODYWEIGHT', 'BODYWEIGHT', NULL, '넥 브릿지', NULL, NULL)
 ON CONFLICT (name_ko) WHERE owner_id IS NULL DO UPDATE SET
     name_en        = EXCLUDED.name_en,
     body_part      = EXCLUDED.body_part,

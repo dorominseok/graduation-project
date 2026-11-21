@@ -22,6 +22,7 @@
 > 개정: 2026-11-20 사용자 요청 — 기록의 종목 순서를 끌어서 바꾼다(V18 `exercise_order`). 6.5·6.6 정렬, 6.9 `exerciseOrder`, 6.13, 9.2. 엔드포인트 수는 그대로
 > 개정: 2026-11-20 사용자 요청 — 기록 화면의 "운동 일지 보기"(그룹 멤버의 하루 기록과 같은 모양으로 내 기록). 6.5 `exercises[].exerciseNameEn`
 > 개정: 2026-11-20 실제 일지 — 13.1 바디캘린더 `실패` 세트(`FAIL`, 해낸 횟수의 본세트), 부록 A
+> 추가: 2026-11-20 운동 부위 "목"(사용자 요청, V19) — 종목 13종(274종). 3.2·5.1·5.6 분류 14종, 8.1 표시만에 `neck`, 8.6 회복에서 뺌, 부록 A `bodyPart`·`displayOnly`
 
 ---
 
@@ -320,7 +321,7 @@ Authorization: Bearer {accessToken}
 |---|---|---|---|
 | GET | `/exercises` | 종목 목록·검색 (필터·페이지네이션, `favorite` 필터) | — |
 | GET | `/exercises/{id}` | 종목 단건 조회 | — |
-| GET | `/exercises/categories` | 종목 고르기 1단계 — 분류 13종과 종목 수 (5.6) | — |
+| GET | `/exercises/categories` | 종목 고르기 1단계 — 분류 14종과 종목 수 (5.6) | — |
 | GET | `/exercises/groups` | 종목 고르기 2단계 — 한 분류의 계열 목록 (5.7) | — |
 | GET | `/exercises/{id}/last-performance` | 이 종목의 **직전 수행 기록** (종목 프리필용) | ✔ |
 | GET | `/exercises/{id}/history` | 이 종목의 **날짜별 기록** (종목 상세·종목 기록 페이지) | ✔ |
@@ -745,7 +746,7 @@ Authorization: Bearer {accessToken}
 |---|---|---|
 | `q` | string | `nameKo` / `nameEn` 부분 일치 검색 |
 | `bodyPart` | enum | 6종 중 하나로 필터 |
-| `category` | enum | **탐색 분류 13종** 중 하나로 필터 (5.6, LOG-24·LOG-33) |
+| `category` | enum | **탐색 분류 14종** 중 하나로 필터 (5.6, LOG-24·LOG-33) |
 | `group` | string | **계열**로 필터. `category`와 함께 쓴다 (5.7, LOG-24) |
 | `muscleGroup` | enum | **판정 부위 9종**(8.1 하위 `key`) 중 하나로 필터. 어깨 앞·뒤는 `delt_region`까지 가른다. `category`와 같이 주면 두 조건을 모두 만족하는 종목만 (LOG-29) |
 | `equipment` | enum | 기구로 필터 |
@@ -776,7 +777,7 @@ Authorization: Bearer {accessToken}
 | 필드 | 설명 |
 |---|---|
 | `deltRegion` | `FRONT` \| `REAR` \| `null`. `primaryMuscle`가 `shoulders`인 종목만 값(8.1). 화면 종목 분류엔 쓰지 않고, 분석 판정 참고용 |
-| `groupName` | 같은 동작의 변형 묶음 (`V6`, LOG-24). 기본 종목(261종)은 모두 값을 갖는다. 내 종목은 계열 안에서 만들었을 때만 |
+| `groupName` | 같은 동작의 변형 묶음 (`V6`, LOG-24). 기본 종목(274종)은 모두 값을 갖는다. 내 종목은 계열 안에서 만들었을 때만 |
 | `mine` | 내가 만든 종목(5.9) |
 | `isFavorite` | 내 즐겨찾기 여부. **인증된 요청에만** 포함하고, 비인증 요청에선 키 생략 |
 
@@ -785,7 +786,7 @@ Authorization: Bearer {accessToken}
 | 탭 | 산출 |
 |---|---|
 | 최근 사용 | 프론트가 `GET /workout-sessions` 이력에서 최근 등장 `exerciseId` 순으로 계산. 별도 엔드포인트 없음. 근거 필드는 6.6 응답의 `exercises[].id`이며, 배열이 수행 순서로 정렬돼 있으므로 세션을 `performedOn` 내림차순으로 훑으며 처음 만나는 순서가 곧 최근 사용 순이다 |
-| 부위별 | **3단 드릴다운** (LOG-24). `GET /exercises/categories`로 분류 13종과 개수를 한 번에 받고 → `GET /exercises/groups?category=`로 계열을 받고 → `GET /exercises?category=&group=`으로 변형을 받는다. 부위마다 1회씩 6번 세던 방식은 폐기 |
+| 부위별 | **3단 드릴다운** (LOG-24). `GET /exercises/categories`로 분류 14종과 개수를 한 번에 받고 → `GET /exercises/groups?category=`로 계열을 받고 → `GET /exercises?category=&group=`으로 변형을 받는다. 부위마다 1회씩 6번 세던 방식은 폐기 |
 | 즐겨찾기 | `GET /exercises?favorite=true&sort=` — 서버가 `user_favorite_exercises` 기준. 정렬은 `createdAt,desc` 고정(별표 누른 순) |
 
 ### 5.3 GET /exercises/{id}
@@ -861,7 +862,7 @@ Authorization: Bearer {accessToken}
 
 종목 선택 1단계 (LOG-24). 5.2보다 앞선 단계지만 나중에 신설해 번호가 뒤에 붙었다.
 
-**응답 `200 OK`** — 분류 13종 배열. 페이지 envelope을 쓰지 않는다(항상 13개, 고정).
+**응답 `200 OK`** — 분류 14종 배열. 페이지 envelope을 쓰지 않는다(항상 14개, 고정).
 
 ```json
 [
@@ -876,9 +877,9 @@ Authorization: Bearer {accessToken}
 | `label` | 화면에 적을 한글 이름. 서버가 준다 — 클라이언트마다 다르게 부르면 안 된다 |
 | `count` | 그 분류의 종목 수. `GROUP BY primary_muscle` 한 번으로 12개를 모두 센다 |
 
-**분류 13종과 `primary_muscle` 대응**
+**분류 14종과 `primary_muscle` 대응**
 
-| 분류 | `label` | `primary_muscle` | 종목 수 (261종, 2026-11-16) |
+| 분류 | `label` | `primary_muscle` | 종목 수 (274종, 2026-11-20) |
 |---|---|---|---|
 | `LEGS` | 하체 | `quadriceps`, `hamstrings`, `adductors` | 46 |
 | `CHEST` | 가슴 | `chest` | 33 |
@@ -893,6 +894,9 @@ Authorization: Bearer {accessToken}
 | `CALVES` | 종아리 | `calves` | 8 |
 | `LOWER_BACK` | 허리 | `lower back` | 7 |
 | `FOREARMS` | 전완 | `forearms` | 4 |
+| `NECK` | 목 | `neck` | 13 |
+
+> 목(2026-11-20 사용자 요청)은 계열 5개 — 넥 컬·넥 익스텐션·넥 사이드 벤드(맨몸·중량), 넥 트위스트(맨몸), 넥 브릿지(전면·후면 × 횟수·버티기(시간)·중량). 기구는 모두 맨몸, 중량은 '맨몸 + 추가 무게'. 표시 부위(`bodyPart`)는 새 값 `NECK`(V19). 밀기/당기기(`pushPull`)는 종목 정보의 "동작" 표시에만 쓴다 — 넥 컬·전면 브릿지 `PUSH`, 넥 익스텐션·후면 브릿지 `PULL`, 사이드 벤드·트위스트 `NONE`. 균형 판정(8.3)은 판정 부위로 세어 목이 들어가지 않는다. 그림은 아직 없다(부위 칸·종목 카드의 그림 자리는 빈 칸).
 
 > 내전근(`adductors`)은 이너타이 머신을 넣으며(2026-11-16) 하체에 붙였다. 그 전에는 해당 종목이 없어 어느 분류에도 없었다.
 
@@ -989,7 +993,7 @@ Authorization: Bearer {accessToken}
 | 필드 | 규칙 |
 |---|---|
 | `nameKo` | 필수, 1\~50자. 앞뒤 공백을 걷고 여러 칸 띄어쓰기는 한 칸으로 저장·비교한다. 기본 종목이나 내 다른 종목(숨긴 것 포함)과 같으면 `409 EXERCISE_NAME_TAKEN` |
-| `category` | 필수. 5.6의 13종. 저장은 기본 종목과 같은 칸(`primaryMuscle`·`deltRegion`·`bodyPart`·`pushPull`)으로 바꾼다 — 대응표는 설계서 4장 |
+| `category` | 필수. 5.6의 14종. 저장은 기본 종목과 같은 칸(`primaryMuscle`·`deltRegion`·`bodyPart`·`pushPull`)으로 바꾼다 — 대응표는 설계서 4장 |
 | `legSide` | `FRONT`(앞허벅지)·`BACK`(뒤허벅지). `category`가 `LEGS`일 때만, 그때는 필수 — 분석이 하체를 앞·뒤로 나눠 본다 |
 | `equipment` · `measureType` | 필수. 5.1의 값 |
 | `groupName` | 선택. 계열 안에서 만들 때 그 계열 — 그 분류에 실제로 있는 계열이어야 한다. 없으면 5.7의 "내 종목" 칸으로 |
@@ -1476,7 +1480,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 | `LEGS` | 하체 | `QUADS`(앞허벅지), `POSTERIOR`(뒤허벅지·둔근) |
 | `CORE` | 코어 | `CORE` |
 
-**판정 제외 — 표시만** (분석 2.3): `calves`(종아리), `forearms`(전완). 부족 판정하지 않고 세트 수만 내려준다.
+**판정 제외 — 표시만** (분석 2.3): `calves`(종아리), `forearms`(전완), `neck`(목, 2026-11-20). 부족 판정하지 않고 세트 수만 내려준다. 균형 판정(8.3)·오늘의 루틴 후보에도 들어가지 않는다.
 
 > **어깨 앞·뒤 분리**: `DELT_FRONT` / `DELT_REAR`를 나누는 `exercises.delt_region` 컬럼을 9월 1주 `V3` 마이그레이션에서 확보한다(2.4-(3)). 분류 자체는 8월 8일 종목 정제 때 끝났고(`FRONT` 10 / `REAR` 3), 저장할 자리만 없었다. 폴백(전량 `DELT_FRONT` 집계)은 전 사용자에게 "어깨(뒤) 부족" + 당기기 불균형 경고를 상시 띄우므로 채택하지 않는다.
 >
@@ -1730,7 +1734,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 
 > 2026-11-10 신설. 「회복지도_설계서」. 분석 탭 "회복" 서브탭(예전 통계 서브탭 자리, `/analysis?view=recovery`)의 앞·뒤 인체 지도가 쓴다.
 
-11개 부위의 회복 상태. 파라미터 없음 — 오늘 기준이다.
+11개 부위의 회복 상태. 파라미터 없음 — 오늘 기준이다. 목(2026-11-20)은 회복 지도 그림에 자리가 없어 빠진다.
 
 **응답 `200 OK`**
 
@@ -1758,7 +1762,7 @@ workout_session (사용자의 하루 기록. (user_id, performed_on) 유니크)
 
 | 필드 | 설명 |
 |---|---|
-| `muscles` | 11개 부위(판정 9 + 표시 전용 2)가 `MuscleGroup` 순서로 **항상 모두** 온다 |
+| `muscles` | 11개 부위(판정 9 + 표시 전용 2)가 `MuscleGroup` 순서로 **항상 모두** 온다. 표시 전용인 목(`NECK`)은 오지 않는다 |
 | `state` | `HIGH` 회복 중·많이 함 / `MEDIUM` 회복 중 / `LOW` 거의 회복 / `RECOVERED` 회복됨 |
 | `lastTrainedOn` · `daysSince` | 최근 4주(`app.analysis.weeks`) 안의 마지막 운동일과 그날부터 오늘까지 일수(오늘 = 0). 없으면 둘 다 `null` |
 | `recentSets` | 오늘 포함 `recoveryDays`일 동안의 본세트 수 |
@@ -2430,14 +2434,14 @@ LLM 설정은 `app.llm.*`(`enabled`, `model`, `timeout-ms`, `temperature`, `max-
 
 | 그룹 | 값 |
 |---|---|
-| `exercise.bodyPart` | `CHEST`, `BACK`, `LEGS`, `SHOULDERS`, `ARMS`, `CORE` |
+| `exercise.bodyPart` | `CHEST`, `BACK`, `LEGS`, `SHOULDERS`, `ARMS`, `CORE`, `NECK`(V19) |
 | `exercise.pushPull` | `PUSH`, `PULL`, `NONE` |
 | `exercise.measureType` | `WEIGHT_REPS`, `BODYWEIGHT_REPS`, `WEIGHTED_BODYWEIGHT`, `TIME` |
 | `exercise.equipment` | `BARBELL`, `DUMBBELL`, `MACHINE`, `CABLE`, `BODYWEIGHT`, `PULLUP_BAR` |
 | `exercise.deltRegion` | `FRONT`, `REAR`, `null` (`primaryMuscle = shoulders`인 종목만 값) |
 | 판정 부위 상위 (`tier.key`) | `CHEST`, `BACK`, `SHOULDERS`, `ARMS`, `LEGS`, `CORE` |
 | 판정 부위 하위 (`child.key`) | `CHEST`, `BACK`, `DELT_FRONT`, `DELT_REAR`, `TRICEPS`, `BICEPS`, `QUADS`, `POSTERIOR`, `CORE` |
-| 표시만 (`displayOnly.key`) | `CALVES`, `FOREARMS` |
+| 표시만 (`displayOnly.key`) | `CALVES`, `FOREARMS`, `NECK` |
 | `verdict` | `INSUFFICIENT`, `BELOW_RECOMMENDED`, `OPTIMAL`, `EXCESSIVE` |
 | `summaryBadge` | `ALL_OPTIMAL`, `PARTIAL_BELOW`, `PARTIAL_INSUFFICIENT`, `PARTIAL_EXCESSIVE`, `MIXED` |
 | `balance.verdict` | `BALANCED`, `IMBALANCED`, `INSUFFICIENT_DATA` |
