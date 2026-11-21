@@ -8,6 +8,7 @@ import { paths } from '../../app/paths'
 import { formatDayLabel } from '../../app/dates'
 import { DaySessionView } from '../group/DaySessionView'
 import styles from '../group/group.module.css'
+import full from './fullScreen.module.css'
 
 /**
  * 그날 운동 일지 보기 — 그룹 멤버의 하루 기록과 같은 모양(종목 그림 + 세트 칸)으로 내 기록을 본다.
@@ -59,20 +60,23 @@ function DayOverview({ sessionId }: { sessionId: number }) {
     <>
       <ScreenHeader title={user && session ? `${user.nickname} · ${label}` : label} onBack={back} />
 
-      <div className={styles.page}>
-        {session && session.exercises.length === 0 && (
-          <div className={styles.empty}>
-            <div className={styles.emptyText}>이날은 기록이 없어요.</div>
-          </div>
-        )}
+      {/* 그룹 하루 기록은 탭 화면이라 AppShell이 스크롤해 주지만, 여기는 전체 화면이라 스스로 스크롤한다 */}
+      <div className={full.scroll}>
+        <div className={styles.page}>
+          {session && session.exercises.length === 0 && (
+            <div className={styles.empty}>
+              <div className={styles.emptyText}>이날은 기록이 없어요.</div>
+            </div>
+          )}
 
-        {session && session.exercises.length > 0 && (
-          <DaySessionView
-            startedAt={session.startedAt}
-            durationSec={session.effectiveDurationSec}
-            exercises={session.exercises}
-          />
-        )}
+          {session && session.exercises.length > 0 && (
+            <DaySessionView
+              startedAt={session.startedAt}
+              durationSec={session.effectiveDurationSec}
+              exercises={session.exercises}
+            />
+          )}
+        </div>
       </div>
     </>
   )
