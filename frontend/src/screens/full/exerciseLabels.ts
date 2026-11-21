@@ -12,6 +12,7 @@ export const BODY_PART_LABEL: Record<string, string> = {
   ARMS: '팔',
   LEGS: '하체',
   CORE: '코어',
+  NECK: '목',
 }
 
 export const EQUIPMENT_LABEL: Record<string, string> = {
@@ -63,4 +64,5 @@ export const PRIMARY_MUSCLE_LABEL: Record<string, string> = {
   abductors: '엉덩이 바깥',
   adductors: '허벅지 안쪽',
   calves: '종아리',
+  neck: '목',
 }

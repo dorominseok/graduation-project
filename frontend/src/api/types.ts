@@ -70,7 +70,7 @@ export interface ChangePasswordRequest {
 // ── 운동 종목
 
 /** 표시 부위 6종. 판정 부위 9종과는 다른 축이다. */
-export type BodyPart = 'CHEST' | 'BACK' | 'LEGS' | 'SHOULDERS' | 'ARMS' | 'CORE'
+export type BodyPart = 'CHEST' | 'BACK' | 'LEGS' | 'SHOULDERS' | 'ARMS' | 'CORE' | 'NECK'
 
 export type Equipment = 'BARBELL' | 'DUMBBELL' | 'MACHINE' | 'CABLE' | 'BODYWEIGHT' | 'PULLUP_BAR'
 
@@ -99,6 +99,7 @@ export type BrowseCategory =
   | 'GLUTES'
   | 'LEGS'
   | 'CALVES'
+  | 'NECK'
 
 /** 부위 그리드의 한 칸. 종목이 0개인 분류도 내려온다. */
 export interface CategoryCount {
@@ -369,6 +370,7 @@ export type MuscleGroupKey =
   | 'CORE'
   | 'CALVES'
   | 'FOREARMS'
+  | 'NECK'
 
 /**
  * 부위별 볼륨·부족 판정.

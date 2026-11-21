@@ -3,7 +3,7 @@ package com.fitness.backend.exercise.domain;
 import java.util.List;
 
 /**
- * 종목 <b>탐색용</b> 분류 12종.
+ * 종목 <b>탐색용</b> 분류 14종(목은 2026-11-20에 더함).
  *
  * <p>화면의 부위 그리드가 이 단위다. {@link BodyPart}(표시 6종)와도, 분석의 판정 부위
  * 9종과도 다른 축이다 — 저쪽 둘은 집계·판정 기준이고 이쪽은 "사용자가 종목을 찾을 때
@@ -34,7 +34,9 @@ public enum BrowseCategory {
     GLUTES("엉덩이", "glutes", "abductors"),
     // 내전근(이너타이 머신·케이블 힙 어덕션)은 허벅지 안쪽이라 하체에 둔다. 판정도 앞허벅지로 센다
     LEGS("하체", "quadriceps", "hamstrings", "adductors"),
-    CALVES("종아리", "calves");
+    CALVES("종아리", "calves"),
+    /** 2026-11-20 사용자 요청. 분석에서는 전완·종아리처럼 세트 수만 보이고 약점 판정·루틴에는 들어가지 않는다 */
+    NECK("목", "neck");
 
     private final String label;
     private final DeltRegion deltRegion;

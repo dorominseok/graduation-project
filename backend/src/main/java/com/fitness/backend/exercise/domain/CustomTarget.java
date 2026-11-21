@@ -40,6 +40,8 @@ public record CustomTarget(String primaryMuscle, DeltRegion deltRegion, BodyPart
                         : new CustomTarget("hamstrings", null, BodyPart.LEGS, PushPull.PULL);
             }
             case CALVES -> new CustomTarget("calves", null, BodyPart.LEGS, PushPull.PUSH);
+            // 기본 목 종목은 밀기(목 앞쪽)·당기기(목 뒤쪽)가 5개씩 같아 어느 쪽도 아닌 것으로 둔다
+            case NECK -> new CustomTarget("neck", null, BodyPart.NECK, PushPull.NONE);
         };
     }
 }

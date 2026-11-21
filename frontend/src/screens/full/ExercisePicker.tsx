@@ -485,7 +485,15 @@ export function ExercisePicker({
               disabled={item.count === 0}
             >
               {/* 이름이 바로 아래 있어 그림은 꾸밈으로 둔다 */}
-              <img className={styles.partShot} src={partImage(item.category)} alt="" width={480} height={360} />
+              {/* 그림이 아직 없는 부위(목)는 빈 자리로 둔다 — 깨진 그림 표시가 뜨지 않게 */}
+              <img
+                className={styles.partShot}
+                src={partImage(item.category)}
+                alt=""
+                width={480}
+                height={360}
+                onError={hideOnError}
+              />
               <span className={styles.partName}>
                 {item.label}
                 <span className={styles.partCount}>{item.count}</span>

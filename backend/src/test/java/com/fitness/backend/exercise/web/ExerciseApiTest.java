@@ -28,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 운동 종목 조회·즐겨찾기.
  *
- * <p>종목 데이터는 {@code R__seed_exercises.sql}로 들어간 261종을 그대로 쓴다.
+ * <p>종목 데이터는 {@code R__seed_exercises.sql}로 들어간 274종을 그대로 쓴다.
  * 시드가 바뀌어도 깨지지 않도록, 개수를 못박는 대신 관계와 형태를 검사한다.
  */
 @SpringBootTest
@@ -331,11 +331,11 @@ class ExerciseApiTest {
     @Test
     @DisplayName("없는 분류를 보내면 400이다 — 조용히 빈 목록을 주지 않는다")
     void unknownCategoryIsRejected() throws Exception {
-        mvc.perform(get("/api/v1/exercises/groups").param("category", "NECK"))
+        mvc.perform(get("/api/v1/exercises/groups").param("category", "HANDS"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
 
-        mvc.perform(get("/api/v1/exercises").param("category", "NECK"))
+        mvc.perform(get("/api/v1/exercises").param("category", "HANDS"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }

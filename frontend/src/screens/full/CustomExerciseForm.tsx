@@ -62,6 +62,8 @@ function targetOf(exercise: Exercise): { category: BrowseCategory | null; legSid
       return { category: 'LEGS', legSide: 'BACK' }
     case 'calves':
       return { category: 'CALVES', legSide: null }
+    case 'neck':
+      return { category: 'NECK', legSide: null }
     default:
       return { category: null, legSide: null }
   }
