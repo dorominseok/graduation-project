@@ -9,6 +9,7 @@
 import { notificationApi } from '../api'
 import { getRestAlert } from './restAlert'
 import type { NotificationSettings } from '../api'
+import { clearPendingNav, takePendingNav } from './pendingNav'
 import { NAVIGATE_MESSAGE, safeAppPath } from './pushProtocol'
 import type { NavigateMessage } from './pushProtocol'
 
@@ -155,16 +156,45 @@ export async function resync(userId: number, settings: NotificationSettings): Pr
 }
 
 /**
- * 알림을 누르면 서비스워커가 열린 창에 경로를 보낸다(`sw.ts`). 그 경로로 옮긴다. 앱이 뜰 때 한 번 건다.
+ * 알림을 누르면 그 화면으로 옮긴다(`sw.ts`). 앱이 뜰 때 한 번 건다. 두 길로 받는다.
+ *
+ * - 살아 있는 창이면 서비스워커가 보낸 메시지로 바로.
+ * - 앱이 새로 뜨거나 다시 보일 때 서비스워커가 적어 둔 갈 곳(`pendingNav`)으로 — 안드로이드에서 브라우저가 앱을
+ *   처음 화면으로 새로 띄우면 메시지가 사라진다.
+ *
+ * 둘 다 오면 같은 곳으로 두 번 옮기지 않는다(뒤로 가기에 같은 화면이 두 번 쌓이지 않게).
  */
 export function listenForNotificationClicks(navigate: (path: string) => void): () => void {
   if (!('serviceWorker' in navigator)) return () => undefined
+  let last = { path: '', at: 0 }
+  const go = (url: unknown) => {
+    const path = safeAppPath(url)
+    if (path === last.path && Date.now() - last.at < 5_000) return
+    last = { path, at: Date.now() }
+    navigate(path)
+  }
   const onMessage = (event: MessageEvent) => {
     const data = event.data as Partial<NavigateMessage> | null
-    if (data?.type === NAVIGATE_MESSAGE) navigate(safeAppPath(data.url))
+    if (data?.type !== NAVIGATE_MESSAGE) return
+    void clearPendingNav().catch(() => undefined)
+    go(data.url)
+  }
+  const checkPending = () => {
+    if (document.visibilityState !== 'visible') return
+    void takePendingNav()
+      .then((url) => {
+        if (url) go(url)
+      })
+      .catch(() => undefined)
   }
   navigator.serviceWorker.addEventListener('message', onMessage)
-  return () => navigator.serviceWorker.removeEventListener('message', onMessage)
+  document.addEventListener('visibilitychange', checkPending)
+  // 알림을 눌러 앱이 새로 떴을 때
+  checkPending()
+  return () => {
+    navigator.serviceWorker.removeEventListener('message', onMessage)
+    document.removeEventListener('visibilitychange', checkPending)
+  }
 }
 
 /** 서비스워커가 켜질 때까지(installing → activated). 이미 켜진 것이 있으면 바로 */

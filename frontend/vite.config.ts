@@ -27,6 +27,8 @@ export default defineConfig({
         description: '운동 기록을 분석해 부족한 부위를 찾아주는 앱',
         lang: 'ko',
         start_url: '/',
+        // 기본값도 '/'지만 적어 둔다 — 안드로이드는 알림을 눌러 앱을 열 때 이 값이 없으면 브라우저로 여는 사례가 있다
+        scope: '/',
         display: 'standalone',
         background_color: '#f3f7fd',
         theme_color: '#f3f7fd',

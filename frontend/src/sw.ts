@@ -13,6 +13,7 @@
  * 빌드는 vite-plugin-pwa가 따로 해서 `/sw.js`로 내놓는다(vite.config.ts).
  */
 
+import { savePendingNav } from './app/pendingNav'
 import { NAVIGATE_MESSAGE, safeAppPath } from './app/pushProtocol'
 import type { NavigateMessage } from './app/pushProtocol'
 
@@ -60,17 +61,22 @@ self.addEventListener('notificationclick', (event) => {
 })
 
 /**
- * 열린 앱 창이 있으면 앞으로 가져와 그 안에서 옮기고, 없으면 새로 연다.
+ * 열린 앱 창이 있으면 그 안에서 옮기고 앞으로 가져오고, 없으면 새로 연다.
  *
  * 열린 창을 새로 불러오지 않는 이유: 로그인 상태(액세스 토큰)가 메모리에 있어 새로 불러오면
  * 재발급부터 다시 한다. 화면의 라우터가 옮기면 그대로다.
+ *
+ * 1. 갈 곳을 먼저 적어 둔다(`pendingNav`) — 안드로이드에서 브라우저가 앱을 처음 화면으로 새로 띄우면 아래 메시지는
+ *    사라진다(2026-11-28 실제 휴대폰에서 홈이 열림). 새로 뜬 화면이 이 기록을 읽어 옮긴다.
+ * 2. 메시지를 앞으로 가져오기보다 먼저 보낸다 — 가져오기가 실패해도(누르지 않은 상황 등) 살아 있는 창은 옮겨진다.
  */
 async function open(url: string) {
+  await savePendingNav(url).catch(() => undefined)
   const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
   const client = windows.find((c) => new URL(c.url).origin === self.location.origin)
   if (client) {
-    await client.focus()
     client.postMessage({ type: NAVIGATE_MESSAGE, url } satisfies NavigateMessage)
+    await client.focus().catch(() => undefined)
     return
   }
   await self.clients.openWindow(url)
