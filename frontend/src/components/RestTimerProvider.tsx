@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { RestTimerContext } from './rest-timer-context'
 import type { RestOrigin } from './rest-timer-context'
 import { alertRestEnd, getRestAlert, holdSound, keepScreenOn, primeSound, sleepSound } from '../app/restAlert'
+import { clearRestNotification, showRestDone, showResting } from '../app/restNotification'
 
 interface Running {
   /** 끝나는 시각(ms). 남은 시간은 볼 때마다 지금과의 차로 계산한다 */
@@ -52,6 +53,7 @@ function save(running: Running | null) {
  * 새로고침에도 이어지게 이 탭에만 끝나는 시각을 남긴다.
  *
  * <p>끝나면 소리·진동으로 알리고, 쉬는 동안은 화면이 저절로 꺼지지 않게 잡아 둔다(`app/restAlert`).
+ * 켜 두었으면 쉬는 동안 앱을 벗어날 때 상단바 알림을 띄우고 끝나면 바꾼다(`app/restNotification`).
  */
 export function RestTimerProvider({ userId, children }: { userId: number | null; children: ReactNode }) {
   const [running, setRunning] = useState<Running | null>(load)
@@ -74,6 +76,10 @@ export function RestTimerProvider({ userId, children }: { userId: number | null;
         setDone(own)
         setDoneOrigin(running.origin)
         if (own && document.visibilityState === 'visible' && current - running.endsAt < LATE_MS) alertRestEnd()
+        // 앱 밖이면 "휴식 중" 알림을 "휴식 끝"으로 바꾼다. 늦게 알았어도 바꾼다 — 끝난 시각이 지난 "휴식 중"이 남는 것보다 낫다
+        if (own && document.visibilityState === 'hidden' && getRestAlert().notify) {
+          void showRestDone(running.origin).catch(() => undefined)
+        }
       } else {
         setNow(current)
       }
@@ -88,6 +94,20 @@ export function RestTimerProvider({ userId, children }: { userId: number | null;
       window.clearTimeout(end)
       document.removeEventListener('visibilitychange', tick)
     }
+  }, [running, userId])
+
+  // 앱 밖에서도 휴식 알림 — 쉬는 중에 앱을 벗어나면 띄우고, 돌아오면 지운다(끝난 뒤 남은 "휴식 끝"도)
+  useEffect(() => {
+    const mine = running !== null && running.userId === userId ? running : null
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void clearRestNotification().catch(() => undefined)
+      } else if (mine && getRestAlert().notify) {
+        void showResting(mine.endsAt, mine.origin).catch(() => undefined)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [running, userId])
 
   // 쉬는 동안만 화면을 켜 두고 소리 장치를 깨워 둔다. 남은 시간을 ±30초 해도 놓았다 잡지 않게 쉬는지 여부에만 묶는다
