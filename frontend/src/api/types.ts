@@ -174,6 +174,8 @@ export interface SetInGroup {
   reps: number | null
   durationSec: number | null
   isWarmup: boolean
+  /** 실패 세트의 목표 횟수(V21). reps는 해낸 횟수. 메인·워밍업은 null */
+  targetReps: number | null
   recordedAt: string
 }
 
@@ -224,6 +226,8 @@ export interface WorkoutSet {
   reps: number | null
   durationSec: number | null
   isWarmup: boolean
+  /** 실패 세트의 목표 횟수(V21). reps는 해낸 횟수. 메인·워밍업은 null */
+  targetReps: number | null
   recordedAt: string
 }
 
@@ -245,6 +249,8 @@ export interface CreateSetRequest {
   reps?: number | null
   durationSec?: number | null
   isWarmup?: boolean
+  /** 실패 세트의 목표 횟수. 횟수 종목·워밍업 아님·해낸 횟수(reps)보다 클 때만 */
+  targetReps?: number | null
   setNo?: number | null
 }
 
@@ -254,6 +260,8 @@ export interface UpdateSetRequest {
   reps?: number
   durationSec?: number
   isWarmup?: boolean
+  /** 실패 세트의 목표 횟수. 0이면 실패를 지운다(메인 세트로). 워밍업이 되면 서버가 저절로 지운다 */
+  targetReps?: number
 }
 
 /**
@@ -300,6 +308,8 @@ export interface LastPerformance {
     reps: number | null
     durationSec: number | null
     isWarmup: boolean
+    /** 실패 세트의 목표 횟수(V21). reps는 해낸 횟수. 메인·워밍업은 null */
+    targetReps: number | null
   }[]
 }
 
@@ -343,6 +353,8 @@ export interface SessionIntensity {
       reps: number | null
       durationSec: number | null
       isWarmup: boolean
+      /** 실패 세트의 목표 횟수(V21). reps는 해낸 횟수. 메인·워밍업은 null */
+      targetReps: number | null
       intensityPct: number | null
     }[]
   }[]
@@ -619,6 +631,8 @@ export interface MemberSession extends CheerState {
       reps: number | null
       durationSec: number | null
       isWarmup: boolean
+      /** 실패 세트의 목표 횟수(V21). reps는 해낸 횟수. 메인·워밍업은 null */
+      targetReps: number | null
     }[]
   }[]
 }
@@ -756,6 +770,8 @@ export interface ImportSet {
   weightKg: number | null
   reps: number | null
   durationSec: number | null
+  /** 실패 세트(`실패 35kg 5/10회`)의 목표 횟수. 그 밖에는 null */
+  targetReps: number | null
 }
 
 export interface ImportExerciseBrief {

@@ -129,7 +129,7 @@ public class StatsService {
                     .sorted(Comparator.comparing(WorkoutSet::getSetNo))
                     .map(set -> new IntensitySet(
                             set.getSetNo(), set.getWeightKg(), set.getReps(), set.getDurationSec(),
-                            set.isWarmup(), OneRepMax.intensityPercent(set.getWeightKg(), oneRm)))
+                            set.isWarmup(), set.getTargetReps(), OneRepMax.intensityPercent(set.getWeightKg(), oneRm)))
                     .toList();
 
             result.add(new ExerciseIntensity(exerciseId,

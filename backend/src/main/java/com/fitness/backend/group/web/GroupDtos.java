@@ -164,6 +164,7 @@ public final class GroupDtos {
                             BigDecimal weightKg,
                             Short reps,
                             Integer durationSec,
-                            boolean isWarmup) {
+                            boolean isWarmup,
+                            Short targetReps) {
     }
 }

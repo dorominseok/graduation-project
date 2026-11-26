@@ -35,3 +35,14 @@
 .warmup {
   opacity: 0.55;
 }
+
+/* 실패 세트 — 기록 화면처럼 빨갛게, 횟수는 "9/10" */
+.fail .label,
+.fail .value:last-child {
+  color: var(--danger);
+}
+
+.failOf {
+  font-size: var(--font-xs);
+  opacity: 0.85;
+}

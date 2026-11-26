@@ -155,8 +155,8 @@ class ImportApiTest {
     }
 
     @Test
-    @DisplayName("실제 일지(2026-11-20) — 짝 표로 머신 숄더프레스, 실패 세트는 해낸 횟수의 본세트로 들어간다")
-    void failureSetSavedAsWorkingSet() throws Exception {
+    @DisplayName("실제 일지(2026-11-20) — 짝 표로 머신 숄더프레스, 실패 세트는 실패 세트(해낸 5회·목표 10회)로 들어간다")
+    void failureSetSavedAsFailSet() throws Exception {
         LocalDate day = today.minusDays(1);
         String text = day + " 바디캘린더 473번째 운동 일지\n\n어깨1\n\n자유 운동 1분 3세트 0.8톤\n\n"
                 + "숄더 프레스: 앉아서, 핀 머신\n1세트 35kg 7회\n2세트 35kg 10회\n실패 35kg 5/10회\n";
@@ -167,6 +167,8 @@ class ImportApiTest {
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         assertThat((List<String>) JsonPath.read(previewBody, "$.days[0].exercises[0].sets[*].kind"))
                 .containsExactly("SET", "SET", "FAIL");
+        assertThat((List<Integer>) JsonPath.read(previewBody, "$.days[0].exercises[0].sets[*].targetReps"))
+                .containsExactly(null, null, 10);
 
         String saved = save(me, requestFromPreview(previewBody, source -> {
             throw new AssertionError("미등록 운동이 없어야 한다: " + source);
@@ -178,6 +180,8 @@ class ImportApiTest {
         assertThat((List<Integer>) JsonPath.read(body, "$.exercises[0].sets[*].reps")).containsExactly(7, 10, 5);
         assertThat((List<Boolean>) JsonPath.read(body, "$.exercises[0].sets[*].isWarmup"))
                 .containsExactly(false, false, false);
+        assertThat((List<Integer>) JsonPath.read(body, "$.exercises[0].sets[*].targetReps"))
+                .containsExactly(null, null, 10);
     }
 
     @Test

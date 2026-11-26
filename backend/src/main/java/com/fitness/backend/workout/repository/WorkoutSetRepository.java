@@ -31,9 +31,9 @@ public interface WorkoutSetRepository extends JpaRepository<WorkoutSet, Long> {
     @Modifying
     @Query(value = """
             insert into workout_sets (session_id, exercise_id, set_no, weight_kg, reps, duration_sec,
-                                      is_warmup, recorded_at, client_set_id)
+                                      is_warmup, target_reps, recorded_at, client_set_id)
             values (:sessionId, :exerciseId, :setNo, cast(:weightKg as numeric), cast(:reps as smallint),
-                    cast(:durationSec as integer), :isWarmup, :recordedAt, :clientSetId)
+                    cast(:durationSec as integer), :isWarmup, cast(:targetReps as smallint), :recordedAt, :clientSetId)
             on conflict (session_id, client_set_id) do nothing
             """, nativeQuery = true)
     int insertIfAbsent(@Param("sessionId") Long sessionId,
@@ -43,6 +43,7 @@ public interface WorkoutSetRepository extends JpaRepository<WorkoutSet, Long> {
                        @Param("reps") Short reps,
                        @Param("durationSec") Integer durationSec,
                        @Param("isWarmup") boolean isWarmup,
+                       @Param("targetReps") Short targetReps,
                        @Param("recordedAt") OffsetDateTime recordedAt,
                        @Param("clientSetId") UUID clientSetId);
 

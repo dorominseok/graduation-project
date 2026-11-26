@@ -30,6 +30,23 @@ import styles from './session.module.css'
 /** 세트에서 숫자로 입력하는 값 */
 type Field = 'weightKg' | 'reps' | 'durationSec'
 
+/** 줄에서 고치는 값 — 실패 세트의 목표를 지우는 것(null)은 서버에 0으로 보낸다 */
+type RowChange = Partial<Pick<SetRow, 'weightKg' | 'reps' | 'durationSec' | 'isWarmup' | 'targetReps'>>
+
+/**
+ * 세트 종류(결정 기록 D-15). 숫자 칸을 눌러 고르고, 번호는 줄 위치 그대로 두고 숫자 색으로만 가른다(사용자 결정).
+ * 워밍업은 분석에서 빠지고, 실패 세트는 해낸 횟수의 본세트로 센다.
+ */
+type SetKind = 'MAIN' | 'WARMUP' | 'FAIL'
+
+const KIND_LABEL: Record<SetKind, string> = { MAIN: '메인 세트', WARMUP: '워밍업 세트', FAIL: '실패 세트' }
+const KIND_COLOR: Record<SetKind, string> = { MAIN: '', WARMUP: styles.kindWarmup, FAIL: styles.kindFail }
+
+function kindOf(row: SetRow): SetKind {
+  if (row.isWarmup) return 'WARMUP'
+  return row.targetReps != null ? 'FAIL' : 'MAIN'
+}
+
 const FIELD_LABEL = { weightKg: '중량', reps: '횟수', durationSec: '시간' } as const
 const FIELD_UNIT = { weightKg: 'kg', reps: '회', durationSec: '초' } as const
 
@@ -120,6 +137,8 @@ export function SessionScreen() {
 
   // 펼친 세트와 방금 저장된 세트. 둘 다 clientSetId로 가리킨다.
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  /** 세트 종류 메뉴가 열린 줄 */
+  const [kindMenuId, setKindMenuId] = useState<string | null>(null)
   const [flashId, setFlashId] = useState<string | null>(null)
 
   // 휴식 타이머. 종목 상세를 보러 가도 이어지게 화면 밖(RestTimerProvider)에 있다
@@ -343,7 +362,7 @@ export function SessionScreen() {
   const sendPatch = (
     targetSessionId: number,
     row: SetRow,
-    body: { weightKg?: number; reps?: number; durationSec?: number; isWarmup?: boolean },
+    body: { weightKg?: number; reps?: number; durationSec?: number; isWarmup?: boolean; targetReps?: number },
     revert: (current: SetRow) => Partial<SetRow>,
     affectsStats: boolean,
   ) => {
@@ -371,18 +390,21 @@ export function SessionScreen() {
 
   /**
    * 쉬고 나서 할 세트. 이 종목에 체크 안 한 줄이 남았으면 이 종목, 다 했으면 목록에서 다음 종목이고,
-   * 뒤에 없으면 앞쪽에 남겨 둔 종목이다. 남은 세트가 없으면 null.
+   * 뒤에 없으면 앞쪽에 남겨 둔 종목이다. 남은 세트가 없으면 null. 번호는 화면의 숫자(줄 위치)와 같다.
    */
   const nextSet = (cardIndex: number, rowIndex: number): { card: ExerciseCard; setNumber: number } | null => {
-    const hasLeft = (card: ExerciseCard, skip: number | null) =>
-      card.rows.some((row, index) => index !== skip && row.savedId === null)
-    const doneWorking = (card: ExerciseCard) => card.rows.filter((row) => !row.isWarmup && row.savedId !== null).length
+    // 방금 체크한 줄은 아직 저장 전 상태라 건너뛴다
+    const firstLeft = (card: ExerciseCard, skip: number | null) =>
+      card.rows.findIndex((row, index) => index !== skip && row.savedId === null)
     const current = cards[cardIndex]
-    // 방금 체크한 줄은 아직 저장 전 상태라 직접 더한다
-    if (hasLeft(current, rowIndex)) return { card: current, setNumber: doneWorking(current) + 2 }
+    const here = firstLeft(current, rowIndex)
+    if (here >= 0) return { card: current, setNumber: here + 1 }
     const order = [...cards.keys()].slice(cardIndex + 1).concat([...cards.keys()].slice(0, cardIndex))
-    const found = order.find((index) => hasLeft(cards[index], null))
-    return found === undefined ? null : { card: cards[found], setNumber: doneWorking(cards[found]) + 1 }
+    for (const index of order) {
+      const at = firstLeft(cards[index], null)
+      if (at >= 0) return { card: cards[index], setNumber: at + 1 }
+    }
+    return null
   }
 
   const toggleSaved = async (cardIndex: number, rowIndex: number) => {
@@ -428,6 +450,7 @@ export function SessionScreen() {
         reps: row.reps,
         durationSec: row.durationSec,
         isWarmup: row.isWarmup,
+        targetReps: row.isWarmup ? null : row.targetReps,
       })
       updateRowById(row.clientSetId, () => ({ savedId: saved.id }))
       bumpStats()
@@ -453,38 +476,56 @@ export function SessionScreen() {
   }
 
   /**
-   * 워밍업 표시. 워밍업 세트는 분석의 세트 집계에서 빠진다 — 준비 세트까지 세면 부족한 부위가
-   * 충분한 것으로 보인다.
-   */
-  const toggleWarmup = (cardIndex: number, rowIndex: number) => {
-    const row = cards[cardIndex].rows[rowIndex]
-    const next = !row.isWarmup
-    updateRow(cardIndex, rowIndex, { isWarmup: next })
-
-    // 이미 저장된 세트면 서버 값도 맞춘다. 실패하면 그 뒤로 다시 바꾸지 않았을 때만 되돌린다
-    if (session) {
-      sendPatch(session.id, row, { isWarmup: next }, (current) => (current.isWarmup === next ? { isWarmup: !next } : {}), false)
-    }
-  }
-
-  /**
-   * 값을 고친다. 이미 저장된 세트면 서버 값까지 맞춘다 — 여러 값을 같이 고칠 때(일괄 수정)도 요청은 한 번이다.
+   * 줄의 값을 고친다. 이미 저장된 세트면 서버 값까지 맞춘다 — 여러 값을 같이 고칠 때(일괄 수정, 종류 바꾸기)도
+   * 요청은 한 번이다.
    *
    * <p>실패하면 고치기 전 값으로 되돌리되, 그 뒤로 사용자가 다시 고친 칸은 건드리지 않는다.
    */
-  const patchValues = (cardIndex: number, rowIndex: number, values: Partial<Record<Field, number>>) => {
+  const patchRow = (cardIndex: number, rowIndex: number, change: RowChange) => {
     const row = cards[cardIndex].rows[rowIndex]
-    const fields = Object.keys(values) as Field[]
-    updateRow(cardIndex, rowIndex, values)
+    const keys = Object.keys(change) as (keyof RowChange)[]
+    updateRow(cardIndex, rowIndex, change)
     if (!session) return
+    const body = Object.fromEntries(
+      keys.map((key) => [key, key === 'targetReps' ? (change.targetReps ?? 0) : change[key]]),
+    ) as Parameters<typeof sendPatch>[2]
     sendPatch(
       session.id,
       row,
-      values,
-      (current) => Object.fromEntries(fields.filter((f) => current[f] === values[f]).map((f) => [f, row[f]])),
+      body,
+      (current) => Object.fromEntries(keys.filter((key) => current[key] === change[key]).map((key) => [key, row[key]])),
       true,
     )
   }
+
+  const patchValues = (cardIndex: number, rowIndex: number, values: Partial<Record<Field, number>>) =>
+    patchRow(cardIndex, rowIndex, values)
+
+  /**
+   * 세트 종류를 바꾼다(숫자 칸 메뉴). 실패로 바꾸면 지금 횟수를 목표로 두고 해낸 횟수는 하나 적게 미리 채운다 —
+   * 고쳐 쓰면 된다. 메인으로 돌리면 해낸 횟수는 그대로 둔다.
+   */
+  const changeKind = (cardIndex: number, rowIndex: number, kind: SetKind) => {
+    const row = cards[cardIndex].rows[rowIndex]
+    setKindMenuId(null)
+    if (kind === kindOf(row)) return
+    if (kind === 'MAIN') patchRow(cardIndex, rowIndex, { isWarmup: false, targetReps: null })
+    else if (kind === 'WARMUP') patchRow(cardIndex, rowIndex, { isWarmup: true, targetReps: null })
+    else {
+      const target = Math.max(2, row.reps ?? 0)
+      patchRow(cardIndex, rowIndex, { isWarmup: false, targetReps: target, reps: target - 1 })
+    }
+  }
+
+  /** 실패 세트의 목표. 해낸 횟수보다 커야 해서 그 아래로는 내리지 않는다 */
+  const patchTarget = (cardIndex: number, rowIndex: number, value: number) => {
+    const row = cards[cardIndex].rows[rowIndex]
+    patchRow(cardIndex, rowIndex, { targetReps: Math.max((row.reps ?? 0) + 1, 2, value) })
+  }
+
+  /** 실패 세트의 해낸 횟수는 목표보다 적게 — 목표에 닿으면 실패가 아니다 */
+  const clampField = (row: SetRow, field: Field, value: number) =>
+    field === 'reps' && row.targetReps != null ? Math.min(value, row.targetReps - 1) : value
 
   const patchValue = (cardIndex: number, rowIndex: number, field: Field, value: number) =>
     patchValues(cardIndex, rowIndex, { [field]: value })
@@ -728,12 +769,10 @@ export function SessionScreen() {
         ? (intensity.exercises.find((e) => e.exerciseId === opened.exerciseId)?.estimatedOneRm ?? null)
         : null
 
-    // 워밍업은 세트 번호에서 빠진다. 본세트만 1, 2, 3으로 센다.
-    const badges = opened.rows.map((row, index) =>
-      row.isWarmup
-        ? 'W'
-        : String(opened.rows.slice(0, index + 1).filter((it) => !it.isWarmup).length),
-    )
+    // 세트 번호는 줄 위치 그대로다. 워밍업·실패는 숫자 색으로 가른다(사용자 결정, 결정 기록 D-15)
+    const badges = opened.rows.map((_, index) => String(index + 1))
+    // 시간 종목은 횟수가 없어 실패 세트가 없다
+    const kindChoices: SetKind[] = fields.includes('reps') ? ['MAIN', 'WARMUP', 'FAIL'] : ['MAIN', 'WARMUP']
 
     // 넘긴 쪽에서 새 종목이 밀려 들어온다. key가 바뀌어야 애니메이션이 다시 돈다
     const slideClass = slide === 'next' ? styles.slideNext : slide === 'prev' ? styles.slidePrev : ''
@@ -854,6 +893,7 @@ export function SessionScreen() {
               {opened.rows.map((row, rowIndex) => {
                 const done = row.savedId !== null
                 const expanded = expandedId === row.clientSetId
+                const kind = kindOf(row)
                 return (
                   <div
                     key={row.clientSetId}
@@ -902,14 +942,50 @@ export function SessionScreen() {
                           )}
                         </span>
 
+                        {/* 숫자 칸을 누르면 세트 종류 메뉴. 줄을 누르는 것(완료 체크)과 다른 일이라 위로 올리지 않는다 */}
                         <span
-                          className={[
-                            styles.numPill,
-                            done ? styles.numPillDone : '',
-                            row.isWarmup ? styles.numPillWarmup : '',
-                          ].join(' ')}
+                          className={styles.kindWrap}
+                          role="presentation"
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
                         >
-                          {badges[rowIndex]}
+                          <button
+                            type="button"
+                            className={[styles.numPill, done ? styles.numPillDone : '', KIND_COLOR[kind]].join(' ')}
+                            aria-haspopup="menu"
+                            aria-expanded={kindMenuId === row.clientSetId}
+                            aria-label={`${badges[rowIndex]}세트, ${KIND_LABEL[kind]} — 종류 바꾸기`}
+                            onClick={() => setKindMenuId(kindMenuId === row.clientSetId ? null : row.clientSetId)}
+                          >
+                            {badges[rowIndex]}
+                          </button>
+                          {kindMenuId === row.clientSetId && (
+                            <>
+                              <button
+                                type="button"
+                                className={styles.kindBackdrop}
+                                aria-label="세트 종류 닫기"
+                                onClick={() => setKindMenuId(null)}
+                              />
+                              <div className={styles.kindMenu} role="menu">
+                                {kindChoices.map((choice) => (
+                                  <button
+                                    key={choice}
+                                    type="button"
+                                    role="menuitemradio"
+                                    aria-checked={kind === choice}
+                                    className={`${styles.kindItem} ${kind === choice ? styles.kindItemOn : ''}`}
+                                    onClick={() => changeKind(openedIndex, rowIndex, choice)}
+                                  >
+                                    <span className={`${styles.kindMark} ${KIND_COLOR[choice]}`} aria-hidden="true">
+                                      {badges[rowIndex]}
+                                    </span>
+                                    {KIND_LABEL[choice]}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          )}
                         </span>
 
                         <span className={styles.values}>
@@ -920,16 +996,24 @@ export function SessionScreen() {
                                   styles.bigVal,
                                   done ? styles.bigValDone : '',
                                   row[field] == null ? styles.bigValEmpty : '',
+                                  field === 'reps' && kind === 'FAIL' ? styles.failVal : '',
                                 ].join(' ')}
                               >
-                                {row[field] == null
-                                  ? '–'
-                                  : `${
+                                {row[field] == null ? (
+                                  '–'
+                                ) : field === 'reps' && kind === 'FAIL' ? (
+                                  <>
+                                    {row.reps}
+                                    <span className={styles.failOf}>/{row.targetReps}</span>
+                                  </>
+                                ) : (
+                                  `${
                                       field === 'weightKg' &&
                                       opened.measureType === 'WEIGHTED_BODYWEIGHT'
                                         ? '+'
                                         : ''
-                                    }${trimNumber(row[field] as number)}`}
+                                    }${trimNumber(row[field] as number)}`
+                                )}
                               </span>
                               <span className={styles.unit}>{FIELD_UNIT[field]}</span>
                             </span>
@@ -978,13 +1062,17 @@ export function SessionScreen() {
                     {expanded && (
                       <div className={styles.panel}>
                         <div className={styles.fieldRow}>
-                          <span className={styles.fieldLabel}>{FIELD_LABEL[primaryField]}</span>
+                          <span className={styles.fieldLabel}>
+                            {FIELD_LABEL[primaryField]}
+                          </span>
                           {/* 누르면 휴대폰의 기본 키보드가 뜬다. 중량은 소수점 있는 숫자 키보드 */}
                           <NumberField
                             className={styles.fieldValue}
                             value={row[primaryField]}
                             allowDecimal={primaryField === 'weightKg'}
-                            onCommit={(value) => patchValue(openedIndex, rowIndex, primaryField, value)}
+                            onCommit={(value) =>
+                              patchValue(openedIndex, rowIndex, primaryField, clampField(row, primaryField, value))
+                            }
                             aria-label={FIELD_LABEL[primaryField]}
                           />
                           <span className={styles.fieldUnit}>{FIELD_UNIT[primaryField]}</span>
@@ -1010,7 +1098,7 @@ export function SessionScreen() {
                                 openedIndex,
                                 rowIndex,
                                 primaryField,
-                                (row[primaryField] ?? 0) + step,
+                                clampField(row, primaryField, (row[primaryField] ?? 0) + step),
                               )
                             }
                           >
@@ -1024,7 +1112,7 @@ export function SessionScreen() {
                             <NumberField
                               className={styles.fieldValue}
                               value={row.reps}
-                              onCommit={(value) => patchValue(openedIndex, rowIndex, 'reps', value)}
+                              onCommit={(value) => patchValue(openedIndex, rowIndex, 'reps', clampField(row, 'reps', value))}
                               aria-label="횟수"
                             />
                             <span className={styles.fieldUnit}>회</span>
@@ -1046,8 +1134,35 @@ export function SessionScreen() {
                               type="button"
                               className={styles.pillBtn}
                               onClick={() =>
-                                patchValue(openedIndex, rowIndex, 'reps', (row.reps ?? 0) + 1)
+                                patchValue(openedIndex, rowIndex, 'reps', clampField(row, 'reps', (row.reps ?? 0) + 1))
                               }
+                            >
+                              +1
+                            </button>
+                          </div>
+                        )}
+
+                        {kind === 'FAIL' && (
+                          <div className={styles.fieldRow}>
+                            <span className={styles.fieldLabel}>목표</span>
+                            <NumberField
+                              className={styles.fieldValue}
+                              value={row.targetReps}
+                              onCommit={(value) => patchTarget(openedIndex, rowIndex, value)}
+                              aria-label="목표 횟수"
+                            />
+                            <span className={styles.fieldUnit}>회</span>
+                            <button
+                              type="button"
+                              className={styles.pillBtn}
+                              onClick={() => patchTarget(openedIndex, rowIndex, (row.targetReps ?? 0) - 1)}
+                            >
+                              −1
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.pillBtn}
+                              onClick={() => patchTarget(openedIndex, rowIndex, (row.targetReps ?? 0) + 1)}
                             >
                               +1
                             </button>
@@ -1083,22 +1198,6 @@ export function SessionScreen() {
                             }
                           >
                             +30
-                          </button>
-                        </div>
-
-                        <div className={styles.fieldRow}>
-                          <span className={styles.fieldLabel}>분석</span>
-                          <span className={styles.warmupHint}>
-                            {row.isWarmup ? '볼륨 집계에서 제외됨' : '볼륨 집계에 포함'}
-                          </span>
-                          <button
-                            type="button"
-                            className={`${styles.warmupPill} ${
-                              row.isWarmup ? styles.warmupPillOn : ''
-                            }`}
-                            onClick={() => toggleWarmup(openedIndex, rowIndex)}
-                          >
-                            {row.isWarmup ? '워밍업 해제' : '워밍업 설정'}
                           </button>
                         </div>
                       </div>
@@ -1223,11 +1322,11 @@ export function SessionScreen() {
               opened.rows.forEach((row, rowIndex) => {
                 if (!batchPicked[row.clientSetId]) return
                 // 세트마다 요청 한 번. 중량과 횟수를 따로 보내면 서버에서 한쪽이 다른 쪽을 덮어쓴다
-                patchValues(
-                  openedIndex,
-                  rowIndex,
-                  hasReps ? { [primaryField]: batchPrimary, reps: batchReps } : { [primaryField]: batchPrimary },
-                )
+                const values = hasReps ? { [primaryField]: batchPrimary, reps: batchReps } : { [primaryField]: batchPrimary }
+                const reps = hasReps ? batchReps : primaryField === 'reps' ? batchPrimary : null
+                // 실패 세트에 목표 이상 횟수를 넣으면 실패가 아니다 — 메인 세트로
+                const clearsFail = row.targetReps != null && reps !== null && reps >= row.targetReps
+                patchRow(openedIndex, rowIndex, clearsFail ? { ...values, targetReps: null } : values)
               })
               setBatchOpen(false)
             }}

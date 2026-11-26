@@ -70,7 +70,9 @@ public final class WorkoutDtos {
             @Max(value = Short.MAX_VALUE, message = "32767 이하여야 합니다.")
             @Min(value = 1, message = "1 이상이어야 합니다.") Integer reps,
             @Min(value = 1, message = "1 이상이어야 합니다.") Integer durationSec,
-            Boolean isWarmup) {
+            Boolean isWarmup,
+            @Max(value = Short.MAX_VALUE, message = "32767 이하여야 합니다.")
+            @Min(value = 2, message = "2 이상이어야 합니다.") Integer targetReps) {
 
         public boolean warmupOrDefault() {
             return Boolean.TRUE.equals(isWarmup);
@@ -88,12 +90,13 @@ public final class WorkoutDtos {
                               Short reps,
                               Integer durationSec,
                               boolean isWarmup,
+                              Short targetReps,
                               OffsetDateTime recordedAt) {
 
         public static SetResponse of(WorkoutSet s, String exerciseName) {
             return new SetResponse(s.getId(), s.getSessionId(), s.getClientSetId(),
                     s.getExerciseId(), exerciseName, s.getSetNo(), s.getWeightKg(),
-                    s.getReps(), s.getDurationSec(), s.isWarmup(), s.getRecordedAt());
+                    s.getReps(), s.getDurationSec(), s.isWarmup(), s.getTargetReps(), s.getRecordedAt());
         }
     }
 
@@ -117,11 +120,12 @@ public final class WorkoutDtos {
                              Short reps,
                              Integer durationSec,
                              boolean isWarmup,
+                             Short targetReps,
                              OffsetDateTime recordedAt) {
 
         public static SetInGroup of(WorkoutSet s) {
             return new SetInGroup(s.getId(), s.getClientSetId(), s.getSetNo(), s.getWeightKg(),
-                    s.getReps(), s.getDurationSec(), s.isWarmup(), s.getRecordedAt());
+                    s.getReps(), s.getDurationSec(), s.isWarmup(), s.getTargetReps(), s.getRecordedAt());
         }
     }
 
@@ -174,7 +178,7 @@ public final class WorkoutDtos {
      * 기록 방식이 꼭 받는 값이 있어야 하고, 쓰지 않는 값은 버리며, 같은 {@code clientSetId}는 한 번만.
      */
     public record ImportedSet(UUID clientSetId, Long exerciseId, BigDecimal weightKg, Integer reps,
-                              Integer durationSec, boolean warmup) {
+                              Integer durationSec, boolean warmup, Integer targetReps) {
     }
 
     /**
@@ -209,7 +213,7 @@ public final class WorkoutDtos {
      *
      * <p>여기는 {@link Optional}을 쓰지 않는다 — 중량·횟수·시간은 측정 유형이 요구하면
      * 반드시 있어야 하는 값이라 "지운다"는 선택지가 없다. {@code null}은 그대로
-     * "건드리지 않음"이다.
+     * "건드리지 않음"이다. 실패 세트의 목표 횟수({@code targetReps})만 지울 수 있어 {@code 0}을 "지움(메인 세트로)"으로 쓴다.
      */
     public record UpdateSetRequest(
             @DecimalMin(value = "0.0", message = "0 이상이어야 합니다.")
@@ -218,7 +222,9 @@ public final class WorkoutDtos {
             @Max(value = Short.MAX_VALUE, message = "32767 이하여야 합니다.")
             @Min(value = 1, message = "1 이상이어야 합니다.") Integer reps,
             @Min(value = 1, message = "1 이상이어야 합니다.") Integer durationSec,
-            Boolean isWarmup) {
+            Boolean isWarmup,
+            @Max(value = Short.MAX_VALUE, message = "32767 이하여야 합니다.")
+            @Min(value = 0, message = "0 이상이어야 합니다.") Integer targetReps) {
     }
 
     /** 히스토리 목록의 종목 참조. "최근 사용" 탭과 종목 상세 이동이 {@code id}를 쓴다 */
@@ -263,11 +269,12 @@ public final class WorkoutDtos {
                                      BigDecimal weightKg,
                                      Short reps,
                                      Integer durationSec,
-                                     boolean isWarmup) {
+                                     boolean isWarmup,
+                                     Short targetReps) {
 
         public static LastPerformanceSet of(WorkoutSet s) {
             return new LastPerformanceSet(s.getSetNo(), s.getWeightKg(), s.getReps(),
-                    s.getDurationSec(), s.isWarmup());
+                    s.getDurationSec(), s.isWarmup(), s.getTargetReps());
         }
     }
 

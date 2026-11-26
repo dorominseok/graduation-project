@@ -58,7 +58,7 @@ class SetSaveConcurrencyTest {
                 .filter(e -> e.getMeasureType().supportsOneRm())
                 .findFirst().orElseThrow().getId();
         CreateSetRequest request = new CreateSetRequest(
-                UUID.randomUUID(), exerciseId, new BigDecimal("60.0"), 10, null, false);
+                UUID.randomUUID(), exerciseId, new BigDecimal("60.0"), 10, null, false, null);
 
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService pool = Executors.newFixedThreadPool(REQUESTS);

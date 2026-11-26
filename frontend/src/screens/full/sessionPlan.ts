@@ -18,6 +18,8 @@ export interface SetRow {
   reps: number | null
   durationSec: number | null
   isWarmup: boolean
+  /** 실패 세트의 목표 횟수(결정 기록 D-15). 있으면 실패 세트 — reps는 해낸 횟수이고 목표보다 적다 */
+  targetReps: number | null
   /**
    * 세트 사이 쉬는 시간. 서버에는 보내지 않는다 — 기록이 아니라 운동 중에만
    * 쓰는 타이머 값이고, workout_sets에 그 칸이 없다.
@@ -45,19 +47,24 @@ export function emptyRow(): SetRow {
     reps: null,
     durationSec: null,
     isWarmup: false,
+    targetReps: null,
     restSec: DEFAULT_REST_SEC,
     savedId: null,
   }
 }
 
-/** 직전 기록의 세트로 계획 행을 만든다. 저장 전이라 id는 새로 만든다 */
+/**
+ * 직전 기록의 세트로 계획 행을 만든다. 저장 전이라 id는 새로 만든다.
+ * 지난번 실패 세트는 목표 횟수의 메인 세트로 채운다 — 다시 도전하는 자리다(결정 기록 D-15).
+ */
 export function rowsFromLast(sets: LastPerformance['sets']): SetRow[] {
   return sets.map((set) => ({
     clientSetId: crypto.randomUUID(),
     weightKg: set.weightKg,
-    reps: set.reps,
+    reps: set.targetReps ?? set.reps,
     durationSec: set.durationSec,
     isWarmup: set.isWarmup,
+    targetReps: null,
     restSec: DEFAULT_REST_SEC,
     savedId: null,
   }))
@@ -86,6 +93,7 @@ export function savedCards(session: WorkoutSession): ExerciseCard[] {
       reps: set.reps,
       durationSec: set.durationSec,
       isWarmup: set.isWarmup,
+      targetReps: set.targetReps,
       restSec: DEFAULT_REST_SEC,
       savedId: set.id,
     })),
@@ -159,7 +167,15 @@ export function loadDraft(userId: number, performedOn: string): Draft | null {
     const raw = localStorage.getItem(draftKey(userId, performedOn))
     if (!raw) return null
     const draft = JSON.parse(raw) as Draft
-    return draft.savedOn === toDateString(new Date()) && Array.isArray(draft.cards) ? draft : null
+    if (draft.savedOn !== toDateString(new Date()) || !Array.isArray(draft.cards)) return null
+    // 실패 세트(2026-11-28) 전에 남긴 임시 저장에는 목표 칸이 없다
+    return {
+      ...draft,
+      cards: draft.cards.map((card) => ({
+        ...card,
+        rows: card.rows.map((row) => ({ ...row, targetReps: row.targetReps ?? null })),
+      })),
+    }
   } catch {
     return null
   }

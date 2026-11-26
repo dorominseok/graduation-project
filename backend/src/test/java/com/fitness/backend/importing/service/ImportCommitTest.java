@@ -65,7 +65,7 @@ class ImportCommitTest {
         long bench = jdbc.queryForObject("select id from exercises where owner_id is null and name_ko = '바벨 벤치프레스'",
                 Long.class);
         LocalDate today = LocalDate.now(clock);
-        ImportSet set = new ImportSet(SetKind.SET, new BigDecimal("60"), 10, null);
+        ImportSet set = new ImportSet(SetKind.SET, new BigDecimal("60"), 10, null, null);
         ImportRequest request = new ImportRequest(List.of(
                 new ImportDay(today.minusDays(2), 40, List.of(new ImportExercise("벤치 프레스: 바벨", bench, true,
                         List.of(set)))),

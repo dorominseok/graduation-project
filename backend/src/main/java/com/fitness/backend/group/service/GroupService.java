@@ -505,7 +505,7 @@ public class GroupService {
                         namesEn.get(exercise.exerciseId()), exercise.measureType(),
                         exercise.sets().stream()
                                 .map(set -> new MemberSet(set.setNo(), set.weightKg(), set.reps(),
-                                        set.durationSec(), set.isWarmup()))
+                                        set.durationSec(), set.isWarmup(), set.targetReps()))
                                 .toList()))
                 .toList();
         return new MemberSession(session.id(), session.startedAt(),

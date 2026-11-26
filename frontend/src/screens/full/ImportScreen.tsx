@@ -255,6 +255,7 @@ export function ImportScreen() {
                   reps: set.reps,
                   durationSec: set.durationSec,
                   isWarmup: set.kind === 'WARMUP',
+                  targetReps: set.kind === 'FAIL' ? set.targetReps : null,
                 }))
                 return (
                   <div key={index} className={`${group.card} ${group.exerciseCard}`}>

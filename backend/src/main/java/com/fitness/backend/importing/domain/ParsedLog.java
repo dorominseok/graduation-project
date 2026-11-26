@@ -31,6 +31,11 @@ public record ParsedLog(List<ParsedDay> days, List<String> unknownLines) {
     }
 
     /** 세트 하나. 글에 적힌 값 그대로다 — 맞춘 종목이 쓰지 않는 값은 저장할 때 버린다 */
-    public record ParsedSet(SetKind kind, BigDecimal weightKg, Integer reps, Integer durationSec) {
+    /** @param targetReps 실패 세트의 목표 횟수(`5/10회`의 10). 실패가 아니거나 목표가 없으면 null */
+    public record ParsedSet(SetKind kind, BigDecimal weightKg, Integer reps, Integer durationSec, Integer targetReps) {
+
+        public ParsedSet(SetKind kind, BigDecimal weightKg, Integer reps, Integer durationSec) {
+            this(kind, weightKg, reps, durationSec, null);
+        }
     }
 }
