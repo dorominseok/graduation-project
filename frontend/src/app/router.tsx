@@ -1,11 +1,10 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { Navigate, createBrowserRouter } from 'react-router-dom'
 import { AppShell } from './AppShell'
 import { FullScreenLayout } from './FullScreenLayout'
 import { paths } from './paths'
 import { RequireAuth } from '../auth'
 
 import { LoginScreen } from '../screens/auth/LoginScreen'
-import { SignupScreen } from '../screens/auth/SignupScreen'
 
 import { HomeScreen } from '../screens/tabs/HomeScreen'
 import { HistoryScreen } from '../screens/tabs/HistoryScreen'
@@ -40,8 +39,9 @@ export const router = createBrowserRouter([
     element: <FullScreenLayout />,
     children: [
       { path: paths.login, element: <LoginScreen /> },
-      { path: paths.signup, element: <SignupScreen /> },
-      // 개인정보처리방침은 가입 전에도, 구글 동의 화면에서도 열린다
+      // 가입은 구글 로그인이 그 자리에서 한다(결정 기록 D-21). 예전 주소로 오면 로그인으로
+      { path: paths.signup, element: <Navigate to={paths.login} replace /> },
+      // 개인정보처리방침은 로그인 전에도, 구글 동의 화면에서도 열린다
       { path: paths.privacy, element: <PrivacyScreen /> },
     ],
   },
