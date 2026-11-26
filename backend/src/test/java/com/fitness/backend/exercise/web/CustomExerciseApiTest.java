@@ -378,9 +378,9 @@ class CustomExerciseApiTest {
         return "Bearer " + authService.signUp(email, "hunter2hunter2", "민석").tokens().accessToken();
     }
 
-    private static String body(String name, String category, String legSide, String equipment, String measureType,
+    private static String body(String name, String category, String side, String equipment, String measureType,
                                String groupName) {
-        return "{\"nameKo\":" + quote(name) + ",\"category\":" + quote(category) + ",\"legSide\":" + quote(legSide)
+        return "{\"nameKo\":" + quote(name) + ",\"category\":" + quote(category) + ",\"side\":" + quote(side)
                 + ",\"equipment\":" + quote(equipment) + ",\"measureType\":" + quote(measureType)
                 + ",\"groupName\":" + quote(groupName) + "}";
     }

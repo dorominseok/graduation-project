@@ -27,11 +27,15 @@ public enum MuscleGroup {
     POSTERIOR("뒤허벅지·둔근", true),
     CORE("코어", true),
 
-    /** 아래 셋은 세트 수만 내려주고 부족 판정은 하지 않는다(분석 2.3). 루틴 후보·균형 판정에도 들어가지 않는다 */
+    /** 아래 넷은 세트 수만 내려주고 부족 판정은 하지 않는다(분석 2.3). 루틴 후보·균형 판정에도 들어가지 않는다 */
     CALVES("종아리", false),
     FOREARMS("전완", false),
-    /** 2026-11-20 사용자 요청. 회복 지도 그림에는 목 자리가 없어 회복 상태에서도 뺀다(RecoveryService) */
-    NECK("목", false);
+    /**
+     * 목(2026-11-20 사용자 요청)은 회복 지도의 앞·뒤 그림에 따로 칠하려고 둘로 나눈다(2026-11-27).
+     * 옆으로 기울이기·돌리기도 앞에 센다 — 주로 쓰는 흉쇄유돌근이 앞 그림의 목 영역이다.
+     */
+    NECK_FRONT("목 앞", false),
+    NECK_REAR("목 뒤", false);
 
     /** {@code primary_muscle} → 판정 부위. {@code shoulders}만 이 표에 없다 — 앞뒤를 갈라야 해서다. */
     private static final Map<String, MuscleGroup> BY_PRIMARY_MUSCLE = Map.ofEntries(
@@ -50,7 +54,8 @@ public enum MuscleGroup {
             Map.entry("abdominals", CORE),
             Map.entry("calves", CALVES),
             Map.entry("forearms", FOREARMS),
-            Map.entry("neck", NECK));
+            Map.entry("front neck", NECK_FRONT),
+            Map.entry("back neck", NECK_REAR));
 
     private static final String SHOULDERS = "shoulders";
 

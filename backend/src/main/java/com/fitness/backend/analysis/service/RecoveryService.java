@@ -69,10 +69,6 @@ public class RecoveryService {
         Map<MuscleGroup, RoutineExclusion.Excluded> excluded = RoutineExclusion.of(lastTrained, today, recoveryDays);
         List<RecoveryMuscleResponse> muscles = new ArrayList<>();
         for (MuscleGroup group : MuscleGroup.values()) {
-            // 회복 지도 그림(앞·뒤 인체)에 목 자리가 없다. 그림에 없는 부위가 목록에만 뜨면 눌러도 갈 곳이 없다
-            if (group == MuscleGroup.NECK) {
-                continue;
-            }
             LocalDate last = lastTrained.get(group);
             long sets = recentSets.getOrDefault(group, 0L);
             RecoveryState state = RecoveryEvaluation.evaluate(last, sets, today, recoveryDays, heavySets);

@@ -4,7 +4,7 @@ import { ErrorCodes, exerciseApi, isApiError } from '../../api'
 import type { BrowseCategory, CategoryCount, Equipment, Exercise, MeasureType } from '../../api'
 import styles from './customExercise.module.css'
 
-type LegSide = 'FRONT' | 'BACK'
+type Side = 'FRONT' | 'BACK'
 
 const EQUIPMENT_CHOICES: { value: Equipment; label: string }[] = [
   { value: 'BARBELL', label: '바벨' },
@@ -22,10 +22,23 @@ const MEASURE_CHOICES: { value: MeasureType; label: string }[] = [
   { value: 'TIME', label: '시간' },
 ]
 
-const LEG_SIDES: { value: LegSide; label: string }[] = [
-  { value: 'FRONT', label: '앞허벅지' },
-  { value: 'BACK', label: '뒤허벅지' },
-]
+/** 분석이 앞·뒤를 나눠 보는 부위 — 칸 하나로는 어느 쪽인지 몰라 한 번 더 고른다 */
+const SIDE_CHOICES: Partial<Record<BrowseCategory, { hint: string; choices: { value: Side; label: string }[] }>> = {
+  LEGS: {
+    hint: '하체는 분석에서 앞·뒤를 나눠 봐요',
+    choices: [
+      { value: 'FRONT', label: '앞허벅지' },
+      { value: 'BACK', label: '뒤허벅지' },
+    ],
+  },
+  NECK: {
+    hint: '목은 분석에서 앞·뒤를 나눠 봐요 (옆·돌리기는 앞)',
+    choices: [
+      { value: 'FRONT', label: '목 앞' },
+      { value: 'BACK', label: '목 뒤' },
+    ],
+  },
+}
 
 /** 기구로 고르는 기록 방식의 기본값 — 대부분 이 짝이라 한 번 덜 누른다(설계서 결정 12) */
 function measureFor(equipment: Equipment): MeasureType {
@@ -33,39 +46,41 @@ function measureFor(equipment: Equipment): MeasureType {
 }
 
 /** 저장된 칸(근육·어깨 앞뒤)을 고르는 이름으로 — 고치기 창을 값이 채워진 채 연다(설계서 4장 대응표의 거꾸로) */
-function targetOf(exercise: Exercise): { category: BrowseCategory | null; legSide: LegSide | null } {
+function targetOf(exercise: Exercise): { category: BrowseCategory | null; side: Side | null } {
   switch (exercise.primaryMuscle) {
     case 'chest':
-      return { category: 'CHEST', legSide: null }
+      return { category: 'CHEST', side: null }
     case 'lats':
     case 'middle back':
-      return { category: 'BACK', legSide: null }
+      return { category: 'BACK', side: null }
     case 'shoulders':
-      return { category: exercise.deltRegion === 'REAR' ? 'SHOULDERS_REAR' : 'SHOULDERS_FRONT', legSide: null }
+      return { category: exercise.deltRegion === 'REAR' ? 'SHOULDERS_REAR' : 'SHOULDERS_FRONT', side: null }
     case 'traps':
-      return { category: 'TRAPS', legSide: null }
+      return { category: 'TRAPS', side: null }
     case 'triceps':
-      return { category: 'TRICEPS', legSide: null }
+      return { category: 'TRICEPS', side: null }
     case 'biceps':
-      return { category: 'BICEPS', legSide: null }
+      return { category: 'BICEPS', side: null }
     case 'forearms':
-      return { category: 'FOREARMS', legSide: null }
+      return { category: 'FOREARMS', side: null }
     case 'abdominals':
-      return { category: 'ABS', legSide: null }
+      return { category: 'ABS', side: null }
     case 'lower back':
-      return { category: 'LOWER_BACK', legSide: null }
+      return { category: 'LOWER_BACK', side: null }
     case 'glutes':
-      return { category: 'GLUTES', legSide: null }
+      return { category: 'GLUTES', side: null }
     case 'quadriceps':
-      return { category: 'LEGS', legSide: 'FRONT' }
+      return { category: 'LEGS', side: 'FRONT' }
     case 'hamstrings':
-      return { category: 'LEGS', legSide: 'BACK' }
+      return { category: 'LEGS', side: 'BACK' }
     case 'calves':
-      return { category: 'CALVES', legSide: null }
-    case 'neck':
-      return { category: 'NECK', legSide: null }
+      return { category: 'CALVES', side: null }
+    case 'front neck':
+      return { category: 'NECK', side: 'FRONT' }
+    case 'back neck':
+      return { category: 'NECK', side: 'BACK' }
     default:
-      return { category: null, legSide: null }
+      return { category: null, side: null }
   }
 }
 
@@ -88,7 +103,7 @@ interface CustomExerciseFormProps {
 /**
  * 내 종목 만들기·고치기 창(「내종목_설계서」 3.3). 종목 고르기 시트 안과 종목 상세의 고치기에서 같이 쓴다.
  *
- * <p>부위는 부위 고르기 화면과 같은 13개로 고르고, 하체만 앞·뒤를 한 번 더 고른다. 아래 안내에 만든 종목이
+ * <p>부위는 부위 고르기 화면과 같은 14개로 고르고, 하체·목은 앞·뒤를 한 번 더 고른다. 아래 안내에 만든 종목이
  * 들어갈 자리를 적는다 — 계열 안에서 열었고 부위를 그대로 두면 그 계열, 아니면 그 부위의 "내 종목" 칸.
  */
 export function CustomExerciseForm({
@@ -102,11 +117,12 @@ export function CustomExerciseForm({
 }: CustomExerciseFormProps) {
   const allows = (value: MeasureType) => !allowedMeasureTypes || allowedMeasureTypes.includes(value)
   const { showToast } = useToast()
-  const initialTarget = editing ? targetOf(editing) : { category: origin.category, legSide: null }
+  const initialTarget = editing ? targetOf(editing) : { category: origin.category, side: null }
 
   const [name, setName] = useState(editing?.nameKo ?? prefill?.name ?? '')
   const [category, setCategory] = useState<BrowseCategory | null>(initialTarget.category)
-  const [legSide, setLegSide] = useState<LegSide | null>(initialTarget.legSide)
+  const [side, setSide] = useState<Side | null>(initialTarget.side)
+  const sideChoice = category === null ? undefined : SIDE_CHOICES[category]
   const [equipment, setEquipment] = useState<Equipment | null>(editing?.equipment ?? prefill?.equipment ?? null)
   const [measureType, setMeasureType] = useState<MeasureType | null>(
     editing?.measureType ?? prefill?.measureType ?? null,
@@ -120,11 +136,11 @@ export function CustomExerciseForm({
   const groupName = keepsGroup ? origin.group : null
   const landing = category === null ? null : `${labelOf(category)} › ${groupName ?? '내 종목'}`
   const movedTarget =
-    editing !== undefined && (category !== initialTarget.category || legSide !== initialTarget.legSide)
+    editing !== undefined && (category !== initialTarget.category || side !== initialTarget.side)
   const ready =
     name.trim().length > 0 &&
     category !== null &&
-    (category !== 'LEGS' || legSide !== null) &&
+    (sideChoice === undefined || side !== null) &&
     equipment !== null &&
     measureType !== null
 
@@ -144,7 +160,7 @@ export function CustomExerciseForm({
     const body = {
       nameKo: name,
       category,
-      legSide: category === 'LEGS' ? legSide : null,
+      side: sideChoice ? side : null,
       equipment,
       measureType,
       // 고치기는 계열을 그대로 둔다 — 부위를 바꾸면 계열은 버린다
@@ -200,27 +216,28 @@ export function CustomExerciseForm({
               className={`${styles.choice} ${category === item.category ? styles.choiceOn : ''}`}
               aria-pressed={category === item.category}
               onClick={() => {
+                // 하체와 목의 앞·뒤는 다른 뜻이라 부위를 바꾸면 다시 고른다
+                if (item.category !== category) setSide(null)
                 setCategory(item.category)
-                if (item.category !== 'LEGS') setLegSide(null)
               }}
             >
               {item.label}
             </button>
           ))}
         </div>
-        {category === 'LEGS' && (
+        {sideChoice && (
           <>
-            <span className={styles.subLabel}>하체는 분석에서 앞·뒤를 나눠 봐요</span>
+            <span className={styles.subLabel}>{sideChoice.hint}</span>
             <div className={styles.choices2}>
-              {LEG_SIDES.map((side) => (
+              {sideChoice.choices.map((choice) => (
                 <button
-                  key={side.value}
+                  key={choice.value}
                   type="button"
-                  className={`${styles.choice} ${legSide === side.value ? styles.choiceOn : ''}`}
-                  aria-pressed={legSide === side.value}
-                  onClick={() => setLegSide(side.value)}
+                  className={`${styles.choice} ${side === choice.value ? styles.choiceOn : ''}`}
+                  aria-pressed={side === choice.value}
+                  onClick={() => setSide(choice.value)}
                 >
-                  {side.label}
+                  {choice.label}
                 </button>
               ))}
             </div>

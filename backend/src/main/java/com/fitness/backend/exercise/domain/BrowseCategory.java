@@ -35,8 +35,11 @@ public enum BrowseCategory {
     // 내전근(이너타이 머신·케이블 힙 어덕션)은 허벅지 안쪽이라 하체에 둔다. 판정도 앞허벅지로 센다
     LEGS("하체", "quadriceps", "hamstrings", "adductors"),
     CALVES("종아리", "calves"),
-    /** 2026-11-20 사용자 요청. 분석에서는 전완·종아리처럼 세트 수만 보이고 약점 판정·루틴에는 들어가지 않는다 */
-    NECK("목", "neck");
+    /**
+     * 2026-11-20 사용자 요청. 분석에서는 전완·종아리처럼 세트 수만 보이고 약점 판정·루틴에는 들어가지 않는다.
+     * 분석은 앞·뒤를 나눠 보지만(회복 지도) 찾을 때는 "목" 하나다 — 하체와 같다.
+     */
+    NECK("목", "front neck", "back neck");
 
     private final String label;
     private final DeltRegion deltRegion;

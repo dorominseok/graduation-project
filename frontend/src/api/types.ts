@@ -142,8 +142,8 @@ export interface Exercise {
 export interface CustomExerciseRequest {
   nameKo: string
   category: BrowseCategory
-  /** 하체일 때만, 그때는 필수 — 분석이 앞허벅지·뒤허벅지를 나눠 본다 */
-  legSide: 'FRONT' | 'BACK' | null
+  /** 하체·목일 때만, 그때는 필수 — 분석이 앞허벅지·뒤허벅지, 목 앞·뒤를 나눠 본다 */
+  side: 'FRONT' | 'BACK' | null
   equipment: Equipment
   measureType: MeasureType
   /** 계열 안에서 만들 때 그 계열. 없으면 그 부위의 "내 종목" 칸 */
@@ -370,7 +370,8 @@ export type MuscleGroupKey =
   | 'CORE'
   | 'CALVES'
   | 'FOREARMS'
-  | 'NECK'
+  | 'NECK_FRONT'
+  | 'NECK_REAR'
 
 /**
  * 부위별 볼륨·부족 판정.
