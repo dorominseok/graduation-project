@@ -20,6 +20,9 @@ const DAYS: { key: DayOfWeek; label: string }[] = [
   { key: 'SUNDAY', label: '일' },
 ]
 
+/** 주간 요약 칸을 보일지 — 다시 켤 때 이 값과 서버의 SUMMARY_PAUSED를 같이 바꾼다 */
+const SHOW_SUMMARY = false
+
 /** 고를 수 있는 시각 — 하루 내내 30분 단위(서버도 같은 규칙). 밤 10시~아침 8시 막기는 2026-11-28에 뺐다 */
 const TIMES: string[] = Array.from({ length: 48 }, (_, i) => {
   const minutes = i * 30
@@ -212,42 +215,44 @@ export function NotificationSettingsScreen() {
                 )}
               </div>
               <p className={settingsStyles.hint}>
-                고른 요일·시각에 그날 운동 기록이 없으면, 오늘의 루틴이 고른 부위와 그 이유를 알려 드려요. 쉬는
-                날은 빼고 고르세요.
+                고른 요일·시각에 그날 운동 기록이 없으면 운동하는 날이라고 알려 드려요. 쉬는 날은 빼고 고르세요.
                 {!settings.saved && ' 요일은 최근 4주에 자주 운동한 요일로 골라 두었어요.'}
               </p>
             </div>
 
-            <div className={settingsStyles.section}>
-              <div className={settingsStyles.sectionTitle}>주간 요약</div>
-              <div className={settingsStyles.card}>
-                <SwitchRow
-                  label="한 주 돌아보기"
-                  on={settings.summary.enabled}
-                  onToggle={() => change({ summary: { ...settings.summary, enabled: !settings.summary.enabled } })}
-                />
-                {settings.summary.enabled && (
-                  <>
-                    <Field label="요일">
-                      <DayPicker
-                        label="주간 요약 요일"
-                        single
-                        selected={[settings.summary.day]}
-                        onPick={(day) => change({ summary: { ...settings.summary, day } })}
-                      />
-                    </Field>
-                    <Field label="시각">
-                      <TimeSelect
-                        label="주간 요약 시각"
-                        value={settings.summary.time}
-                        onChange={(time) => change({ summary: { ...settings.summary, time } })}
-                      />
-                    </Field>
-                  </>
-                )}
+            {/* 주간 요약은 아직 제대로 확인하지 못해 숨긴다(결정 기록 D-20). 서버도 보내지 않는다(NotificationScheduler.SUMMARY_PAUSED) */}
+            {SHOW_SUMMARY && (
+              <div className={settingsStyles.section}>
+                <div className={settingsStyles.sectionTitle}>주간 요약</div>
+                <div className={settingsStyles.card}>
+                  <SwitchRow
+                    label="한 주 돌아보기"
+                    on={settings.summary.enabled}
+                    onToggle={() => change({ summary: { ...settings.summary, enabled: !settings.summary.enabled } })}
+                  />
+                  {settings.summary.enabled && (
+                    <>
+                      <Field label="요일">
+                        <DayPicker
+                          label="주간 요약 요일"
+                          single
+                          selected={[settings.summary.day]}
+                          onPick={(day) => change({ summary: { ...settings.summary, day } })}
+                        />
+                      </Field>
+                      <Field label="시각">
+                        <TimeSelect
+                          label="주간 요약 시각"
+                          value={settings.summary.time}
+                          onChange={(time) => change({ summary: { ...settings.summary, time } })}
+                        />
+                      </Field>
+                    </>
+                  )}
+                </div>
+                <p className={settingsStyles.hint}>이번 주에 운동한 날과 더 채우면 좋은 부위를 알려 드려요.</p>
               </div>
-              <p className={settingsStyles.hint}>이번 주에 운동한 날과 더 채우면 좋은 부위를 알려 드려요.</p>
-            </div>
+            )}
 
             <div className={settingsStyles.section}>
               <div className={settingsStyles.sectionTitle}>그룹</div>
