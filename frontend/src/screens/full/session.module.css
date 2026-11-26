@@ -402,8 +402,8 @@
   color: var(--text-tertiary);
 }
 
+/* 체크한 세트도 번호 칸 테두리는 남긴다 — 메인 세트만 칸이 사라지면 워밍업·실패와 모양이 달라진다(사용자 의견, 2026-11-28) */
 .numPillDone {
-  border-color: transparent;
   color: var(--text-secondary);
 }
 
@@ -491,8 +491,9 @@
   color: var(--danger);
 }
 
+/* 무게·횟수. 글자 높이만큼만 차지해야 줄 가운데에 맞는다 — ✕는 바로 뒤 형제로 둔다 */
 .values {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   display: flex;
   align-items: baseline;
@@ -547,18 +548,18 @@
   color: var(--text-tertiary);
 }
 
+/* 펼치기(⌄)는 오른쪽 끝 — 남는 자리는 ✕와 펼치기 사이로 */
 .rowActions {
   display: flex;
   align-items: center;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
-/* 세트 삭제 ✕ — 횟수 바로 오른쪽. 남는 자리는 ✕와 펼치기(⌄) 사이로 간다 */
+/* 세트 삭제 ✕ — 횟수 바로 오른쪽(값 칸 밖 형제). 남는 자리는 ✕와 펼치기(⌄) 사이로 간다 */
 .removeWrap {
   flex-shrink: 0;
   display: flex;
-  align-self: center;
-  margin-left: var(--space-6);
 }
 
 .iconBtn {
@@ -932,7 +933,6 @@
 }
 
 :global(:root[data-theme='glass']) .numPillDone {
-  border-color: transparent;
   background: transparent;
 }
 
