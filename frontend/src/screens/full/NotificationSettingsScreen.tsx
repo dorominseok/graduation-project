@@ -151,6 +151,8 @@ export function NotificationSettingsScreen() {
 
   if (!user) return null
 
+  const hint = settings ? deviceHint(support, permission, settings, deviceOn) : null
+
   return (
     <>
       <ScreenHeader title="알림" />
@@ -176,7 +178,7 @@ export function NotificationSettingsScreen() {
                   onToggle={toggleDevice}
                 />
               </div>
-              <p className={settingsStyles.hint}>{deviceHint(support, permission, settings, deviceOn)}</p>
+              {hint && <p className={settingsStyles.hint}>{hint}</p>}
             </div>
 
             <div className={settingsStyles.section}>
@@ -260,9 +262,6 @@ export function NotificationSettingsScreen() {
                 <SwitchRow label="응원 받음" on={settings.cheer} onToggle={() => change({ cheer: !settings.cheer })} />
                 <SwitchRow label="그룹 소식" on={settings.group} onToggle={() => change({ group: !settings.group })} />
               </div>
-              <p className={settingsStyles.hint}>
-                그룹 소식은 내 그룹에 새 멤버가 들어올 때(방장에게)와 방장을 넘겨받을 때 와요.
-              </p>
             </div>
           </>
         )}
@@ -282,7 +281,7 @@ function deviceHint(
   permission: NotificationPermission | null,
   settings: NotificationSettings,
   deviceOn: boolean,
-): string {
+): string | null {
   if (support === 'ios-browser') {
     return '아이폰은 홈 화면에 추가한 밸런스핏에서만 알림을 받을 수 있어요. 사파리의 공유 › 홈 화면에 추가로 설치한 뒤 그 앱에서 켜 주세요.'
   }
@@ -294,10 +293,8 @@ function deviceHint(
   if (permission === 'denied') {
     return '알림이 차단돼 있어요. 브라우저의 사이트 설정(설치한 앱이면 휴대폰 설정 › 앱 › 밸런스핏)에서 알림을 허용한 뒤 다시 열어 주세요.'
   }
-  if (deviceOn) {
-    const others = settings.subscriptionCount - 1
-    return others > 0 ? `이 기기와 다른 기기 ${others}대로 알림이 와요.` : '이 기기로 알림이 와요.'
-  }
+  // 켜져 있으면 설명하지 않는다 — 기기 수 안내("이 기기와 다른 기기 1대로…")는 뺐다(사용자 의견, 2026-11-28)
+  if (deviceOn) return null
   return '켜면 이 기기로 알림이 와요. 휴대폰·컴퓨터마다 따로 켜요.'
 }
 

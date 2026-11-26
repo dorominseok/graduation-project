@@ -90,7 +90,7 @@ class NotificationDeliveryTest {
     // ── 운동 리마인더
 
     @Test
-    @DisplayName("고른 요일·시각에 그날 기록이 없으면 리마인더 — '오늘은 운동하는 날이에요'만(루틴 이유 문장은 뺐다)")
+    @DisplayName("고른 요일·시각에 그날 기록이 없으면 리마인더 — 제목 '오늘은 운동하는 날이에요'만, 본문 없음(루틴 이유 문장은 뺐다)")
     void reminderOnChosenDayAndTime() {
         Long user = signUp("민석");
         String device = subscribe(user);
@@ -100,7 +100,7 @@ class NotificationDeliveryTest {
         List<RecordingPushGateway.Sent> sent = gateway.to(device);
         assertEquals(1, sent.size());
         assertTrue(sent.get(0).payload().contains("\"title\":\"오늘은 운동하는 날이에요\""), sent.get(0).payload());
-        assertTrue(sent.get(0).payload().contains("\"body\":\"오늘 운동을 기록해 보세요\""), sent.get(0).payload());
+        assertTrue(sent.get(0).payload().contains("\"body\":\"\""), sent.get(0).payload());
         assertTrue(sent.get(0).payload().contains("\"url\":\"/\""));
 
         scheduler.runAt(MONDAY.atTime(19, 30));

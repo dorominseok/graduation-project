@@ -42,7 +42,8 @@ self.addEventListener('push', (event) => {
   }
   event.waitUntil(
     self.registration.showNotification(message.title ?? '밸런스핏', {
-      body: message.body,
+      // 본문이 없으면(리마인더는 제목만) 빼고 띄운다 — null을 넘기면 "null"이라는 글자가 뜬다
+      body: message.body || undefined,
       // 같은 tag(reminder, summary, cheer-그룹…)는 쌓이지 않고 새 것으로 바뀐다
       tag: message.tag,
       icon: '/icons/icon-192.png',

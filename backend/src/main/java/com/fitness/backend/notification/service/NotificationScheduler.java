@@ -28,7 +28,7 @@ import org.springframework.stereotype.Component;
  * 사람에게 보낸다. 서버는 한 대라 같은 칸을 두 번 보낼 일이 없고, 서버가 꺼져 있던 칸은 나중에 몰아 보내지 않는다.
  *
  * <pre>
- *   리마인더  고른 요일·시각 · 그날 기록이 없을 때 · "오늘은 운동하는 날이에요"만(2026-11-28 — 전엔 오늘 루틴의 이유 문장)
+ *   리마인더  고른 요일·시각 · 그날 기록이 없을 때 · 제목 "오늘은 운동하는 날이에요"만, 본문 없음(2026-11-28 — 전엔 오늘 루틴의 이유 문장)
  *   주간 요약 고른 요일·시각 · 이번 주(월요일~그날) 운동한 날 수와 더 채울 부위(부족·권장 이하에서 최대 둘)
  *            — 지금은 멈춤({@link #SUMMARY_PAUSED}, 결정 기록 D-20). 화면에서도 숨겼다
  * </pre>
@@ -100,8 +100,8 @@ public class NotificationScheduler {
         if (sessionRepository.countRecordedDays(userId, date, date) > 0) {
             return;   // 오늘 이미 운동했다
         }
-        sender.send(userId, NotificationType.REMINDER,
-                new Message("오늘은 운동하는 날이에요", "오늘 운동을 기록해 보세요", "/", "reminder"));
+        // 본문은 빈 글자 — null이면 예전 서비스워커가 "null"이라고 띄운다
+        sender.send(userId, NotificationType.REMINDER, new Message("오늘은 운동하는 날이에요", "", "/", "reminder"));
     }
 
     private void summarize(Long userId, LocalDate date) {
