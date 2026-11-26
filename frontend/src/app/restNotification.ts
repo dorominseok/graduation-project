@@ -1,8 +1,8 @@
 /**
  * 앱 밖에서도 휴식 알림(결정 기록 D-14, 「운동기록_방식_설계서」 3.7).
  *
- * 쉬는 동안 앱을 벗어나면 상단바에 "휴식 중 · 오후 2:32에 끝나요"를 조용히 띄우고, 끝나면 **같은 알림을**
- * "휴식 끝"으로 바꿔 울린다(같은 `tag`면 쌓이지 않고 그 자리에서 바뀐다). 앱으로 돌아오면 지운다 — 앱 안에서는
+ * 쉬는 동안 앱을 벗어나면 상단바에 "휴식 중"(내용: 오후 2:32에 끝나요 · 다음 세트)을 조용히 띄우고, 끝나면 **같은 알림을**
+ * "휴식 끝"으로 바꿔 울린다. 제목은 두 낱말만 — 휴대폰은 제목 옆에 앱 이름·시각을 붙여 길면 잘린다(2026-11-28 실제 휴대폰)(같은 `tag`면 쌓이지 않고 그 자리에서 바뀐다). 앱으로 돌아오면 지운다 — 앱 안에서는
  * 휴식 띠와 끝 소리·진동이 있어 겹친다. 누르면 쉬고 나서 할 세트의 종목 화면으로 간다(`sw.ts`의 notificationclick).
  *
  * - 남은 초는 적지 않고 **끝나는 시각**을 적는다. 앱이 뒤로 가면 브라우저가 앱 코드를 멈춰 1초마다 고칠 수 없고,
@@ -58,8 +58,8 @@ export async function disableRestNotify(): Promise<void> {
 export async function showResting(endsAt: number, next: RestNext | null): Promise<void> {
   const registration = await activeRegistration()
   if (!registration) return
-  await registration.showNotification(`휴식 중 · ${TIME.format(endsAt)}에 끝나요`, {
-    body: next ? `다음 · ${next.exerciseName} ${next.setNumber}세트` : undefined,
+  await registration.showNotification('휴식 중', {
+    body: `${TIME.format(endsAt)}에 끝나요${next ? ` · ${next.exerciseName} ${next.setNumber}세트` : ''}`,
     tag: TAG,
     icon: ICON,
     badge: BADGE_RESTING,
@@ -73,7 +73,7 @@ export async function showResting(endsAt: number, next: RestNext | null): Promis
 export async function showRestDone(next: RestNext | null): Promise<void> {
   const registration = await activeRegistration()
   if (!registration) return
-  await registration.showNotification('휴식 끝 · 다음 세트 시작', {
+  await registration.showNotification('휴식 끝', {
     body: next ? `${next.exerciseName} ${next.setNumber}세트` : undefined,
     tag: TAG,
     icon: ICON,
