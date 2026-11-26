@@ -549,6 +549,12 @@
   flex-shrink: 0;
 }
 
+/* 세트 삭제 ✕ — 무게 앞, 번호 칸 옆 */
+.removeWrap {
+  flex-shrink: 0;
+  display: flex;
+}
+
 .iconBtn {
   width: 32px;
   height: 32px;
