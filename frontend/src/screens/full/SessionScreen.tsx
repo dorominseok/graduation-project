@@ -168,6 +168,8 @@ export function SessionScreen() {
   const [batchReps, setBatchReps] = useState(0)
   // 빼려는 종목의 자리. 기록된 세트가 있을 때만 채워진다
   const [removeTarget, setRemoveTarget] = useState<number | null>(null)
+  /** 지울지 묻는 완료한 세트(clientSetId) */
+  const [removeSetId, setRemoveSetId] = useState<string | null>(null)
 
   // 그날 추정 1RM. 세트가 저장·수정·삭제될 때마다 다시 읽는다 —
   // 화면에서 Epley를 계산하면 서버와 공식이 둘이 된다.
@@ -568,6 +570,23 @@ export function SessionScreen() {
           : card,
       ),
     )
+  }
+
+  /**
+   * 세트 지우기. 체크한 세트는 되돌릴 수 없는 삭제라 한 번 묻고, 아직 체크하지 않은 줄은 바로 지운다(사용자 요청, 2026-11-28).
+   */
+  const askRemoveRow = (cardIndex: number, rowIndex: number) => {
+    const row = cards[cardIndex].rows[rowIndex]
+    if (row.savedId !== null) setRemoveSetId(row.clientSetId)
+    else void removeRow(cardIndex, rowIndex)
+  }
+
+  /** 확인 창에서 지우기 — 묻는 사이 줄이 옮겨졌을 수 있어 줄 번호가 아니라 그 줄을 찾는다 */
+  const confirmRemoveRow = () => {
+    const cardIndex = cards.findIndex((card) => card.rows.some((row) => row.clientSetId === removeSetId))
+    setRemoveSetId(null)
+    if (cardIndex < 0) return
+    void removeRow(cardIndex, cards[cardIndex].rows.findIndex((row) => row.clientSetId === removeSetId))
   }
 
   /**
@@ -988,6 +1007,21 @@ export function SessionScreen() {
                           )}
                         </span>
 
+                        {/*
+                          세트 삭제는 무게 앞에 — 펼치기(⌄) 옆에 있을 때 잘못 눌려 지워지는 일이 있었다(사용자 의견, 2026-11-28).
+                          줄을 누르는 것(완료 체크)과 다른 일이라 위로 올리지 않는다. 체크한 세트는 한 번 묻는다
+                        */}
+                        <span className={styles.removeWrap} role="presentation" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            className={styles.iconBtn}
+                            onClick={() => askRemoveRow(openedIndex, rowIndex)}
+                            aria-label="세트 삭제"
+                          >
+                            ✕
+                          </button>
+                        </span>
+
                         <span className={styles.values}>
                           {fields.map((field, fieldIndex) => (
                             <span key={field} className={fieldIndex === 0 ? styles.colA : styles.colB}>
@@ -1025,14 +1059,6 @@ export function SessionScreen() {
                           role="presentation"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <button
-                            type="button"
-                            className={styles.iconBtn}
-                            onClick={() => void removeRow(openedIndex, rowIndex)}
-                            aria-label="세트 삭제"
-                          >
-                            ✕
-                          </button>
                           <button
                             type="button"
                             className={`${styles.chevron} ${expanded ? styles.chevronOpen : ''}`}
@@ -1332,6 +1358,18 @@ export function SessionScreen() {
             }}
           >
             고른 세트에 적용
+          </button>
+        </BottomSheet>
+
+        {/* 체크한 세트를 지울 때만 열린다 */}
+        <BottomSheet
+          open={removeSetId !== null}
+          onClose={() => setRemoveSetId(null)}
+          title={<span className={styles.sheetTitle}>세트 지우기</span>}
+        >
+          <p className={styles.confirmText}>이미 완료한 세트예요. 정말 지울까요?</p>
+          <button type="button" className={styles.confirmDanger} onClick={confirmRemoveRow}>
+            지우기
           </button>
         </BottomSheet>
 

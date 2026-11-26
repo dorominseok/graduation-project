@@ -1,14 +1,11 @@
 package com.fitness.backend.notification.service;
 
-import com.fitness.backend.notification.domain.NotificationSchedule;
 import com.fitness.backend.notification.domain.NotificationType;
 import com.fitness.backend.notification.domain.PushSubscription;
 import com.fitness.backend.notification.push.PushGateway;
 import com.fitness.backend.notification.repository.NotificationSettingsRepository;
 import com.fitness.backend.notification.repository.PushSubscriptionRepository;
-import java.time.Clock;
 import java.time.Duration;
-import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -21,7 +18,6 @@ import tools.jackson.databind.ObjectMapper;
  *
  * <pre>
  *   그 종류를 껐으면                         보내지 않는다
- *   바로 보내는 알림(응원·그룹)이 조용한 시간이면  버린다(22:00~08:00)
  *   푸시 서버가 "구독이 없다"(404·410)면          그 구독을 지운다
  * </pre>
  *
@@ -41,18 +37,15 @@ public class NotificationSender {
     private final NotificationSettingsRepository settingsRepository;
     private final PushGateway gateway;
     private final ObjectMapper objectMapper;
-    private final Clock clock;
 
     public NotificationSender(PushSubscriptionRepository subscriptionRepository,
                               NotificationSettingsRepository settingsRepository,
                               PushGateway gateway,
-                              ObjectMapper objectMapper,
-                              Clock clock) {
+                              ObjectMapper objectMapper) {
         this.subscriptionRepository = subscriptionRepository;
         this.settingsRepository = settingsRepository;
         this.gateway = gateway;
         this.objectMapper = objectMapper;
-        this.clock = clock;
     }
 
     /** @return 푸시 서버가 받은 기기 수 */
@@ -60,9 +53,6 @@ public class NotificationSender {
         // 설정이 없으면 모든 종류가 켜진 것으로 본다 — 설정은 구독할 때 만들어지니 구독이 없는 사람이다
         boolean enabled = settingsRepository.findById(userId).map(s -> s.enabled(type)).orElse(true);
         if (!enabled) {
-            return 0;
-        }
-        if (type.instant() && NotificationSchedule.quiet(LocalTime.now(clock.withZone(SEOUL)))) {
             return 0;
         }
         List<PushSubscription> subscriptions = subscriptionRepository.findByUserId(userId);

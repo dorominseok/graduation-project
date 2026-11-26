@@ -10,25 +10,20 @@ import java.util.Set;
  * 알림 시각 규칙. DB·스프링에 의존하지 않는 순수 계산이다.
  *
  * <pre>
- *   조용한 시간   22:00 ~ 08:00 — 바로 보내는 알림(응원·그룹 소식)은 버린다
- *   고를 수 있는 시각 08:00 ~ 21:30, 30분 단위 — 조용한 시간과 부딪치지 않게
+ *   고를 수 있는 시각 00:00 ~ 23:30, 30분 단위
  *   요일 묶음     월 1 · 화 2 · 수 4 · 목 8 · 금 16 · 토 32 · 일 64
  * </pre>
+ *
+ * <p>조용한 시간(22:00~08:00 — 바로 보내는 알림을 버리고 그 시간은 고를 수 없게)은 2026-11-28에 뺐다(사용자 요청,
+ * 결정 기록 D-17). 새벽에 확인할 수 없어서다. 다시 둔다면 사용자가 고르는 방식으로(「알림_설계서」 7장 다음 과제).
  */
 public final class NotificationSchedule {
 
-    public static final LocalTime QUIET_FROM = LocalTime.of(22, 0);
-    public static final LocalTime QUIET_UNTIL = LocalTime.of(8, 0);
-    public static final LocalTime EARLIEST = LocalTime.of(8, 0);
-    public static final LocalTime LATEST = LocalTime.of(21, 30);
+    public static final LocalTime EARLIEST = LocalTime.of(0, 0);
+    public static final LocalTime LATEST = LocalTime.of(23, 30);
     private static final int STEP_MINUTES = 30;
 
     private NotificationSchedule() {
-    }
-
-    /** 조용한 시간인지. 22:00부터, 08:00 전까지 */
-    public static boolean quiet(LocalTime time) {
-        return !time.isBefore(QUIET_FROM) || time.isBefore(QUIET_UNTIL);
     }
 
     /** 리마인더·요약에 고를 수 있는 시각인지 */

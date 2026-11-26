@@ -20,9 +20,9 @@ const DAYS: { key: DayOfWeek; label: string }[] = [
   { key: 'SUNDAY', label: '일' },
 ]
 
-/** 고를 수 있는 시각 — 08:00~21:30, 30분 단위. 조용한 시간(22:00~08:00)과 겹치지 않는다(서버도 같은 규칙) */
-const TIMES: string[] = Array.from({ length: 28 }, (_, i) => {
-  const minutes = 8 * 60 + i * 30
+/** 고를 수 있는 시각 — 하루 내내 30분 단위(서버도 같은 규칙). 밤 10시~아침 8시 막기는 2026-11-28에 뺐다 */
+const TIMES: string[] = Array.from({ length: 48 }, (_, i) => {
+  const minutes = i * 30
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
 })
 
@@ -259,11 +259,6 @@ export function NotificationSettingsScreen() {
                 그룹 소식은 내 그룹에 새 멤버가 들어올 때(방장에게)와 방장을 넘겨받을 때 와요.
               </p>
             </div>
-
-            <p className={settingsStyles.hint}>
-              밤 10시부터 아침 8시까지는 알림을 보내지 않아요. 그 시간에 받은 응원·그룹 소식은 알림 없이 그룹
-              화면에서만 보여요.
-            </p>
           </>
         )}
       </div>

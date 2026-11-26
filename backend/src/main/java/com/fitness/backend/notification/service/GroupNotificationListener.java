@@ -14,7 +14,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * 그룹에서 일어난 일을 바로 알린다(「알림_설계서」 1·3장) — 응원 받음, 새 멤버(방장에게), 방장 위임(새 방장에게).
  *
  * <p>커밋된 뒤에, 요청 스레드와 따로 보낸다. 푸시 서버가 느리거나 실패해도 응원·참여·나가기는 이미 끝났다.
- * 조용한 시간(22:00~08:00)에 생긴 일은 {@link NotificationSender}가 버린다 — 그룹 화면에서 보인다.
  */
 @Component
 public class GroupNotificationListener {

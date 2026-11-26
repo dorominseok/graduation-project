@@ -18,7 +18,7 @@ public enum NotificationType {
         this.instant = instant;
     }
 
-    /** 일이 생긴 순간 보내는 알림인지. 이런 알림만 조용한 시간에 버린다 — 예약 알림은 그 시간에 고를 수 없다 */
+    /** 일이 생긴 순간 보내는 알림인지. 푸시 서버가 들고 있는 시간(TTL)을 길게 둔다 — 휴대폰이 꺼져 있다 켜져도 받게 */
     public boolean instant() {
         return instant;
     }
