@@ -382,6 +382,7 @@
   background: var(--warn-soft);
 }
 
+/* 세트 번호 칸. 누르면 세트 종류 메뉴(메인·워밍업·실패)가 열린다 */
 .numPill {
   width: 40px;
   height: 34px;
@@ -389,10 +390,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
   border: 1.5px solid var(--card-border);
   border-radius: 9px;
   background: transparent;
+  font-family: inherit;
   font-size: 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   font-weight: var(--weight-medium);
   color: var(--text-tertiary);
 }
@@ -402,9 +407,88 @@
   color: var(--text-secondary);
 }
 
-.numPillWarmup {
+/*
+ * 세트 종류는 숫자 색으로만 가른다 — 워밍업 주황, 실패 빨강(결정 기록 D-15). 번호 칸과 종류 메뉴의 견본이 같이 쓴다.
+ * 색만으로 가르지 않게 워밍업 줄에는 "워밍업 · 분석 제외" 글자가, 실패 줄에는 "9/10"이 같이 있다.
+ */
+.kindWrap {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+}
+
+/* 메뉴 밖을 누르면 닫는다. 줄(완료 체크)까지 눌리지 않게 화면 전체를 덮는다 */
+.kindBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  border: none;
+  background: transparent;
+  cursor: default;
+}
+
+.kindMenu {
+  composes: g-thick from global;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 172px;
+  padding: var(--space-6);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+}
+
+.kindItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  padding: var(--space-8) var(--space-10);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--font-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.kindItemOn {
+  background: var(--accent-soft);
+  font-weight: var(--weight-bold);
+}
+
+/* 메뉴의 견본 — 그 종류일 때 번호 칸이 어떤 색인지 */
+.kindMark {
+  width: 32px;
+  height: 26px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--card-border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+/* 번호 칸·견본보다 뒤에 둬야 색이 이긴다 */
+.kindWarmup {
   border-color: var(--warn);
   color: var(--warn);
+}
+
+.kindFail {
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .values {
@@ -441,6 +525,16 @@
 
 .bigValEmpty {
   color: var(--tick-strong);
+}
+
+/* 실패 세트의 횟수 — 빨간 "9/10"(해낸 횟수/목표) */
+.failVal {
+  color: var(--danger);
+}
+
+.failOf {
+  font-size: 15px;
+  opacity: 0.85;
 }
 
 .unit {
@@ -581,33 +675,6 @@
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
   text-align: right;
-}
-
-.warmupHint {
-  flex: 1;
-  min-width: 0;
-  font-size: var(--font-2xs);
-  color: var(--text-tertiary);
-}
-
-/* 워밍업 표시. 켜면 볼륨 집계에서 빠진다 */
-.warmupPill {
-  min-width: 92px;
-  height: 34px;
-  flex-shrink: 0;
-  padding: 0 var(--space-12);
-  border: 1px solid var(--card-border);
-  border-radius: 9px;
-  background: var(--card-bg);
-  color: var(--text-secondary);
-  font-size: var(--font-xs);
-  font-weight: var(--weight-heavy);
-}
-
-.warmupPillOn {
-  border: none;
-  background: var(--warn);
-  color: var(--on-fill);
 }
 
 .focusActions {
@@ -797,10 +864,6 @@
   composes: g-input from global;
 }
 
-.warmupPill {
-  composes: g-secondary from global;
-}
-
 .batchButton {
   composes: g-secondary from global;
 }
@@ -861,22 +924,18 @@
   background: transparent;
 }
 
-:global(:root[data-theme='glass']) .numPillWarmup {
+:global(:root[data-theme='glass']) .kindWarmup {
   border-color: var(--warn);
+}
+
+:global(:root[data-theme='glass']) .kindFail {
+  border-color: var(--danger);
 }
 
 :global(:root[data-theme='glass']) .panel {
   border-radius: var(--radius-lg);
 }
 
-:global(:root[data-theme='glass']) .warmupPillOn {
-  border-color: oklch(80% 0.1 70 / 0.6);
-  background: linear-gradient(180deg, oklch(54% 0.15 58), oklch(47% 0.14 52));
-  color: var(--on-fill);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.4),
-    0 6px 14px -6px oklch(50% 0.14 55 / 0.6);
-}
 
 :global(:root[data-theme='glass']) .addSet {
   background: rgb(255 255 255 / 0.28);

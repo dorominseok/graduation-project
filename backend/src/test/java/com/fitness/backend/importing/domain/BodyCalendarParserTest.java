@@ -64,7 +64,7 @@ class BodyCalendarParserTest {
     }
 
     @Test
-    @DisplayName("실패 세트는 해낸 횟수로 — '실패 35kg 5/10회'는 35kg 5회. 목표가 붙은 횟수는 어느 세트든 앞의 수, 0회 실패는 버림")
+    @DisplayName("실패 세트 — '실패 35kg 5/10회'는 해낸 5회·목표 10회. 보통 세트에 붙은 목표(8/10회)는 해낸 횟수만, 0회 실패는 버림")
     void failureSets() {
         String text = BodyCalendarSamples.one(D1, "숄더 프레스: 앉아서, 핀 머신",
                 "1세트 35kg 7회", "2세트 35kg 8/10회", "실패 35kg 5/10회", "실패 35kg 0/10회", "실패 12/15회");
@@ -74,8 +74,8 @@ class BodyCalendarParserTest {
         assertThat(sets).containsExactly(
                 new ParsedSet(SetKind.SET, new BigDecimal("35"), 7, null),
                 new ParsedSet(SetKind.SET, new BigDecimal("35"), 8, null),
-                new ParsedSet(SetKind.FAIL, new BigDecimal("35"), 5, null),
-                new ParsedSet(SetKind.FAIL, null, 12, null));
+                new ParsedSet(SetKind.FAIL, new BigDecimal("35"), 5, null, 10),
+                new ParsedSet(SetKind.FAIL, null, 12, null, 15));
         assertThat(log.unknownLines()).containsExactly("실패 35kg 0/10회");
     }
 

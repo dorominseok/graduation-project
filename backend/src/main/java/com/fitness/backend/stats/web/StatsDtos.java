@@ -56,6 +56,8 @@ public final class StatsDtos {
             Short reps,
             Integer durationSec,
             boolean isWarmup,
+            @Schema(description = "실패 세트의 목표 횟수(V21). reps는 해낸 횟수. 메인·워밍업은 null")
+            Short targetReps,
             @Schema(description = "그날 추정 1RM 대비 중량 비율(%). 워밍업도 표시한다")
             Integer intensityPct) {
     }

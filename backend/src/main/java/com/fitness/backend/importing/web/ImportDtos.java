@@ -67,7 +67,9 @@ public final class ImportDtos {
             BigDecimal weightKg,
             @Max(value = Short.MAX_VALUE, message = "32767 이하여야 합니다.")
             @Min(value = 1, message = "1 이상이어야 합니다.") Integer reps,
-            @Min(value = 1, message = "1 이상이어야 합니다.") Integer durationSec) {
+            @Min(value = 1, message = "1 이상이어야 합니다.") Integer durationSec,
+            @Max(value = Short.MAX_VALUE, message = "32767 이하여야 합니다.")
+            @Min(value = 2, message = "2 이상이어야 합니다.") Integer targetReps) {
     }
 
     // ── 저장

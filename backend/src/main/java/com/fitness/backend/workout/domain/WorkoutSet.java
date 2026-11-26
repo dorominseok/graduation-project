@@ -57,6 +57,13 @@ public class WorkoutSet {
     @Column(name = "is_warmup", nullable = false)
     private boolean isWarmup;
 
+    /**
+     * 실패 세트의 목표 횟수(V21, 결정 기록 D-15). 있으면 실패 세트 — {@code reps}는 해낸 횟수이고 목표보다 적다.
+     * 분석은 해낸 횟수의 본세트로 센다. 메인·워밍업 세트는 {@code null}.
+     */
+    @Column(name = "target_reps")
+    private Short targetReps;
+
     @Column(name = "recorded_at", nullable = false)
     private OffsetDateTime recordedAt;
 
@@ -95,8 +102,10 @@ public class WorkoutSet {
     /**
      * 사후 수정. {@code null}로 온 항목은 건드리지 않는다 — 부분 수정이라
      * 보내지 않은 필드는 그대로 두어야 한다.
+     *
+     * @param targetReps 실패 세트의 목표 횟수. {@code 0}이면 실패를 지운다(메인 세트로). 워밍업이 되면 저절로 지운다
      */
-    public void modify(BigDecimal weightKg, Short reps, Integer durationSec, Boolean isWarmup) {
+    public void modify(BigDecimal weightKg, Short reps, Integer durationSec, Boolean isWarmup, Integer targetReps) {
         if (weightKg != null) {
             this.weightKg = weightKg;
         }
@@ -108,6 +117,12 @@ public class WorkoutSet {
         }
         if (isWarmup != null) {
             this.isWarmup = isWarmup;
+        }
+        if (targetReps != null) {
+            this.targetReps = targetReps == 0 ? null : targetReps.shortValue();
+        }
+        if (this.isWarmup) {
+            this.targetReps = null;
         }
     }
 }

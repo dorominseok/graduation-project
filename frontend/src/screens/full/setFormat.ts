@@ -10,10 +10,12 @@ export function trimNumber(value: number): string {
  */
 export function describeSet(
   measureType: MeasureType,
-  set: { weightKg: number | null; reps: number | null; durationSec: number | null },
+  set: { weightKg: number | null; reps: number | null; durationSec: number | null; targetReps?: number | null },
 ): string {
   if (measureType === 'TIME') return `${set.durationSec ?? 0}초`
-  if (measureType === 'BODYWEIGHT_REPS') return `${set.reps ?? 0}회`
+  // 실패 세트는 해낸 횟수/목표 — "9/10"
+  const reps = `${set.reps ?? 0}${set.targetReps != null ? `/${set.targetReps}` : ''}`
+  if (measureType === 'BODYWEIGHT_REPS') return `${reps}회`
   const sign = measureType === 'WEIGHTED_BODYWEIGHT' ? '+' : ''
-  return `${sign}${trimNumber(set.weightKg ?? 0)}kg×${set.reps ?? 0}`
+  return `${sign}${trimNumber(set.weightKg ?? 0)}kg×${reps}`
 }

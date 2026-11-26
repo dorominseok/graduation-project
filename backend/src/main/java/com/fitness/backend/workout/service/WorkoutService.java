@@ -143,6 +143,7 @@ public class WorkoutService {
                 .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "종목을 찾을 수 없습니다."));
         MeasureType measureType = exercise.getMeasureType();
         validateMeasureInput(measureType, request.weightKg(), request.reps(), request.durationSec());
+        validateFailTarget(measureType, request.warmupOrDefault(), request.reps(), request.targetReps());
 
         // 순번은 서버가 매긴다. 클라이언트가 정하게 두면 같은 번호를 두 번 보내
         // 1세트가 두 줄이 된다 — 화면이 세트를 셀 근거가 없어진다.
@@ -158,7 +159,8 @@ public class WorkoutService {
                 measureType.requiresWeight() ? request.weightKg() : null,
                 measureType.requiresReps() ? toShort(request.reps()) : null,
                 measureType.requiresDuration() ? request.durationSec() : null,
-                request.warmupOrDefault(), OffsetDateTime.now(clock), request.clientSetId()) == 1;
+                request.warmupOrDefault(), toShort(request.targetReps()), OffsetDateTime.now(clock),
+                request.clientSetId()) == 1;
         WorkoutSet saved = setRepository.findBySessionIdAndClientSetId(sessionId, request.clientSetId())
                 .orElseThrow(() -> new IllegalStateException("방금 저장한 세트가 없다"));
         return new SetSaveResult(SetResponse.of(saved, exercise.getNameKo()), created);
@@ -198,11 +200,14 @@ public class WorkoutService {
             validateMeasureInput(measureType, set.weightKg(), set.reps(), set.durationSec());
 
             short setNo = (short) (setRepository.countBySessionIdAndExerciseId(session.getId(), exercise.getId()) + 1);
+            // 실패 세트의 목표는 맞을 때만 둔다 — 바꾸기로 시간 종목을 골랐으면 목표 없이 본세트로
+            boolean failFits = set.targetReps() != null && measureType.requiresReps() && !set.warmup()
+                    && set.reps() != null && set.targetReps() > set.reps();
             added += setRepository.insertIfAbsent(session.getId(), exercise.getId(), setNo,
                     measureType.requiresWeight() ? set.weightKg() : null,
                     measureType.requiresReps() ? toShort(set.reps()) : null,
                     measureType.requiresDuration() ? set.durationSec() : null,
-                    set.warmup(), start.plusSeconds(i), set.clientSetId());
+                    set.warmup(), failFits ? toShort(set.targetReps()) : null, start.plusSeconds(i), set.clientSetId());
         }
 
         if (existing.isEmpty() && added > 0 && minutes != null && minutes > 0) {
@@ -378,10 +383,25 @@ public class WorkoutService {
         MeasureType measureType = exercise.getMeasureType();
 
         // 저장 때와 같은 기준으로 거른다. 쓰지 않는 값은 수정으로도 들어가지 않는다.
+        if (request.targetReps() != null && request.targetReps() > 0 && !measureType.requiresReps()) {
+            throw new ApiException(ErrorCode.INVALID_MEASURE_INPUT, "횟수로 재지 않는 종목은 실패 세트로 둘 수 없습니다.");
+        }
+        if (request.targetReps() != null && request.targetReps() > 0 && Boolean.TRUE.equals(request.isWarmup())) {
+            throw new ApiException(ErrorCode.INVALID_MEASURE_INPUT, "워밍업 세트는 실패 세트로 둘 수 없습니다.");
+        }
+        // 고친 뒤의 값으로 먼저 본다 — 세트에 반영한 뒤 거르면 실패해도 바뀐 값이 남아 다음 저장에 섞일 수 있다
+        Short reps = measureType.requiresReps() && request.reps() != null ? toShort(request.reps()) : set.getReps();
+        boolean warmup = request.isWarmup() != null ? request.isWarmup() : set.isWarmup();
+        Integer target = request.targetReps() == null
+                ? (set.getTargetReps() == null ? null : set.getTargetReps().intValue())
+                : (request.targetReps() == 0 ? null : request.targetReps());
+        if (!warmup && target != null && (reps == null || reps >= target)) {
+            throw new ApiException(ErrorCode.INVALID_MEASURE_INPUT, "실패 세트는 해낸 횟수가 목표보다 적어야 합니다.");
+        }
         set.modify(measureType.requiresWeight() ? request.weightKg() : null,
                 measureType.requiresReps() ? toShort(request.reps()) : null,
                 measureType.requiresDuration() ? request.durationSec() : null,
-                request.isWarmup());
+                request.isWarmup(), request.targetReps());
         return SetResponse.of(set, exercise.getNameKo());
     }
 
@@ -450,6 +470,24 @@ public class WorkoutService {
         }
         if (measureType.requiresDuration() && durationSec == null) {
             throw new ApiException(ErrorCode.INVALID_MEASURE_INPUT, "이 종목은 수행 시간이 필요합니다.");
+        }
+    }
+
+    /**
+     * 실패 세트(결정 기록 D-15)를 저장할 수 있는지. 횟수로 재는 종목만, 워밍업이 아니고, 해낸 횟수가 목표보다 적어야 한다.
+     */
+    private static void validateFailTarget(MeasureType measureType, boolean warmup, Integer reps, Integer targetReps) {
+        if (targetReps == null) {
+            return;
+        }
+        if (!measureType.requiresReps()) {
+            throw new ApiException(ErrorCode.INVALID_MEASURE_INPUT, "횟수로 재지 않는 종목은 실패 세트로 둘 수 없습니다.");
+        }
+        if (warmup) {
+            throw new ApiException(ErrorCode.INVALID_MEASURE_INPUT, "워밍업 세트는 실패 세트로 둘 수 없습니다.");
+        }
+        if (reps == null || reps >= targetReps) {
+            throw new ApiException(ErrorCode.INVALID_MEASURE_INPUT, "실패 세트는 해낸 횟수가 목표보다 적어야 합니다.");
         }
     }
 

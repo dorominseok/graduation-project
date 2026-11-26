@@ -11,6 +11,7 @@ import com.fitness.backend.importing.domain.MatchStatus;
 import com.fitness.backend.importing.domain.ParsedLog;
 import com.fitness.backend.importing.domain.ParsedLog.ParsedDay;
 import com.fitness.backend.importing.domain.ParsedLog.ParsedExercise;
+import com.fitness.backend.importing.domain.SetKind;
 import com.fitness.backend.importing.domain.SourceName;
 import com.fitness.backend.importing.repository.ImportAliasRepository;
 import com.fitness.backend.importing.web.ImportDtos.ExerciseBrief;
@@ -138,7 +139,8 @@ public class ImportService {
                 match.status() == MatchStatus.UNREGISTERED ? ExerciseMatcher.guess(parsed) : null,
                 List.copyOf(ExerciseMatcher.savable(parsed.sets())),
                 parsed.sets().stream()
-                        .map(set -> new ImportSet(set.kind(), set.weightKg(), set.reps(), set.durationSec()))
+                        .map(set -> new ImportSet(set.kind(), set.weightKg(), set.reps(), set.durationSec(),
+                                set.targetReps()))
                         .toList());
     }
 
@@ -158,7 +160,7 @@ public class ImportService {
                 UUID clientSetId = uuidV5(String.join("\n", SOURCE_APP, String.valueOf(userId),
                         day.date().toString(), key, String.valueOf(occurrence), String.valueOf(i)));
                 sets.add(new ImportedSet(clientSetId, exercise.exerciseId(), set.weightKg(), set.reps(),
-                        set.durationSec(), set.kind().warmup()));
+                        set.durationSec(), set.kind().warmup(), set.kind() == SetKind.FAIL ? set.targetReps() : null));
             }
         }
         return sets;

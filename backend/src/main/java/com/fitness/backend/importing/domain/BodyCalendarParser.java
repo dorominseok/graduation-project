@@ -43,8 +43,8 @@ public final class BodyCalendarParser {
     /** 세트 줄의 머리 — {@code 1세트}, {@code 웜업}, {@code 드랍}, {@code 실패}. 뒤는 값 */
     private static final Pattern SET = Pattern.compile("^(?:\\d+세트|(웜업|드랍|실패)) (.+)$");
     /** 횟수는 {@code 10회}, 또는 목표가 붙은 {@code 5/10회}(10회 중 5회 — 실패 세트에 나온다). 앞의 해낸 횟수를 쓴다 */
-    private static final Pattern WEIGHT_REPS = Pattern.compile("^(\\d+(?:\\.\\d+)?) ?kg (\\d+)(?:/\\d+)? ?회$");
-    private static final Pattern REPS = Pattern.compile("^(\\d+)(?:/\\d+)? ?회$");
+    private static final Pattern WEIGHT_REPS = Pattern.compile("^(\\d+(?:\\.\\d+)?) ?kg (\\d+)(?:/(\\d+))? ?회$");
+    private static final Pattern REPS = Pattern.compile("^(\\d+)(?:/(\\d+))? ?회$");
     private static final Pattern TIME = Pattern.compile("^(?:(\\d+):)?(\\d{1,2}):(\\d{2})$");
     /** 유산소 구간 — {@code 1구간 9.0km/h 04:30 1}. 이 줄이 있는 종목은 통째로 뺀다(결정 3) */
     private static final Pattern CARDIO = Pattern.compile("^\\d+구간 ");
@@ -168,12 +168,13 @@ public final class BodyCalendarParser {
             BigDecimal weight = new BigDecimal(weightReps.group(1));
             Integer reps = repsOf(weightReps.group(2));
             boolean weightFits = weight.scale() <= 2 && weight.precision() - weight.scale() <= 4;
-            return reps == null || !weightFits ? null : new ParsedSet(kind, weight, reps, null);
+            return reps == null || !weightFits ? null
+                    : new ParsedSet(kind, weight, reps, null, targetOf(kind, reps, weightReps.group(3)));
         }
         Matcher reps = REPS.matcher(values);
         if (reps.matches()) {
             Integer count = repsOf(reps.group(1));
-            return count == null ? null : new ParsedSet(kind, null, count, null);
+            return count == null ? null : new ParsedSet(kind, null, count, null, targetOf(kind, count, reps.group(2)));
         }
         Matcher time = TIME.matcher(values);
         if (time.matches()) {
@@ -187,6 +188,18 @@ public final class BodyCalendarParser {
             return total == 0 ? null : new ParsedSet(kind, null, null, total);
         }
         return null;
+    }
+
+    /**
+     * 실패 세트의 목표 횟수(`5/10회`의 10). 실패 세트만 — 바디캘린더는 보통 세트에도 `8/10회`처럼 목표를 붙이지만 그건 실패로
+     * 표시하지 않은 세트다. 목표가 해낸 횟수보다 크지 않으면(`10/10회`) 실패가 아니어서 버린다.
+     */
+    private static Integer targetOf(SetKind kind, int reps, String digits) {
+        if (kind != SetKind.FAIL || digits == null) {
+            return null;
+        }
+        Integer target = repsOf(digits);
+        return target == null || target <= reps ? null : target;
     }
 
     private static Integer repsOf(String digits) {

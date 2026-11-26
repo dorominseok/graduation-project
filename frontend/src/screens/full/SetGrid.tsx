@@ -7,12 +7,15 @@ export interface GridSet {
   reps: number | null
   durationSec: number | null
   isWarmup: boolean
+  /** 실패 세트의 목표 횟수. 있으면 빨간 "9/10회" */
+  targetReps?: number | null
 }
 
 /**
  * 세트 칸 — "1세트 / 40kg / 10회"를 한 줄에 다섯 칸씩. 그룹 멤버 기록과 종목 기록이 같이 쓴다.
  *
- * <p>워밍업은 번호를 매기지 않는다. 본세트만 볼륨에 들어가는 것과 같은 기준이다.
+ * <p>워밍업은 번호를 매기지 않는다. 본세트만 볼륨에 들어가는 것과 같은 기준이다. 실패 세트는 해낸 횟수의
+ * 본세트라 번호를 매기고, 빨간 "9/10회"(해낸 횟수/목표)로 보인다(결정 기록 D-15).
  */
 export function SetGrid({ measureType, sets }: { measureType: MeasureType; sets: GridSet[] }) {
   const labels = sets.reduce<string[]>((acc, set) => {
@@ -32,7 +35,7 @@ export function SetGrid({ measureType, sets }: { measureType: MeasureType; sets:
 function SetCell({ label, measureType, set }: { label: string; measureType: MeasureType; set: GridSet }) {
   const weighted = measureType === 'WEIGHT_REPS' || measureType === 'WEIGHTED_BODYWEIGHT'
   return (
-    <div className={`${styles.cell} ${set.isWarmup ? styles.warmup : ''}`}>
+    <div className={`${styles.cell} ${set.isWarmup ? styles.warmup : ''} ${set.targetReps != null ? styles.fail : ''}`}>
       <span className={styles.label}>{label}</span>
       {weighted && (
         <span className={styles.value}>
@@ -49,6 +52,7 @@ function SetCell({ label, measureType, set }: { label: string; measureType: Meas
       ) : (
         <span className={styles.value}>
           {set.reps ?? 0}
+          {set.targetReps != null && <span className={styles.failOf}>/{set.targetReps}</span>}
           <span className={styles.unit}>회</span>
         </span>
       )}
