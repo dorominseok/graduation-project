@@ -1,9 +1,10 @@
 package com.fitness.backend.exercise.web;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fitness.backend.exercise.domain.BodyPart;
 import com.fitness.backend.exercise.domain.BrowseCategory;
-import com.fitness.backend.exercise.domain.CustomTarget.LegSide;
+import com.fitness.backend.exercise.domain.CustomTarget.Side;
 import com.fitness.backend.exercise.domain.DeltRegion;
 import com.fitness.backend.exercise.domain.Equipment;
 import com.fitness.backend.exercise.domain.Exercise;
@@ -54,8 +55,9 @@ public final class ExerciseDtos {
     /**
      * 내 종목 만들기·고치기. 고치기도 같은 값을 모두 보낸다 — 화면은 값이 채워진 같은 창을 연다.
      *
-     * @param category  부위 고르기 화면과 같은 13개
-     * @param legSide   {@code category}가 하체일 때만, 그때는 필수
+     * @param category  부위 고르기 화면과 같은 14개
+     * @param side      {@code category}가 하체·목일 때만, 그때는 필수. 예전 이름 {@code legSide}도 받는다 —
+     *                  배포 직후 예전 화면이 열려 있어도 하체 종목 만들기가 깨지지 않게
      * @param groupName 계열 안에서 만들 때 그 계열. 그 분류에 있는 계열이어야 한다. 없으면 "내 종목" 칸
      */
     public record CustomExerciseRequest(
@@ -63,7 +65,7 @@ public final class ExerciseDtos {
             @Size(max = 50, message = "이름은 50자까지예요.")
             String nameKo,
             @NotNull(message = "부위를 골라 주세요.") BrowseCategory category,
-            LegSide legSide,
+            @JsonAlias("legSide") Side side,
             @NotNull(message = "기구를 골라 주세요.") Equipment equipment,
             @NotNull(message = "기록 방식을 골라 주세요.") MeasureType measureType,
             String groupName) {

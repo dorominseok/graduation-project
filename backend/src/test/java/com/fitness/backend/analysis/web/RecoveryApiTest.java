@@ -46,7 +46,7 @@ class RecoveryApiTest {
 
     private static final String[] ORDER = {
             "CHEST", "BACK", "DELT_FRONT", "DELT_REAR", "TRICEPS", "BICEPS",
-            "QUADS", "POSTERIOR", "CORE", "CALVES", "FOREARMS"};
+            "QUADS", "POSTERIOR", "CORE", "CALVES", "FOREARMS", "NECK_FRONT", "NECK_REAR"};
 
     @Autowired MockMvc mvc;
     @Autowired AuthService authService;
@@ -62,13 +62,13 @@ class RecoveryApiTest {
     }
 
     @Test
-    @DisplayName("기록이 없으면 11개 부위가 모두 회복됨으로 순서대로 온다")
+    @DisplayName("기록이 없으면 13개 부위가 모두 회복됨으로 순서대로 온다")
     void noRecords() throws Exception {
         recovery()
                 .andExpect(jsonPath("$.date").value(today.toString()))
                 .andExpect(jsonPath("$.recoveryDays").value(2))
                 .andExpect(jsonPath("$.heavySets").value(6))
-                .andExpect(jsonPath("$.muscles", hasSize(11)))
+                .andExpect(jsonPath("$.muscles", hasSize(13)))
                 .andExpect(jsonPath("$.muscles[*].key", contains(ORDER)))
                 .andExpect(jsonPath("$.muscles[*].state", everyItem(is("RECOVERED"))))
                 .andExpect(jsonPath("$.muscles[*].lastTrainedOn", everyItem(nullValue())))

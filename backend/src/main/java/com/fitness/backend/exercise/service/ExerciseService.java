@@ -277,11 +277,12 @@ public class ExerciseService {
     }
 
     private static CustomTarget targetOf(CustomExerciseRequest request) {
-        if (request.category() == BrowseCategory.LEGS && request.legSide() == null) {
-            throw new ApiException(ErrorCode.VALIDATION_ERROR, "하체는 앞허벅지·뒤허벅지를 골라 주세요.");
+        boolean needsSide = CustomTarget.needsSide(request.category());
+        if (needsSide && request.side() == null) {
+            throw new ApiException(ErrorCode.VALIDATION_ERROR, request.category() == BrowseCategory.LEGS
+                    ? "하체는 앞허벅지·뒤허벅지를 골라 주세요." : "목은 앞·뒤를 골라 주세요.");
         }
-        return CustomTarget.of(request.category(),
-                request.category() == BrowseCategory.LEGS ? request.legSide() : null);
+        return CustomTarget.of(request.category(), needsSide ? request.side() : null);
     }
 
     /** 계열 안에서 만들면 그 계열. 그 분류에 실제로 있는 계열이어야 한다 */

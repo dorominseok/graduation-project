@@ -7,8 +7,9 @@ import styles from './bodyMap.module.css'
 /**
  * 그림의 영역 → 앱의 부위(「회복지도_설계서」 5장).
  *
- * <p>여기 없는 영역(머리·목·손·발·무릎·정강이 앞)은 앱이 세지 않는 곳이라 실루엣
+ * <p>여기 없는 영역(머리·손·발·무릎·정강이 앞)은 앱이 세지 않는 곳이라 실루엣
  * 바탕색으로 칠하고 누를 수 없다. 어깨는 같은 영역 이름이 앞에서는 전·측면, 뒤에서는 후면이다.
+ * 목도 같다 — 앞 그림의 목(흉쇄유돌근 줄기)은 목 앞, 뒤 그림의 목은 목 뒤(2026-11-27).
  */
 const REGION_MUSCLE: Record<BodySide, Record<string, MuscleGroupKey>> = {
   front: {
@@ -23,6 +24,7 @@ const REGION_MUSCLE: Record<BodySide, Record<string, MuscleGroupKey>> = {
     obliques: 'CORE',
     calves: 'CALVES',
     forearm: 'FOREARMS',
+    neck: 'NECK_FRONT',
   },
   back: {
     trapezius: 'BACK',
@@ -35,6 +37,7 @@ const REGION_MUSCLE: Record<BodySide, Record<string, MuscleGroupKey>> = {
     hamstring: 'POSTERIOR',
     calves: 'CALVES',
     forearm: 'FOREARMS',
+    neck: 'NECK_REAR',
   },
 }
 
