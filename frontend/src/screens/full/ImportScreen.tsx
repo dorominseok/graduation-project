@@ -69,7 +69,7 @@ interface Target {
  * 다른 앱 기록 붙여넣기(「기록가져오기_설계서」 5장). 첫 판은 바디캘린더의 "운동 일지 내보내기" 글.
  *
  * <p>붙여넣기 → 미리보기 → 추가. 읽기와 이름 맞추기는 서버가 하고, 화면은 맞춘 결과를 고치게 한다 —
- * "바꾸기"·"비슷한 종목 고르기"는 종목 고르기 시트(그 세트를 담을 수 있는 기록 방식만),
+ * "바꾸기"·"비슷한 종목 고르기"는 종목 고르기 시트(그 세트를 담을 수 있는 기록 방식만 — 시트 안에서도 새 종목을 만든다),
  * "+ 새 종목 만들기"는 원래 이름과 짐작한 기구·기록 방식이 채워진 내 종목 만들기 창.
  * 미등록 운동이 남으면 "추가"를 누를 수 없다.
  */
@@ -317,6 +317,12 @@ export function ImportScreen() {
               onStepChange={setPickerStep}
               onPick={(exercise) => choose(picking.source, exercise)}
               measureTypes={picking.allowed}
+              createLabel="만들고 이 기록에 쓰기"
+              createPrefill={{
+                name: picking.source.slice(0, NAME_LIMIT),
+                equipment: picking.guess?.equipment ?? null,
+                measureType: picking.guess?.measureType ?? null,
+              }}
             />
           </div>
         )}
