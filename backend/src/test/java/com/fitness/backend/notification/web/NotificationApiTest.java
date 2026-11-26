@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fitness.backend.auth.service.AuthService;
 import com.fitness.backend.notification.push.EcKeys;
+import jakarta.persistence.EntityManager;
 import java.security.KeyPair;
 import java.security.interfaces.ECPublicKey;
 import java.util.UUID;
@@ -33,6 +34,7 @@ class NotificationApiTest {
 
     @Autowired MockMvc mvc;
     @Autowired AuthService authService;
+    @Autowired EntityManager entityManager;
 
     private String bearer;
 
@@ -77,6 +79,8 @@ class NotificationApiTest {
     @DisplayName("시각은 30분 단위만(새벽도 된다), 리마인더를 켜면 요일이 하나 이상 있어야 한다")
     void validation() throws Exception {
         save(body(true, "[\"MONDAY\"]", "03:30", true, "SUNDAY", "23:30", true, true)).andExpect(status().isOk());
+        // DB까지 내려 본다 — 테스트는 한 트랜잭션이라 그냥 두면 DB 제약(V14의 08:00~21:30)에 닿지 않아 #77에서 놓쳤다
+        entityManager.flush();
         save(body(true, "[\"MONDAY\"]", "19:15", true, "SUNDAY", "20:00", true, true)).andExpect(status().isBadRequest());
         save(body(true, "[]", "19:00", true, "SUNDAY", "20:00", true, true))
                 .andExpect(status().isBadRequest())

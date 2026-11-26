@@ -15,7 +15,6 @@ import com.fitness.backend.notification.service.NotificationSettingsService;
 import com.fitness.backend.notification.web.NotificationDtos.Reminder;
 import com.fitness.backend.notification.web.NotificationDtos.Summary;
 import com.fitness.backend.notification.web.NotificationDtos.UpdateRequest;
-import com.fitness.backend.routine.service.RoutineService;
 import com.fitness.backend.workout.service.WorkoutService;
 import com.fitness.backend.workout.web.WorkoutDtos.CreateSetRequest;
 import com.fitness.backend.workout.web.WorkoutDtos.OpenDayRequest;
@@ -78,7 +77,6 @@ class NotificationDeliveryTest {
     @Autowired NotificationScheduler scheduler;
     @Autowired NotificationSettingsService settings;
     @Autowired PushSubscriptionRepository subscriptions;
-    @Autowired RoutineService routineService;
     @Autowired GroupService groupService;
     @Autowired WorkoutService workoutService;
     @Autowired AuthService authService;
@@ -92,7 +90,7 @@ class NotificationDeliveryTest {
     // ── 운동 리마인더
 
     @Test
-    @DisplayName("고른 요일·시각에 그날 기록이 없으면 리마인더 — 문구는 루틴을 만드는 규칙의 이유 문장")
+    @DisplayName("고른 요일·시각에 그날 기록이 없으면 리마인더 — 제목 '오늘은 운동하는 날이에요'만, 본문 없음(루틴 이유 문장은 뺐다)")
     void reminderOnChosenDayAndTime() {
         Long user = signUp("민석");
         String device = subscribe(user);
@@ -101,9 +99,8 @@ class NotificationDeliveryTest {
         scheduler.runAt(MONDAY.atTime(19, 0));
         List<RecordingPushGateway.Sent> sent = gateway.to(device);
         assertEquals(1, sent.size());
-        String reason = routineService.reminderReason(user, MONDAY).orElseThrow();
-        assertTrue(sent.get(0).payload().contains("\"title\":\"오늘 운동할 날이에요\""), sent.get(0).payload());
-        assertTrue(sent.get(0).payload().contains("\"body\":\"" + reason + "\""), sent.get(0).payload());
+        assertTrue(sent.get(0).payload().contains("\"title\":\"오늘은 운동하는 날이에요\""), sent.get(0).payload());
+        assertTrue(sent.get(0).payload().contains("\"body\":\"\""), sent.get(0).payload());
         assertTrue(sent.get(0).payload().contains("\"url\":\"/\""));
 
         scheduler.runAt(MONDAY.atTime(19, 30));
@@ -137,8 +134,8 @@ class NotificationDeliveryTest {
     // ── 주간 요약
 
     @Test
-    @DisplayName("주간 요약 — 이번 주 운동한 날 수와 더 채울 부위. 기록이 없는 주는 다른 문구")
-    void weeklySummary() {
+    @DisplayName("주간 요약은 지금 보내지 않는다(D-20) — 문구 계산은 남겨 둔다: 이번 주 운동한 날 수와 더 채울 부위, 기록이 없는 주는 다른 문구")
+    void weeklySummaryPaused() {
         Long trained = signUp("민석");
         String trainedDevice = subscribe(trained);
         chooseSummary(trained, DayOfWeek.MONDAY, LocalTime.of(20, 0));
@@ -149,11 +146,11 @@ class NotificationDeliveryTest {
         chooseSummary(idle, DayOfWeek.MONDAY, LocalTime.of(20, 0));
 
         scheduler.runAt(MONDAY.atTime(20, 0));
-        String payload = gateway.to(trainedDevice).get(0).payload();
-        assertTrue(payload.contains("\"title\":\"이번 주 운동\""), payload);
-        assertTrue(payload.contains("이번 주 1일 운동했어요. 더 채우면 좋은 부위: "), payload);
-        assertTrue(payload.contains("\"url\":\"/analysis\""), payload);
-        assertTrue(gateway.to(idleDevice).get(0).payload().contains("이번 주는 운동 기록이 없어요."));
+        assertTrue(NotificationScheduler.SUMMARY_PAUSED);
+        assertEquals(0, gateway.to(trainedDevice).size(), "멈춘 동안은 켜 둔 사람에게도 보내지 않는다");
+        assertEquals(0, gateway.to(idleDevice).size());
+        assertTrue(scheduler.summary(trained, MONDAY).startsWith("이번 주 1일 운동했어요. 더 채우면 좋은 부위: "));
+        assertTrue(scheduler.summary(idle, MONDAY).startsWith("이번 주는 운동 기록이 없어요."));
     }
 
     @Test

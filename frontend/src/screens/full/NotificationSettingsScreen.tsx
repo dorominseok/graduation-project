@@ -20,6 +20,9 @@ const DAYS: { key: DayOfWeek; label: string }[] = [
   { key: 'SUNDAY', label: '일' },
 ]
 
+/** 주간 요약 칸을 보일지 — 다시 켤 때 이 값과 서버의 SUMMARY_PAUSED를 같이 바꾼다 */
+const SHOW_SUMMARY = false
+
 /** 고를 수 있는 시각 — 하루 내내 30분 단위(서버도 같은 규칙). 밤 10시~아침 8시 막기는 2026-11-28에 뺐다 */
 const TIMES: string[] = Array.from({ length: 48 }, (_, i) => {
   const minutes = i * 30
@@ -148,6 +151,8 @@ export function NotificationSettingsScreen() {
 
   if (!user) return null
 
+  const hint = settings ? deviceHint(support, permission, settings, deviceOn) : null
+
   return (
     <>
       <ScreenHeader title="알림" />
@@ -173,7 +178,7 @@ export function NotificationSettingsScreen() {
                   onToggle={toggleDevice}
                 />
               </div>
-              <p className={settingsStyles.hint}>{deviceHint(support, permission, settings, deviceOn)}</p>
+              {hint && <p className={settingsStyles.hint}>{hint}</p>}
             </div>
 
             <div className={settingsStyles.section}>
@@ -212,42 +217,44 @@ export function NotificationSettingsScreen() {
                 )}
               </div>
               <p className={settingsStyles.hint}>
-                고른 요일·시각에 그날 운동 기록이 없으면, 오늘의 루틴이 고른 부위와 그 이유를 알려 드려요. 쉬는
-                날은 빼고 고르세요.
+                고른 요일·시각에 그날 운동 기록이 없으면 운동하는 날이라고 알려 드려요. 쉬는 날은 빼고 고르세요.
                 {!settings.saved && ' 요일은 최근 4주에 자주 운동한 요일로 골라 두었어요.'}
               </p>
             </div>
 
-            <div className={settingsStyles.section}>
-              <div className={settingsStyles.sectionTitle}>주간 요약</div>
-              <div className={settingsStyles.card}>
-                <SwitchRow
-                  label="한 주 돌아보기"
-                  on={settings.summary.enabled}
-                  onToggle={() => change({ summary: { ...settings.summary, enabled: !settings.summary.enabled } })}
-                />
-                {settings.summary.enabled && (
-                  <>
-                    <Field label="요일">
-                      <DayPicker
-                        label="주간 요약 요일"
-                        single
-                        selected={[settings.summary.day]}
-                        onPick={(day) => change({ summary: { ...settings.summary, day } })}
-                      />
-                    </Field>
-                    <Field label="시각">
-                      <TimeSelect
-                        label="주간 요약 시각"
-                        value={settings.summary.time}
-                        onChange={(time) => change({ summary: { ...settings.summary, time } })}
-                      />
-                    </Field>
-                  </>
-                )}
+            {/* 주간 요약은 아직 제대로 확인하지 못해 숨긴다(결정 기록 D-20). 서버도 보내지 않는다(NotificationScheduler.SUMMARY_PAUSED) */}
+            {SHOW_SUMMARY && (
+              <div className={settingsStyles.section}>
+                <div className={settingsStyles.sectionTitle}>주간 요약</div>
+                <div className={settingsStyles.card}>
+                  <SwitchRow
+                    label="한 주 돌아보기"
+                    on={settings.summary.enabled}
+                    onToggle={() => change({ summary: { ...settings.summary, enabled: !settings.summary.enabled } })}
+                  />
+                  {settings.summary.enabled && (
+                    <>
+                      <Field label="요일">
+                        <DayPicker
+                          label="주간 요약 요일"
+                          single
+                          selected={[settings.summary.day]}
+                          onPick={(day) => change({ summary: { ...settings.summary, day } })}
+                        />
+                      </Field>
+                      <Field label="시각">
+                        <TimeSelect
+                          label="주간 요약 시각"
+                          value={settings.summary.time}
+                          onChange={(time) => change({ summary: { ...settings.summary, time } })}
+                        />
+                      </Field>
+                    </>
+                  )}
+                </div>
+                <p className={settingsStyles.hint}>이번 주에 운동한 날과 더 채우면 좋은 부위를 알려 드려요.</p>
               </div>
-              <p className={settingsStyles.hint}>이번 주에 운동한 날과 더 채우면 좋은 부위를 알려 드려요.</p>
-            </div>
+            )}
 
             <div className={settingsStyles.section}>
               <div className={settingsStyles.sectionTitle}>그룹</div>
@@ -255,9 +262,6 @@ export function NotificationSettingsScreen() {
                 <SwitchRow label="응원 받음" on={settings.cheer} onToggle={() => change({ cheer: !settings.cheer })} />
                 <SwitchRow label="그룹 소식" on={settings.group} onToggle={() => change({ group: !settings.group })} />
               </div>
-              <p className={settingsStyles.hint}>
-                그룹 소식은 내 그룹에 새 멤버가 들어올 때(방장에게)와 방장을 넘겨받을 때 와요.
-              </p>
             </div>
           </>
         )}
@@ -277,7 +281,7 @@ function deviceHint(
   permission: NotificationPermission | null,
   settings: NotificationSettings,
   deviceOn: boolean,
-): string {
+): string | null {
   if (support === 'ios-browser') {
     return '아이폰은 홈 화면에 추가한 밸런스핏에서만 알림을 받을 수 있어요. 사파리의 공유 › 홈 화면에 추가로 설치한 뒤 그 앱에서 켜 주세요.'
   }
@@ -289,10 +293,8 @@ function deviceHint(
   if (permission === 'denied') {
     return '알림이 차단돼 있어요. 브라우저의 사이트 설정(설치한 앱이면 휴대폰 설정 › 앱 › 밸런스핏)에서 알림을 허용한 뒤 다시 열어 주세요.'
   }
-  if (deviceOn) {
-    const others = settings.subscriptionCount - 1
-    return others > 0 ? `이 기기와 다른 기기 ${others}대로 알림이 와요.` : '이 기기로 알림이 와요.'
-  }
+  // 켜져 있으면 설명하지 않는다 — 기기 수 안내("이 기기와 다른 기기 1대로…")는 뺐다(사용자 의견, 2026-11-28)
+  if (deviceOn) return null
   return '켜면 이 기기로 알림이 와요. 휴대폰·컴퓨터마다 따로 켜요.'
 }
 

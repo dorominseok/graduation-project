@@ -13,14 +13,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fitness.backend.auth.service.AuthService;
-import com.fitness.backend.routine.service.RoutineService;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.persistence.EntityManager;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -55,7 +53,6 @@ class RoutineApiTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired EntityManager em;
     @Autowired Clock clock;
-    @Autowired RoutineService routineService;
 
     private String bearer;
     private LocalDate today;
@@ -288,8 +285,8 @@ class RoutineApiTest {
     }
 
     @Test
-    @DisplayName("담을 부위가 없는 루틴을 만든 날은 리마인더 문구가 없다 — 권할 게 없으면 보내지 않는다")
-    void noReminderReasonForEmptyRoutine() throws Exception {
+    @DisplayName("모든 묶음이 회복 중이면 빈 루틴과 그 이유 문장")
+    void emptyRoutineWhenAllRecovering() throws Exception {
         String email = "r" + UUID.randomUUID().toString().substring(0, 8) + "@example.com";
         AuthService.AuthResult user = authService.signUp(email, "hunter2hunter2", "민석");
         bearer = "Bearer " + user.tokens().accessToken();
@@ -298,14 +295,11 @@ class RoutineApiTest {
         for (String name : List.of("바벨 벤치프레스", "랫풀다운: 와이드 그립", "바벨 스쿼트", "케이블 크런치")) {
             sets(today.minusDays(1), exerciseIdOf(name), 3);
         }
-        assertEquals(Optional.empty(), routineService.reminderReason(userId, today), "루틴을 만들기 전");
-
         createToday()
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.items").isEmpty())
                 .andExpect(jsonPath("$.reason").value("하체, 밀기, 당기기와 코어가 모두 회복 중이라 오늘은 담을 부위가 없어요."));
 
-        assertEquals(Optional.empty(), routineService.reminderReason(userId, today), "빈 루틴을 만든 뒤");
     }
 
     @Test

@@ -233,7 +233,6 @@ public class RoutineService {
 
     /**
      * 그날 부위·세트를 정한다 — 종목은 고르지 않는다. 판정은 기준일 어제로, 회복 제외는 오늘 기록까지 본다.
-     * 루틴을 만들 때와 운동 리마인더의 문구({@link #reminderReason})가 같은 계산을 쓴다.
      */
     private Planning plan(Long userId, LocalDate today, RoutinePolicy policy) {
         LocalDate referenceDate = today.minusDays(1);
@@ -251,31 +250,6 @@ public class RoutineService {
                 .toList();
         SlotPlanner.Plan plan = SlotPlanner.decide(states, volume.frequency().daysPerWeek(), today, policy);
         return new Planning(plan, imbalances);
-    }
-
-    /**
-     * 운동 리마인더에 쓸 "왜 오늘 이 부위인지" 문장(「알림_설계서」 2장). 오늘 루틴을 이미 만들었으면 그 문장을,
-     * 아니면 루틴을 만드는 규칙 그대로 계산한다 — 알림과 루틴이 다른 말을 하지 않게. LLM은 부르지 않는다.
-     *
-     * @return 담을 부위가 없는 날(모두 회복 중이거나 과다 경계)이면 비어 있다 — 권할 게 없으면 보내지 않는다
-     */
-    public Optional<String> reminderReason(Long userId, LocalDate today) {
-        Optional<Routine> existing = routineRepository.findByUserIdAndRoutineDate(userId, today);
-        if (existing.isPresent()) {
-            // 담은 부위가 없는 루틴이면 권할 게 없다. 항목은 지우지 않고 표시만 하므로, 비었으면 만들 때 빈 루틴이다
-            if (itemRepository.findByRoutineIdOrderByPositionAsc(existing.get().getId()).isEmpty()) {
-                return Optional.empty();
-            }
-            if (existing.get().getReason() != null) {
-                return Optional.of(existing.get().getReason());
-            }
-        }
-        RoutinePolicy policy = policy();
-        Planning planning = plan(userId, today, policy);
-        if (planning.plan().slots().isEmpty()) {
-            return Optional.empty();
-        }
-        return Optional.of(RoutineReason.of(planning.plan(), planning.imbalances(), today, policy));
     }
 
     /** 불균형인 쌍마다 (적은 쪽, 많은 쪽). 판정 불가(양쪽 0)는 넣지 않는다 */
