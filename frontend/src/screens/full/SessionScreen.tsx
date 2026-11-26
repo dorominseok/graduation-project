@@ -1007,21 +1007,6 @@ export function SessionScreen() {
                           )}
                         </span>
 
-                        {/*
-                          세트 삭제는 무게 앞에 — 펼치기(⌄) 옆에 있을 때 잘못 눌려 지워지는 일이 있었다(사용자 의견, 2026-11-28).
-                          줄을 누르는 것(완료 체크)과 다른 일이라 위로 올리지 않는다. 체크한 세트는 한 번 묻는다
-                        */}
-                        <span className={styles.removeWrap} role="presentation" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            className={styles.iconBtn}
-                            onClick={() => askRemoveRow(openedIndex, rowIndex)}
-                            aria-label="세트 삭제"
-                          >
-                            ✕
-                          </button>
-                        </span>
-
                         <span className={styles.values}>
                           {fields.map((field, fieldIndex) => (
                             <span key={field} className={fieldIndex === 0 ? styles.colA : styles.colB}>
@@ -1052,6 +1037,20 @@ export function SessionScreen() {
                               <span className={styles.unit}>{FIELD_UNIT[field]}</span>
                             </span>
                           ))}
+                          {/*
+                            세트 삭제 ✕는 횟수 바로 오른쪽 — 펼치기(⌄)와 떨어뜨린다. 바로 옆에 있을 때 펼치려다 지우는 일이 있었다
+                            (사용자 의견, 2026-11-28). 줄을 누르는 것(완료 체크)과 다른 일이라 위로 올리지 않는다. 체크한 세트는 한 번 묻는다
+                          */}
+                          <span className={styles.removeWrap} role="presentation" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              className={styles.iconBtn}
+                              onClick={() => askRemoveRow(openedIndex, rowIndex)}
+                              aria-label="세트 삭제"
+                            >
+                              ✕
+                            </button>
+                          </span>
                         </span>
 
                         <span
