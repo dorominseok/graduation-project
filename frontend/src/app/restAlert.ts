@@ -2,9 +2,9 @@
  * 휴식이 끝났을 때 소리·진동으로 알리고, 쉬는 동안 화면이 저절로 꺼지지 않게 잡아 둔다.
  * 설정 › 휴식 타이머에서 하나씩 끄고, 이 기기(브라우저)에만 남는다.
  *
- * <p>모두 화면이 켜져 있고 앱을 보고 있을 때만 된다. 화면이 꺼지거나 다른 앱으로 가면 브라우저가
+ * <p>소리·진동은 화면이 켜져 있고 앱을 보고 있을 때만 된다. 화면이 꺼지거나 다른 앱으로 가면 브라우저가
  * 앱 코드를 멈추므로 끝나는 순간에 울릴 수 없다 — 그래서 화면 켜 두기와 묶는다.
- * 서버 푸시로 알리지 않는 이유는 「알림_설계서」 1장.
+ * 앱을 벗어났을 때는 상단바 알림으로 알린다(`notify`, `app/restNotification.ts`, 결정 기록 D-14).
  */
 
 export interface RestAlertSettings {
@@ -12,10 +12,12 @@ export interface RestAlertSettings {
   vibrate: boolean
   /** 쉬는 동안 화면 켜 두기 */
   keepScreenOn: boolean
+  /** 앱을 벗어나면 상단바 알림으로 — 알림 권한이 필요해 기본은 끈다 */
+  notify: boolean
 }
 
 const STORAGE_KEY = 'balancefit.restAlert'
-const DEFAULTS: RestAlertSettings = { sound: true, vibrate: true, keepScreenOn: true }
+const DEFAULTS: RestAlertSettings = { sound: true, vibrate: true, keepScreenOn: true, notify: false }
 
 export function getRestAlert(): RestAlertSettings {
   try {
@@ -26,6 +28,7 @@ export function getRestAlert(): RestAlertSettings {
       sound: saved.sound ?? DEFAULTS.sound,
       vibrate: saved.vibrate ?? DEFAULTS.vibrate,
       keepScreenOn: saved.keepScreenOn ?? DEFAULTS.keepScreenOn,
+      notify: saved.notify ?? DEFAULTS.notify,
     }
   } catch {
     return DEFAULTS
@@ -36,7 +39,7 @@ export function setRestAlert(settings: RestAlertSettings): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
   } catch {
-    // 저장하지 못하면 다음에 기본값(모두 켬)으로 돌아갈 뿐이다
+    // 저장하지 못하면 다음에 기본값으로 돌아갈 뿐이다
   }
 }
 

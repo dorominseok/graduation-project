@@ -14,6 +14,8 @@ import {
   setRestAlert,
 } from '../../app/restAlert'
 import type { RestAlertSettings } from '../../app/restAlert'
+import { canNotifyRest, disableRestNotify, enableRestNotify, restNotifyAllowed } from '../../app/restNotification'
+import { PushPermissionError } from '../../app/push'
 import { SwitchRow } from './SwitchRow'
 import styles from './settings.module.css'
 
@@ -48,6 +50,28 @@ export function SettingsScreen() {
     setRestAlertState(next)
     if (patch.sound) previewSound()
     if (patch.vibrate) previewVibration()
+  }
+
+  /** 앱 밖에서도 휴식 알림. 켤 때 알림 권한을 묻는다 — 누른 그 순간에 물어야 해서 앞에 기다리는 일을 두지 않는다 */
+  const restNotifyOn = restAlert.notify && restNotifyAllowed()
+  const toggleRestNotify = async () => {
+    if (restNotifyOn) {
+      changeRestAlert({ notify: false })
+      void disableRestNotify().catch(() => undefined)
+      return
+    }
+    try {
+      await enableRestNotify()
+      changeRestAlert({ notify: true })
+    } catch (err) {
+      showToast({
+        message:
+          err instanceof PushPermissionError && err.permission === 'denied'
+            ? '알림이 차단돼 있어요. 브라우저의 사이트 설정(설치한 앱이면 휴대폰 설정 › 앱 › 밸런스핏)에서 허용해 주세요.'
+            : '알림을 켜지 못했어요',
+        tone: 'danger',
+      })
+    }
   }
 
   /**
@@ -128,11 +152,16 @@ export function SettingsScreen() {
                 onToggle={() => changeRestAlert({ keepScreenOn: !restAlert.keepScreenOn })}
               />
             )}
+            {canNotifyRest() && (
+              <SwitchRow label="앱 밖에서도 알림" on={restNotifyOn} onToggle={() => void toggleRestNotify()} />
+            )}
           </div>
           <p className={styles.hint}>
-            {canKeepScreenOn()
-              ? '앱 화면이 켜져 있을 때만 알릴 수 있어요. 쉬는 동안은 화면이 저절로 꺼지지 않고, 전원 버튼으로는 언제든 끌 수 있어요.'
-              : '앱 화면이 켜져 있을 때만 알릴 수 있어요. 화면이 꺼지면 휴식이 끝나도 울리지 않아요.'}{' '}
+            {restNotifyOn
+              ? '앱을 벗어나면 끝나는 시각을 알림으로 보여 주고, 끝나면 알림이 바뀌며 울려요.'
+              : canKeepScreenOn()
+                ? '앱 화면이 켜져 있을 때만 알릴 수 있어요. 쉬는 동안은 화면이 저절로 꺼지지 않고, 전원 버튼으로는 언제든 끌 수 있어요.'
+                : '앱 화면이 켜져 있을 때만 알릴 수 있어요. 화면이 꺼지면 휴식이 끝나도 울리지 않아요.'}{' '}
             무음 모드에서는 소리가 나지 않을 수 있어요.
           </p>
         </div>

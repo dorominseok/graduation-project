@@ -7,6 +7,7 @@
  */
 
 import { notificationApi } from '../api'
+import { getRestAlert } from './restAlert'
 import type { NotificationSettings } from '../api'
 import { NAVIGATE_MESSAGE, safeAppPath } from './pushProtocol'
 import type { NavigateMessage } from './pushProtocol'
@@ -73,10 +74,7 @@ export async function enable(userId: number, vapidPublicKey: string): Promise<No
   const granted = await Notification.requestPermission()
   if (granted !== 'granted') throw new PushPermissionError(granted)
 
-  const registration = await navigator.serviceWorker.register(SW_URL, { scope: '/' })
-  // 구독하려면 서비스워커가 켜져 있어야 한다. navigator.serviceWorker.ready는 쓰지 않는다 — 한 번
-  // 풀리면 끈 뒤(등록 해제) 다시 켜도 지워진 옛 등록을 돌려준다
-  await activated(registration)
+  const registration = await ensureWorker()
 
   const serverKey = fromBase64Url(vapidPublicKey)
   let subscription = await registration.pushManager.getSubscription()
@@ -106,8 +104,28 @@ export async function disable({ tellServer }: { tellServer: boolean }): Promise<
     await notificationApi.unsubscribe(subscription.endpoint).catch(() => undefined)
   }
   await subscription?.unsubscribe().catch(() => false)
-  await registration?.unregister().catch(() => false)
+  // 휴식 알림도 같은 서비스워커로 띄운다. 그쪽이 켜져 있으면 남긴다
+  if (!getRestAlert().notify) await registration?.unregister().catch(() => false)
   writeOwner(null)
+}
+
+/**
+ * 알림 전용 서비스워커를 등록하고 켜질 때까지 기다린다. 운동 알림과 휴식 알림(`restNotification.ts`)이 같이 쓴다.
+ *
+ * navigator.serviceWorker.ready는 쓰지 않는다 — 한 번 풀리면 끈 뒤(등록 해제) 다시 켜도 지워진 옛 등록을 돌려준다.
+ */
+export async function ensureWorker(): Promise<ServiceWorkerRegistration> {
+  const registration = await navigator.serviceWorker.register(SW_URL, { scope: '/' })
+  await activated(registration)
+  return registration
+}
+
+/** 휴식 알림을 끌 때. 운동 알림(구독)이 없으면 서비스워커도 지운다 — 알림을 쓰지 않는 사람에게는 두지 않는다 */
+export async function releaseWorkerIfUnused(): Promise<void> {
+  if (pushSupport() !== 'supported') return
+  const registration = await navigator.serviceWorker.getRegistration('/')
+  if (!registration || (await registration.pushManager.getSubscription())) return
+  await registration.unregister().catch(() => false)
 }
 
 /**
