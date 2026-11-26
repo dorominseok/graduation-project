@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useToast } from '../../components'
 import { exerciseApi, isApiError, workoutApi } from '../../api'
-import type { BrowseCategory, CategoryCount, Exercise, GroupCount, MeasureType, MuscleGroupKey } from '../../api'
+import type { BrowseCategory, CategoryCount, Equipment, Exercise, GroupCount, MeasureType, MuscleGroupKey } from '../../api'
 import { BODY_PART_LABEL, EQUIPMENT_LABEL, MEASURE_CHIP_LABEL } from './exerciseLabels'
 import { exerciseImage, hideOnError } from './exerciseImage'
 import { CustomExerciseForm } from './CustomExerciseForm'
@@ -73,9 +73,11 @@ interface ExercisePickerProps {
   createLabel?: string
   /**
    * 이 기록 방식의 종목만 보인다 — 붙여넣기의 "바꾸기"는 가져온 세트를 담을 수 있는 종목만 고른다.
-   * 넘기면 만들기 버튼은 두지 않는다(붙여넣기 화면에 글로 미리 채우는 만들기가 따로 있다)
+   * 만들기 창도 이 방식만 고를 수 있다(2026-11-28 사용자 요청 — 전엔 만들기 버튼을 아예 두지 않았다)
    */
   measureTypes?: readonly MeasureType[]
+  /** 만들기 창에 미리 채울 값. 붙여넣기는 원래 이름과 짐작한 기구·기록 방식 */
+  createPrefill?: { name: string; equipment: Equipment | null; measureType: MeasureType | null }
 }
 
 /**
@@ -102,6 +104,7 @@ export function ExercisePicker({
   clearSearchOnPick = false,
   createLabel = '만들기',
   measureTypes,
+  createPrefill,
 }: ExercisePickerProps) {
   // 하나뿐이면 서버가 거른다(쪽 나눔이 맞게). 여럿이면 받은 뒤 여기서 거른다
   const onlyMeasure = measureTypes?.length === 1 ? measureTypes[0] : undefined
@@ -271,7 +274,7 @@ export function ExercisePicker({
   const scopedToPart = (!searching && tab === 'part' && step.group !== null) || byMuscle
   const inMine = !searching && tab === 'part' && step.group === MINE_GROUP
   /** 만들기 버튼을 둘 수 있는 곳 — 부위별 탭의 세 단계. 검색·최근·즐겨찾기·약점에서 온 목록은 부위를 미리 고를 수 없다 */
-  const canCreate = !searching && tab === 'part' && !byMuscle && !measureTypes
+  const canCreate = !searching && tab === 'part' && !byMuscle
   const shownItems = measureTypes ? items.filter((item) => measureTypes.includes(item.measureType)) : items
 
   const openCreate = () => setCreating({ category: step.category, group: step.group === MINE_GROUP ? null : step.group })
@@ -428,6 +431,8 @@ export function ExercisePicker({
             <CustomExerciseForm
               categories={categories}
               origin={creating}
+              prefill={createPrefill}
+              allowedMeasureTypes={measureTypes}
               submitLabel={createLabel}
               onSaved={handleCreated}
             />
