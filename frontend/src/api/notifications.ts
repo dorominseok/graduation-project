@@ -11,7 +11,7 @@ export function getSettings(): Promise<NotificationSettings> {
   return request<NotificationSettings>('/users/me/notification-settings')
 }
 
-/** 시각은 08:00~21:30 · 30분 단위, 리마인더를 켜면 요일이 하나 이상이어야 한다(아니면 400) */
+/** 시각은 30분 단위(하루 내내), 리마인더를 켜면 요일이 하나 이상이어야 한다(아니면 400) */
 export function updateSettings(body: UpdateNotificationSettingsRequest): Promise<NotificationSettings> {
   return request<NotificationSettings>('/users/me/notification-settings', { method: 'PUT', body })
 }

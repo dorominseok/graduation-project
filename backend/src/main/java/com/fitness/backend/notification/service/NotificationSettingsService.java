@@ -162,7 +162,7 @@ public class NotificationSettingsService {
     private static void requireSelectable(LocalTime time, String what) {
         if (!NotificationSchedule.selectable(time)) {
             throw new ApiException(ErrorCode.VALIDATION_ERROR,
-                    what + " 시각은 08:00~21:30 사이에서 30분 단위로 골라 주세요. (밤 10시~아침 8시에는 알림을 보내지 않아요)");
+                    what + " 시각은 30분 단위로 골라 주세요.");
         }
     }
 

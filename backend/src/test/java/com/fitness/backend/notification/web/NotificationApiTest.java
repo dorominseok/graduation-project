@@ -74,10 +74,9 @@ class NotificationApiTest {
     }
 
     @Test
-    @DisplayName("시각은 08:00~21:30 · 30분 단위만, 리마인더를 켜면 요일이 하나 이상 있어야 한다")
+    @DisplayName("시각은 30분 단위만(새벽도 된다), 리마인더를 켜면 요일이 하나 이상 있어야 한다")
     void validation() throws Exception {
-        save(body(true, "[\"MONDAY\"]", "07:30", true, "SUNDAY", "20:00", true, true)).andExpect(status().isBadRequest());
-        save(body(true, "[\"MONDAY\"]", "19:00", true, "SUNDAY", "22:00", true, true)).andExpect(status().isBadRequest());
+        save(body(true, "[\"MONDAY\"]", "03:30", true, "SUNDAY", "23:30", true, true)).andExpect(status().isOk());
         save(body(true, "[\"MONDAY\"]", "19:15", true, "SUNDAY", "20:00", true, true)).andExpect(status().isBadRequest());
         save(body(true, "[]", "19:00", true, "SUNDAY", "20:00", true, true))
                 .andExpect(status().isBadRequest())

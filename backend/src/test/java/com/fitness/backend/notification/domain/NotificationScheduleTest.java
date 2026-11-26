@@ -14,24 +14,13 @@ import org.junit.jupiter.api.Test;
 class NotificationScheduleTest {
 
     @Test
-    @DisplayName("조용한 시간은 22:00부터 08:00 전까지")
-    void quietHours() {
-        assertTrue(NotificationSchedule.quiet(LocalTime.of(22, 0)));
-        assertTrue(NotificationSchedule.quiet(LocalTime.of(23, 59)));
-        assertTrue(NotificationSchedule.quiet(LocalTime.of(0, 0)));
-        assertTrue(NotificationSchedule.quiet(LocalTime.of(7, 59)));
-        assertFalse(NotificationSchedule.quiet(LocalTime.of(8, 0)));
-        assertFalse(NotificationSchedule.quiet(LocalTime.of(21, 59)));
-    }
-
-    @Test
-    @DisplayName("고를 수 있는 시각은 08:00~21:30, 30분 단위 — 조용한 시간과 겹치지 않는다")
+    @DisplayName("고를 수 있는 시각은 하루 내내(00:00~23:30), 30분 단위 — 조용한 시간은 없앴다(2026-11-28)")
     void selectableTimes() {
+        assertTrue(NotificationSchedule.selectable(LocalTime.of(0, 0)));
+        assertTrue(NotificationSchedule.selectable(LocalTime.of(3, 30)));
         assertTrue(NotificationSchedule.selectable(LocalTime.of(8, 0)));
         assertTrue(NotificationSchedule.selectable(LocalTime.of(19, 30)));
-        assertTrue(NotificationSchedule.selectable(LocalTime.of(21, 30)));
-        assertFalse(NotificationSchedule.selectable(LocalTime.of(7, 30)));
-        assertFalse(NotificationSchedule.selectable(LocalTime.of(22, 0)));
+        assertTrue(NotificationSchedule.selectable(LocalTime.of(23, 30)));
         assertFalse(NotificationSchedule.selectable(LocalTime.of(19, 15)));
         assertFalse(NotificationSchedule.selectable(LocalTime.of(19, 0, 30)));
     }
