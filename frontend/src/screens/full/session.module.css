@@ -500,13 +500,17 @@
 }
 
 .colA {
-  width: 92px;
+  width: 80px;
   flex-shrink: 0;
   white-space: nowrap;
 }
 
+/*
+ * 무게·횟수 칸은 횟수 오른쪽 ✕(32px)가 360 폭에서도 들어가는 너비(2026-11-28 — 전엔 92·64px).
+ * 남는 자리는 ✕와 펼치기(⌄) 사이로 간다. 실패 세트의 "9/10"처럼 길어지면 늘어난다 — 바로 뒤 ✕와 겹치지 않게
+ */
 .colB {
-  width: 64px;
+  min-width: 52px;
   flex-shrink: 0;
   white-space: nowrap;
 }
@@ -549,10 +553,12 @@
   flex-shrink: 0;
 }
 
-/* 세트 삭제 ✕ — 무게 앞, 번호 칸 옆 */
+/* 세트 삭제 ✕ — 횟수 바로 오른쪽. 남는 자리는 ✕와 펼치기(⌄) 사이로 간다 */
 .removeWrap {
   flex-shrink: 0;
   display: flex;
+  align-self: center;
+  margin-left: var(--space-6);
 }
 
 .iconBtn {
