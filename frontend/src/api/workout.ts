@@ -96,11 +96,11 @@ export function deleteSet(sessionId: number, setId: number): Promise<void> {
 }
 
 /**
- * 종목 단위 삭제.
+ * 카드 단위 삭제 — 그 회차의 그 종목 세트. 다른 회차의 같은 종목은 남는다.
  *
  * 세트를 하나씩 지우는 것보다 이쪽을 쓴다 — 요청이 한 번이라 중간에 끊겨
  * 일부만 지워지는 상태가 생기지 않는다.
  */
-export function deleteExercise(sessionId: number, exerciseId: number): Promise<void> {
-  return request<void>(`/workout-sessions/${sessionId}/exercises/${exerciseId}`, { method: 'DELETE' })
+export function deleteExercise(sessionId: number, exerciseId: number, round = 1): Promise<void> {
+  return request<void>(`/workout-sessions/${sessionId}/exercises/${exerciseId}?round=${round}`, { method: 'DELETE' })
 }

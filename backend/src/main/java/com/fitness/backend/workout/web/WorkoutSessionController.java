@@ -207,7 +207,7 @@ public class WorkoutSessionController {
     }
 
     /**
-     * 종목 단위 삭제. 그 종목의 세트를 한 번에 지운다.
+     * 카드 단위 삭제. 그 회차의 그 종목 세트를 한 번에 지운다(round 생략은 1회차, V23).
      *
      * <p>세트를 하나씩 지우는 것과 결과는 같지만, 요청이 한 번이라 중간에 끊겨
      * 일부만 지워지는 상태가 생기지 않는다.
@@ -221,8 +221,9 @@ public class WorkoutSessionController {
     public ResponseEntity<Void> deleteExercise(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
             @PathVariable Long sessionId,
-            @PathVariable Long exerciseId) {
-        workoutService.deleteExercise(principal.userId(), sessionId, exerciseId);
+            @PathVariable Long exerciseId,
+            @RequestParam(defaultValue = "1") @Min(1) @Max(WorkoutDtos.MAX_ROUND) int round) {
+        workoutService.deleteExercise(principal.userId(), sessionId, exerciseId, round);
         return ResponseEntity.noContent().build();
     }
 }

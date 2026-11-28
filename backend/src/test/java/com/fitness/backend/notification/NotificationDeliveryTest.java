@@ -229,7 +229,7 @@ class NotificationDeliveryTest {
                 .filter(e -> e.getNameKo().equals("바벨 벤치프레스")).findFirst().orElseThrow().getId();
         for (int i = 0; i < count; i++) {
             workoutService.addSet(user, session, new CreateSetRequest(UUID.randomUUID(), bench, BigDecimal.valueOf(40), 10,
-                    null, false, null));
+                    null, false, null, null));
         }
         return session;
     }

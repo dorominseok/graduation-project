@@ -1,5 +1,6 @@
+import { Fragment } from 'react'
 import type { ReactNode } from 'react'
-import type { MeasureType } from '../../api'
+import type { MeasureType, RoundTimes } from '../../api'
 import { formatDuration } from '../../app/dates'
 import { exerciseImage, hideOnError } from '../full/exerciseImage'
 import { SetGrid } from '../full/SetGrid'
@@ -9,6 +10,8 @@ import styles from './group.module.css'
 /** 하루 기록의 종목 하나 — 그룹 멤버의 하루 기록과 내 "운동 일지 보기"가 같은 모양으로 넘긴다 */
 export interface DayExercise {
   exerciseId: number
+  /** 하루 기록 안의 회차(결정 기록 D-22). 없으면 1 */
+  round?: number
   exerciseName: string
   /** 동작 그림 파일 이름(exerciseImage)을 만든다. 없으면 그림 없이 */
   exerciseNameEn: string | null
@@ -42,15 +45,25 @@ export function DaySessionView({
   startedAt,
   durationSec,
   exercises,
+  rounds,
   trailing,
 }: {
   startedAt: string | null
   /** 보정값 우선. 시간 없는 사후 입력은 null */
   durationSec: number | null
   exercises: DayExercise[]
+  /** 회차마다 첫 세트 시각과 시간. 회차가 둘 이상이면 카드 사이에 회차 머리를 단다 */
+  rounds?: RoundTimes[]
   trailing?: ReactNode
 }) {
   const setCount = exercises.reduce((sum, e) => sum + e.sets.filter((s) => !s.isWarmup).length, 0)
+  const roundOf = (exercise: DayExercise) => exercise.round ?? 1
+  const split = new Set(exercises.map(roundOf)).size > 1
+  const roundHead = (round: number) => {
+    const times = rounds?.find((it) => it.round === round)
+    const meta = times ? metaOf(times.startedAt, times.durationSec) : []
+    return <div className={styles.roundHead}>{[`${round}회차`, ...meta].join(' · ')}</div>
+  }
 
   return (
     <section className={styles.session}>
@@ -63,7 +76,10 @@ export function DaySessionView({
       </div>
 
       {exercises.map((exercise, index) => (
-        <ExerciseCard key={`${exercise.exerciseId}-${index}`} exercise={exercise} />
+        <Fragment key={`${exercise.exerciseId}-${roundOf(exercise)}-${index}`}>
+          {split && (index === 0 || roundOf(exercises[index - 1]) !== roundOf(exercise)) && roundHead(roundOf(exercise))}
+          <ExerciseCard exercise={exercise} />
+        </Fragment>
       ))}
     </section>
   )

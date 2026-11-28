@@ -74,6 +74,7 @@ function SessionBlock({ groupId, session, mine }: { groupId: number; session: Me
       startedAt={session.startedAt}
       durationSec={session.durationSec}
       exercises={session.exercises}
+      rounds={session.rounds}
       trailing={
         <CheerButton
           groupId={groupId}

@@ -179,9 +179,11 @@ export interface SetInGroup {
   recordedAt: string
 }
 
-/** 종목별로 묶은 세트. 수행 순서대로 온다. */
+/** 카드(종목, 회차)별로 묶은 세트. 회차 순, 회차 안은 수행 순서대로 온다(결정 기록 D-22). */
 export interface ExerciseGroup {
   exerciseId: number
+  /** 하루 기록 안의 회차. 나누지 않았으면 1 */
+  round: number
   exerciseName: string
   /** 동작 그림 파일 이름(exerciseImage)을 만든다 — 운동 일지 보기의 종목 카드. 없으면 null */
   exerciseNameEn: string | null
@@ -208,10 +210,26 @@ export interface WorkoutSession {
   memo: string | null
   createdAt: string
   updatedAt: string
-  /** 그날 종목. 사용자가 정한 순서가 있으면 그 순서, 아니면 첫 세트가 이른 순 */
+  /** 그날 카드. 회차 순이고, 회차 안은 사용자가 정한 순서가 있으면 그 순서, 아니면 첫 세트가 이른 순 */
   exercises: ExerciseGroup[]
-  /** 사용자가 정한 종목 순서(종목 id). 없으면 빈 배열. 세트 없는 계획 종목도 이 순서로 놓는다 */
-  exerciseOrder: number[]
+  /** 사용자가 정한 카드 순서. 없으면 빈 배열. 세트 없는 계획 종목도 이 순서로 놓는다 */
+  cardOrder: CardRef[]
+  /** 회차마다 첫 세트 시각과 운동 시간. 세트가 있는 회차만, 회차 순서대로 */
+  rounds: RoundTimes[]
+}
+
+/** 카드 하나 — (종목, 회차) */
+export interface CardRef {
+  exerciseId: number
+  round: number
+}
+
+/** 회차 하나의 시각과 시간. 하루 기록의 시각·시간과 같은 계산을 그 회차의 세트로 한다 */
+export interface RoundTimes {
+  round: number
+  startedAt: string | null
+  /** 사후 입력만 있으면 null */
+  durationSec: number | null
 }
 
 /** 세트 저장 응답. */
@@ -221,6 +239,7 @@ export interface WorkoutSet {
   clientSetId: string
   exerciseId: number
   exerciseName: string
+  round: number
   setNo: number
   weightKg: number | null
   reps: number | null
@@ -251,6 +270,8 @@ export interface CreateSetRequest {
   isWarmup?: boolean
   /** 실패 세트의 목표 횟수. 횟수 종목·워밍업 아님·해낸 횟수(reps)보다 클 때만 */
   targetReps?: number | null
+  /** 하루 기록 안의 회차(1~20). 생략하면 1회차 */
+  round?: number
   setNo?: number | null
 }
 
@@ -274,8 +295,8 @@ export interface UpdateSessionRequest {
   memo?: string
   performedOn?: string
   durationOverrideSec?: number
-  /** 종목 순서(종목 id). 빈 배열이면 첫 세트가 이른 순으로 되돌린다 */
-  exerciseOrder?: number[]
+  /** 카드 순서. 빈 배열이면 첫 세트가 이른 순으로 되돌린다 */
+  cardOrder?: CardRef[]
 }
 
 /** 히스토리 한 건. 운동한 날 하나다. 세트는 담기지 않는다. */
@@ -619,8 +640,11 @@ export interface MemberSession extends CheerState {
   endedAt: string | null
   /** 보정값 우선. 시간 없는 사후 입력은 null */
   durationSec: number | null
+  /** 회차마다 첫 세트 시각과 시간. 세트가 있는 회차만 */
+  rounds: RoundTimes[]
   exercises: {
     exerciseId: number
+    round: number
     exerciseName: string
     /** 동작 그림 파일 이름(exerciseImage)을 만든다 */
     exerciseNameEn: string | null

@@ -66,11 +66,11 @@ class ExerciseOrderApiTest {
     }
 
     @Test
-    @DisplayName("정한 순서가 없으면 첫 세트가 이른 순, exerciseOrder는 빈 배열")
+    @DisplayName("정한 순서가 없으면 첫 세트가 이른 순, cardOrder는 빈 배열")
     void defaultOrder() throws Exception {
         String body = session(me);
         assertThat(names(body)).containsExactly("바벨 벤치프레스", "바벨 스쿼트", "중량 풀업");
-        assertThat((List<?>) JsonPath.read(body, "$.exerciseOrder")).isEmpty();
+        assertThat((List<?>) JsonPath.read(body, "$.cardOrder")).isEmpty();
     }
 
     @Test
@@ -82,7 +82,7 @@ class ExerciseOrderApiTest {
 
         String body = session(me);
         assertThat(names(body)).containsExactly("중량 풀업", "바벨 벤치프레스", "바벨 스쿼트");
-        assertThat(((List<Number>) JsonPath.read(body, "$.exerciseOrder")).stream().map(Number::longValue))
+        assertThat(((List<Number>) JsonPath.read(body, "$.cardOrder[*].exerciseId")).stream().map(Number::longValue))
                 .containsExactly(pullup, bench, squat);
         // 세트 순서(setNo·저장 시각)는 그대로다
         assertThat((List<Integer>) JsonPath.read(body, "$.exercises[1].sets[*].setNo")).containsExactly(1, 2);
@@ -109,7 +109,7 @@ class ExerciseOrderApiTest {
                 .andExpect(status().isCreated());
         String body = session(me);
         assertThat(names(body)).containsExactly("플랭크", "중량 풀업", "바벨 벤치프레스", "바벨 스쿼트");
-        assertThat(((List<Number>) JsonPath.read(body, "$.exerciseOrder")).stream().map(Number::longValue))
+        assertThat(((List<Number>) JsonPath.read(body, "$.cardOrder[*].exerciseId")).stream().map(Number::longValue))
                 .containsExactly(plank, pullup);
     }
 
@@ -125,7 +125,7 @@ class ExerciseOrderApiTest {
         reorder(List.of()).andExpect(status().isOk());
         String body = session(me);
         assertThat(names(body)).containsExactly("바벨 벤치프레스", "바벨 스쿼트", "중량 풀업");
-        assertThat((List<?>) JsonPath.read(body, "$.exerciseOrder")).isEmpty();
+        assertThat((List<?>) JsonPath.read(body, "$.cardOrder")).isEmpty();
     }
 
     @Test
@@ -139,7 +139,7 @@ class ExerciseOrderApiTest {
 
         String body = session(me);
         assertThat(names(body)).containsExactly("바벨 스쿼트", "바벨 벤치프레스", "중량 풀업");
-        assertThat(((List<Number>) JsonPath.read(body, "$.exerciseOrder")).stream().map(Number::longValue))
+        assertThat(((List<Number>) JsonPath.read(body, "$.cardOrder[*].exerciseId")).stream().map(Number::longValue))
                 .containsExactly(squat, bench);
     }
 

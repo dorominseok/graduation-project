@@ -3,6 +3,7 @@ package com.fitness.backend.workout.web;
 import com.fitness.backend.exercise.domain.MeasureType;
 import com.fitness.backend.workout.domain.WorkoutSession;
 import com.fitness.backend.workout.domain.WorkoutSet;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
@@ -72,12 +73,22 @@ public final class WorkoutDtos {
             @Min(value = 1, message = "1 이상이어야 합니다.") Integer durationSec,
             Boolean isWarmup,
             @Max(value = Short.MAX_VALUE, message = "32767 이하여야 합니다.")
-            @Min(value = 2, message = "2 이상이어야 합니다.") Integer targetReps) {
+            @Min(value = 2, message = "2 이상이어야 합니다.") Integer targetReps,
+            /** 하루 기록 안의 회차(V23, 결정 기록 D-22). 생략하면 1회차 */
+            @Min(value = 1, message = "1 이상이어야 합니다.")
+            @Max(value = MAX_ROUND, message = MAX_ROUND + " 이하여야 합니다.") Integer round) {
 
         public boolean warmupOrDefault() {
             return Boolean.TRUE.equals(isWarmup);
         }
+
+        public short roundOrDefault() {
+            return round == null ? 1 : round.shortValue();
+        }
     }
+
+    /** 하루에 나눌 수 있는 회차 수. DB 제약(V23)과 같다 */
+    public static final int MAX_ROUND = 20;
 
     /** 세트 한 건. 세트 저장의 응답 */
     public record SetResponse(Long id,
@@ -85,6 +96,7 @@ public final class WorkoutDtos {
                               UUID clientSetId,
                               Long exerciseId,
                               String exerciseName,
+                              int round,
                               Short setNo,
                               BigDecimal weightKg,
                               Short reps,
@@ -95,17 +107,19 @@ public final class WorkoutDtos {
 
         public static SetResponse of(WorkoutSet s, String exerciseName) {
             return new SetResponse(s.getId(), s.getSessionId(), s.getClientSetId(),
-                    s.getExerciseId(), exerciseName, s.getSetNo(), s.getWeightKg(),
+                    s.getExerciseId(), exerciseName, s.getRoundNo(), s.getSetNo(), s.getWeightKg(),
                     s.getReps(), s.getDurationSec(), s.isWarmup(), s.getTargetReps(), s.getRecordedAt());
         }
     }
 
     /**
-     * 하루 기록 상세 안에서 종목별로 묶은 세트.
+     * 하루 기록 상세 안에서 카드(종목, 회차)별로 묶은 세트. 같은 종목도 회차가 다르면 묶음이 따로다(V23).
      *
+     * @param round          하루 기록 안의 회차. 나누지 않았으면 1
      * @param exerciseNameEn 동작 그림 파일 이름을 만든다(화면의 exerciseImage) — "운동 일지 보기"의 종목 카드. 없으면 null
      */
     public record ExerciseGroup(Long exerciseId,
+                                int round,
                                 String exerciseName,
                                 String exerciseNameEn,
                                 MeasureType measureType,
@@ -136,7 +150,8 @@ public final class WorkoutDtos {
      * 저장 시각 오름차순이다. 화면이 운동한 차례대로 그리기 때문이다. 사용자가 순서를 바꿨으면
      * ({@code exerciseOrder}, V18) 그 순서가 앞선다 — 화면은 세트 없는 계획 종목도 이 순서로 놓는다.
      *
-     * <p>{@code startedAt}·{@code endedAt}·{@code durationSec}은 세트 저장 시각으로 계산한 값이다.
+     * <p>{@code startedAt}·{@code endedAt}·{@code durationSec}은 세트 저장 시각으로 계산한 값이다. {@code rounds}는 회차마다
+     * 같은 계산을 그 회차의 세트로 한 것이다 — 세트가 있는 회차만, 회차 순서대로.
      */
     public record SessionResponse(Long id,
                                   LocalDate performedOn,
@@ -150,18 +165,45 @@ public final class WorkoutDtos {
                                   OffsetDateTime createdAt,
                                   OffsetDateTime updatedAt,
                                   List<ExerciseGroup> exercises,
-                                  List<Long> exerciseOrder) {
+                                  List<CardRef> cardOrder,
+                                  List<RoundTimes> rounds) {
 
         /**
-         * @param exercises 이미 순서대로 놓인 종목들
+         * @param exercises 이미 순서대로 놓인 카드들
          */
-        public static SessionResponse of(WorkoutSession s, DayTimes times, List<ExerciseGroup> exercises) {
+        public static SessionResponse of(WorkoutSession s, DayTimes times, List<ExerciseGroup> exercises,
+                                         List<RoundTimes> rounds) {
             return new SessionResponse(s.getId(), s.getPerformedOn(), s.getRoutineId(),
                     times.startedAt(), times.endedAt(), times.durationSec(),
                     s.getDurationOverrideSec(), times.effectiveSec(s), s.getMemo(),
                     s.getCreatedAt(), s.getUpdatedAt(), exercises,
-                    s.getExerciseOrder() == null ? List.of() : List.copyOf(s.getExerciseOrder()));
+                    s.getCardOrder() == null ? List.of() : s.getCardOrder().stream().map(CardRef::parse).toList(),
+                    rounds);
         }
+    }
+
+    /**
+     * 카드 하나 — (종목, 회차). 카드 순서를 주고받는다.
+     */
+    public record CardRef(@NotNull(message = "필수 항목입니다.") Long exerciseId,
+                          @NotNull(message = "필수 항목입니다.")
+                          @Min(value = 1, message = "1 이상이어야 합니다.")
+                          @Max(value = MAX_ROUND, message = MAX_ROUND + " 이하여야 합니다.") Integer round) {
+
+        static CardRef parse(String key) {
+            int colon = key.indexOf(':');
+            return colon < 0
+                    ? new CardRef(Long.valueOf(key), 1)
+                    : new CardRef(Long.valueOf(key.substring(0, colon)), Integer.valueOf(key.substring(colon + 1)));
+        }
+    }
+
+    /**
+     * 회차 하나의 시각과 시간. 하루 기록의 {@link DayTimes}와 같은 계산을 그 회차의 세트로 한다.
+     *
+     * @param durationSec 그 회차의 운동 시간. 사후 입력만 있으면 null
+     */
+    public record RoundTimes(int round, OffsetDateTime startedAt, Integer durationSec) {
     }
 
     /**
@@ -198,14 +240,17 @@ public final class WorkoutDtos {
      * 때문에, null을 "지우기"로 쓰면 날짜만 고치려는 요청에 메모가 날아간다.
      * 두 필드 모두 빈 문자열·0이 실제 값으로 쓰일 일이 없어 비움 신호로 삼았다.
      *
-     * <p>{@code exerciseOrder}는 종목 순서(종목 id, V18). 빈 배열이 "세트 저장 시각 순으로 되돌리기"다.
+     * <p>{@code cardOrder}는 카드 순서((종목, 회차), V23). 빈 배열이 "세트 저장 시각 순으로 되돌리기"다.
+     * {@code exerciseOrder}(종목 id, V18)는 회차 전의 화면이 보내던 것이라 받기만 한다 — 모두 1회차로 본다.
      */
     public record UpdateSessionRequest(
             @Size(max = 2000, message = "2000자 이하여야 합니다.") String memo,
             LocalDate performedOn,
             @Min(value = 0, message = "0 이상이어야 합니다.") Integer durationOverrideSec,
             @Size(max = 100, message = "100개 이하여야 합니다.")
-            List<@NotNull(message = "필수 항목입니다.") Long> exerciseOrder) {
+            List<@NotNull(message = "필수 항목입니다.") Long> exerciseOrder,
+            @Size(max = 100, message = "100개 이하여야 합니다.")
+            List<@NotNull(message = "필수 항목입니다.") @Valid CardRef> cardOrder) {
     }
 
     /**

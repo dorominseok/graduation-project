@@ -501,7 +501,7 @@ public class GroupService {
     private static MemberSession toMemberSession(SessionResponse session, CheerTally cheers,
                                                  Map<Long, String> namesEn) {
         List<MemberExercise> exercises = session.exercises().stream()
-                .map(exercise -> new MemberExercise(exercise.exerciseId(), exercise.exerciseName(),
+                .map(exercise -> new MemberExercise(exercise.exerciseId(), exercise.round(), exercise.exerciseName(),
                         namesEn.get(exercise.exerciseId()), exercise.measureType(),
                         exercise.sets().stream()
                                 .map(set -> new MemberSet(set.setNo(), set.weightKg(), set.reps(),
@@ -509,7 +509,7 @@ public class GroupService {
                                 .toList()))
                 .toList();
         return new MemberSession(session.id(), session.startedAt(),
-                session.endedAt(), session.effectiveDurationSec(), exercises,
+                session.endedAt(), session.effectiveDurationSec(), exercises, session.rounds(),
                 cheers.count(session.id()), cheers.byMe(session.id()));
     }
 
