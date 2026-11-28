@@ -22,6 +22,8 @@ public interface OneRmTrendRepository extends Repository<WorkoutSet, Long> {
      *
      * <p>0kg 세트는 뺀다 — 덤벨 종목을 맨몸으로 하고 0kg으로 적은 날에 "추정 1RM 0.0kg" 점이 찍혀
      * 추이가 바닥으로 꺼진다.
+     *
+     * <p>GTG(회차 0)는 뺀다 — 일부러 가볍게 한 세트라 GTG만 한 날에 낮은 점이 찍힌다(결정 기록 D-23).
      */
     @Query("""
             select new com.fitness.backend.stats.repository.OneRmSample(
@@ -36,6 +38,7 @@ public interface OneRmTrendRepository extends Repository<WorkoutSet, Long> {
                and w.reps is not null
                and w.reps >= 1
                and w.reps <= :maxReps
+               and w.roundNo <> 0
              order by s.performedOn asc
             """)
     List<OneRmSample> findSamples(@Param("userId") Long userId,

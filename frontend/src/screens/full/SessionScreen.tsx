@@ -17,9 +17,12 @@ import {
   buildCards,
   byRound,
   emptyRow,
+  GTG_ROUND,
   MAX_ROUND,
   lastPerformanceOf,
   loadDraft,
+  roundLabel,
+  roundRank,
   routineKeyOf,
   rowsFromLast,
   saveDraft,
@@ -132,8 +135,9 @@ export function SessionScreen() {
   // 입력 중이던 미저장 행이 그대로 남는다.
   const [params, setParams] = useSearchParams()
   const openedId = params.get('exercise')
-  // 연 카드의 회차. 1회차는 주소에 적지 않는다(결정 기록 D-22)
-  const openedRound = Number(params.get('round') ?? '1') || 1
+  // 연 카드의 회차. 1회차는 주소에 적지 않는다(결정 기록 D-22). GTG는 round=0
+  const roundParam = params.get('round')
+  const openedRound = roundParam === null ? 1 : Number(roundParam)
   // 날짜를 들고 들어온 경우(달력, 날짜 이동). 없으면 오늘이다 — 자정을 넘긴 운동이면 서버가 어제로 잇는다
   const dateParam = params.get('date')
 
@@ -167,10 +171,10 @@ export function SessionScreen() {
       : { category: null, group: null },
   )
 
-  // 머리줄 ⋮ 메뉴 — 회차 추가, 운동 일지 보기, 다른 앱 기록 붙여넣기
+  // 머리줄 ⋮ 메뉴 — 회차 추가, GTG 추가, 운동 일지 보기, 다른 앱 기록 붙여넣기
   const [moreOpen, setMoreOpen] = useState(false)
-  // ⋮ → 회차 추가로 연 회차. 종목을 넣기 전에는 이 화면에만 있다 — 세트가 생기면 서버에 그 회차로 저장된다
-  const [extraRound, setExtraRound] = useState<number | null>(null)
+  // ⋮ → 회차 추가·GTG 추가로 연 빈 회차. 종목을 넣기 전에는 이 화면에만 있다 — 세트가 생기면 서버에 그 회차로 저장된다
+  const [extraRounds, setExtraRounds] = useState<number[]>([])
   // 회차 탭에서 고른 회차. 고르지 않았으면(처음 열 때, 날짜를 옮겼을 때) 마지막 회차다
   const [selectedRound, setSelectedRound] = useState<number | null>(null)
 
@@ -238,7 +242,7 @@ export function SessionScreen() {
         setSession(current)
         setRoutineKey(routineKeyOf(routine))
         setCards(built)
-        setExtraRound(null)
+        setExtraRounds([])
         setSelectedRound(null)
       } catch (err) {
         if (isApiError(err)) showToast({ message: err.message, tone: 'danger' })
@@ -302,16 +306,21 @@ export function SessionScreen() {
   }, [flashId])
 
   // 회차(결정 기록 D-22). 회차가 둘 이상이면 머리줄 아래에 회차 탭을 달고, 고른 회차의 카드만 보인다 — "+ 종목 추가"도
-  // 그 회차에 넣는다. ⋮ → 회차 추가로 연 빈 회차도 탭이 된다. 회차가 하나뿐이면 탭이 없다(지금까지와 같은 모양)
-  const lastCardRound = Math.max(1, ...cards.map((card) => card.round))
-  // 종목을 다 빼서 빈 날이 되면 빈 회차도 접는다 — 새로 넣는 종목은 1회차
-  const openRounds = extraRound !== null && cards.length > 0 ? [extraRound] : []
-  const roundsShown = [...new Set([...cards.map((card) => card.round), ...openRounds])].sort((a, b) => a - b)
+  // 그 회차에 넣는다. ⋮로 연 빈 회차도 탭이 된다. 회차가 하나뿐이면 탭이 없다(지금까지와 같은 모양).
+  // GTG(회차 0, D-23)는 탭이 맨 뒤이고, 있으면 일반 회차 탭도 하나는 둔다 — [1회차][GTG]
+  const lastCardRound = Math.max(1, ...cards.filter((card) => card.round !== GTG_ROUND).map((card) => card.round))
+  // 종목을 다 빼서 빈 날이 되면 빈 일반 회차는 접는다 — 새로 넣는 종목은 1회차. GTG는 빈 날에도 연다
+  const openRounds = extraRounds.filter((round) => round === GTG_ROUND || cards.length > 0)
+  const roundSet = new Set([...cards.map((card) => card.round), ...openRounds])
+  const hasGtg = roundSet.has(GTG_ROUND)
+  if (hasGtg && roundSet.size === 1) roundSet.add(1)
+  const roundsShown = [...roundSet].sort((a, b) => roundRank(a) - roundRank(b))
   const showRoundTabs = roundsShown.length > 1
+  // 처음 열면 마지막 일반 회차 — GTG는 그날 본 운동이 아니다
   const viewRound =
     selectedRound !== null && roundsShown.includes(selectedRound)
       ? selectedRound
-      : (roundsShown[roundsShown.length - 1] ?? 1)
+      : (roundsShown.filter((round) => round !== GTG_ROUND).at(-1) ?? 1)
   // 목록에 보이는 카드. 탭이 없으면 전부다
   const visibleCards = showRoundTabs ? cards.filter((card) => card.round === viewRound) : cards
 
@@ -330,7 +339,7 @@ export function SessionScreen() {
         targetReps: null,
       }))
     } else {
-      const last = await lastPerformanceOf(exercise.id)
+      const last = await lastPerformanceOf(exercise.id, round === GTG_ROUND)
       rows = last !== null && last.sets.length > 0 ? rowsFromLast(last.sets) : [emptyRow()]
     }
 
@@ -369,8 +378,11 @@ export function SessionScreen() {
       openCard(existing)
       return
     }
-    const earlier = [...cards].reverse().find((card) => card.exerciseId === exercise.id)
     const round = viewRound
+    // 같은 날 앞 카드의 값으로 채운다. GTG와 일반 회차는 서로 채우지 않는다 — GTG는 일부러 가볍게 한다
+    const earlier = [...cards]
+      .reverse()
+      .find((card) => card.exerciseId === exercise.id && (card.round === GTG_ROUND) === (round === GTG_ROUND))
     // 넣었다는 표시는 목록의 "추가됨" 알약 하나다. 화면 아래 알림과 시트 머리줄의 개수는 두지 않는다
     // (사용자 의견 2026-11-18 — 연달아 넣을 때 번거롭고, 알약으로 충분하다)
     addQueue.current = addQueue.current
@@ -382,14 +394,26 @@ export function SessionScreen() {
 
   /**
    * ⋮ → 회차 추가. 종목이 있는 마지막 회차 다음 회차를 열어 그 탭으로 옮기고, 바로 종목 추가 창을 띄운다. 이미 연 빈 회차가 있으면
-   * 그 회차다. 그날 종목이 하나도 없으면 1회차 그대로 창만 띄운다
+   * 그 회차다. 일반 회차에 종목이 하나도 없으면 1회차 그대로 창만 띄운다
    */
   const addRound = () => {
     setMoreOpen(false)
-    if (cards.length > 0 && lastCardRound < MAX_ROUND) {
-      setExtraRound(lastCardRound + 1)
-      setSelectedRound(lastCardRound + 1)
+    if (cards.some((card) => card.round !== GTG_ROUND) && lastCardRound < MAX_ROUND) {
+      const next = lastCardRound + 1
+      setExtraRounds((prev) => [...prev.filter((round) => round === GTG_ROUND), next])
+      setSelectedRound(next)
+    } else {
+      setSelectedRound(lastCardRound)
     }
+    setPickerStep({ category: null, group: null })
+    setPickerOpen(true)
+  }
+
+  /** ⋮ → GTG 추가. 그날 GTG 탭을 열고(하루 하나) 바로 종목 추가 창을 띄운다 */
+  const addGtg = () => {
+    setMoreOpen(false)
+    setExtraRounds((prev) => (prev.includes(GTG_ROUND) ? prev : [...prev, GTG_ROUND]))
+    setSelectedRound(GTG_ROUND)
     setPickerStep({ category: null, group: null })
     setPickerOpen(true)
   }
@@ -532,8 +556,10 @@ export function SessionScreen() {
       setFlashId(row.clientSetId)
       setExpandedId(null)
 
-      // 본세트를 하나 끝냈으면 쉴 차례다. 워밍업은 쉬지 않고 이어가고, 오늘 할 세트가 더 없으면 쉬지 않는다
-      const next = row.isWarmup || row.restSec <= 0 ? null : nextSet(cardIndex, rowIndex)
+      // 본세트를 하나 끝냈으면 쉴 차례다. 워밍업은 쉬지 않고 이어가고, 오늘 할 세트가 더 없으면 쉬지 않는다.
+      // GTG는 하루 중 틈틈이 하는 세트라 쉬는 시간을 재지 않는다
+      const next =
+        row.isWarmup || row.restSec <= 0 || card.round === GTG_ROUND ? null : nextSet(cardIndex, rowIndex)
       if (next) {
         restTimer.start(row.restSec, {
           path: `${location.pathname}?${new URLSearchParams(cardParams(next.card))}`,
@@ -771,7 +797,7 @@ export function SessionScreen() {
   const cardParams = (card: { exerciseId: number; round: number }): Record<string, string> => ({
     ...(dateParam ? { date: dateParam } : {}),
     exercise: String(card.exerciseId),
-    ...(card.round > 1 ? { round: String(card.round) } : {}),
+    ...(card.round !== 1 ? { round: String(card.round) } : {}),
   })
   const openedFromList = (location.state as { fromList?: boolean } | null)?.fromList === true
   const backToList = () => {
@@ -872,8 +898,10 @@ export function SessionScreen() {
     const isAddedWeight = opened.measureType === 'WEIGHTED_BODYWEIGHT'
     // 다른 세션의 응답이 남아 있을 수 있어 세션 번호까지 맞춰 본다. 1RM은 그날 그 종목 기준이라, 아직 체크한 세트가 없는
     // 카드(같은 종목의 다음 회차 등)에는 띄우지 않는다 — 최대 무게·볼륨은 비어 있는데 1RM만 있으면 어긋나 보인다
+    const isGtgCard = opened.round === GTG_ROUND
+    // GTG 카드에도 띄우지 않는다 — 서버가 GTG를 1RM에서 빼서, 같은 종목의 본 운동 1RM이 뜬다
     const openedOneRm =
-      savedRows.length > 0 && intensity && intensity.sessionId === session?.id
+      savedRows.length > 0 && !isGtgCard && intensity && intensity.sessionId === session?.id
         ? (intensity.exercises.find((e) => e.exerciseId === opened.exerciseId)?.estimatedOneRm ?? null)
         : null
 
@@ -922,7 +950,7 @@ export function SessionScreen() {
               {showRoundTabs ? (
                 <div className={styles.dayCenter}>
                   <span className={styles.dayTitle}>{opened.name}</span>
-                  <span className={styles.daySub}>{opened.round}회차</span>
+                  <span className={styles.daySub}>{roundLabel(opened.round)}</span>
                 </div>
               ) : (
                 <span className={styles.headerTitle}>{opened.name}</span>
@@ -1177,7 +1205,8 @@ export function SessionScreen() {
                       </div>
 
                       <div className={styles.subLine}>
-                        <span>휴식 {formatRest(row.restSec)}</span>
+                        {/* GTG는 쉬는 시간을 재지 않아 적지 않는다 */}
+                        {!isGtgCard && <span>휴식 {formatRest(row.restSec)}</span>}
                         {row.isWarmup && <span className={styles.subWarmup}>워밍업 · 분석 제외</span>}
                       </div>
                     </div>
@@ -1292,6 +1321,7 @@ export function SessionScreen() {
                           </div>
                         )}
 
+                        {!isGtgCard && (
                         <div className={styles.fieldRow}>
                           <span className={styles.fieldLabel}>휴식</span>
                           {/* 숫자만 치면 된다 — 130은 1분 30초, 90은 90초 */}
@@ -1323,6 +1353,7 @@ export function SessionScreen() {
                             +30
                           </button>
                         </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1481,11 +1512,17 @@ export function SessionScreen() {
   // 고른 회차의 시작 시각·운동 시간 — "오후 7:12 시작 · 41분". 운동 시간이 있을 때만(나중에 넣은 기록은 저장 시각이 운동한
   // 시각이 아니다). 아직 종목이 없는 회차도 없다
   const viewTimes = session?.rounds?.find((it) => it.round === viewRound)
+  // GTG는 시간이 없다 — 세트 수와, 운동 시간·분석에 넣지 않는다는 것만
+  const gtgSets = cards
+    .filter((card) => card.round === GTG_ROUND)
+    .reduce((sum, card) => sum + card.rows.filter((row) => row.savedId !== null).length, 0)
   const roundMeta =
-    viewTimes?.startedAt && viewTimes.durationSec != null
-      ? `${formatClock(viewTimes.startedAt)} 시작 · ${formatDuration(viewTimes.durationSec)}`
-      : null
-  const roundTabs = roundsShown.map((round) => ({ value: String(round), label: `${round}회차` }))
+    viewRound === GTG_ROUND
+      ? `${gtgSets > 0 ? `${gtgSets}세트 · ` : ''}운동 시간·분석 제외`
+      : viewTimes?.startedAt && viewTimes.durationSec != null
+        ? `${formatClock(viewTimes.startedAt)} 시작 · ${formatDuration(viewTimes.durationSec)}`
+        : null
+  const roundTabs = roundsShown.map((round) => ({ value: String(round), label: roundLabel(round) }))
   return (
     <>
       <div
@@ -1627,7 +1664,7 @@ export function SessionScreen() {
       <BottomSheet
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        title={<span className={styles.sheetTitle}>{showRoundTabs ? `${viewRound}회차에 종목 추가` : '종목 추가'}</span>}
+        title={<span className={styles.sheetTitle}>{showRoundTabs ? `${roundLabel(viewRound)}에 종목 추가` : '종목 추가'}</span>}
       >
         <div className={styles.pickerBox}>
           <ExercisePicker
@@ -1649,6 +1686,13 @@ export function SessionScreen() {
             <span className={styles.menuItemTitle}>회차 추가</span>
             <span className={styles.menuItemNote}>같은 날 다시 운동하면 회차를 나눠 기록해요</span>
           </button>
+          {/* 하루 하나 — 이미 있으면 메뉴에서 뺀다(결정 기록 D-23) */}
+          {!hasGtg && (
+            <button type="button" className={styles.menuItem} onClick={addGtg}>
+              <span className={styles.menuItemTitle}>GTG 추가</span>
+              <span className={styles.menuItemNote}>틈틈이 하는 가벼운 세트 — 운동 시간·분석에 넣지 않아요</span>
+            </button>
+          )}
           {/* 그룹 멤버의 하루 기록과 같은 화면을 내 기록으로. 그룹이 없어도, 그룹 › 내 달력을 거치지 않아도 온다.
               방문 기록을 쌓아 뒤로 가면 이 기록 화면이다 */}
           <button

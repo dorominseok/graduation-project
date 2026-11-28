@@ -105,18 +105,22 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
      *
      * <p>정렬이 {@code performedOn}인 것은 사후 입력 때문이다 — 어제 운동을 오늘 입력하면 저장
      * 시각이 가장 최근이 되므로, 저장 시각으로 정렬하면 오늘 입력한 과거 기록이 올라온다.
+     *
+     * <p>{@code gtg}면 그 종목을 GTG(회차 0)로 한 날, 아니면 일반 회차로 한 날에서 찾는다(결정 기록 D-23).
      */
     @Query("""
             select s from WorkoutSession s
             where s.userId = :userId
               and s.performedOn < :before
               and exists (select 1 from WorkoutSet w
-                          where w.sessionId = s.id and w.exerciseId = :exerciseId)
+                          where w.sessionId = s.id and w.exerciseId = :exerciseId
+                            and ((:gtg = true and w.roundNo = 0) or (:gtg = false and w.roundNo <> 0)))
             order by s.performedOn desc
             """)
     List<WorkoutSession> findLastPerformed(@Param("userId") Long userId,
                                            @Param("exerciseId") Long exerciseId,
                                            @Param("before") LocalDate before,
+                                           @Param("gtg") boolean gtg,
                                            Pageable pageable);
 
     /** 그 종목의 세트가 있는 날. 오늘 포함, 운동 날짜 최신순 */
@@ -136,13 +140,15 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
      *
      * <p>세트가 아니라 <b>날</b>을 센다. 같은 기간에 세트 40개가 쌓였어도 그게
      * 이틀에서 나왔다면 주당 평균이라는 말 자체가 성립하지 않는다.
+     *
+     * <p>GTG만 한 날은 세지 않는다(결정 기록 D-23) — 이 밑의 운동한 날 조회도 같다. 기록 목록·달력에는 보인다.
      */
     @Query("""
             select count(s) from WorkoutSession s
              where s.userId = :userId
                and s.performedOn >= :from
                and s.performedOn <= :to
-               and exists (select 1 from WorkoutSet w where w.sessionId = s.id)
+               and exists (select 1 from WorkoutSet w where w.sessionId = s.id and w.roundNo <> 0)
             """)
     int countRecordedDays(@Param("userId") Long userId,
                           @Param("from") LocalDate from,
@@ -154,7 +160,7 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
              where s.userId = :userId
                and s.performedOn >= :from
                and s.performedOn <= :to
-               and exists (select 1 from WorkoutSet w where w.sessionId = s.id)
+               and exists (select 1 from WorkoutSet w where w.sessionId = s.id and w.roundNo <> 0)
             """)
     List<LocalDate> findRecordedDays(@Param("userId") Long userId,
                                      @Param("from") LocalDate from,
@@ -171,7 +177,7 @@ public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, 
             select min(s.performedOn) from WorkoutSession s
              where s.userId = :userId
                and s.performedOn <= :to
-               and exists (select 1 from WorkoutSet w where w.sessionId = s.id)
+               and exists (select 1 from WorkoutSet w where w.sessionId = s.id and w.roundNo <> 0)
             """)
     LocalDate findFirstRecordedOn(@Param("userId") Long userId, @Param("to") LocalDate to);
 }

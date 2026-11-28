@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
  *
  * <p>모두 <b>본세트만</b> 센다 — 분석 판정과 같은 단위다(분석 1.2).
  */
+// GTG(회차 0)는 루틴의 재료가 아니다 — 마지막 운동일·자주 한 종목·그날 진행에서 뺀다(결정 기록 D-23). 처음 하는 종목 판정만 넣는다
 public interface TrainingHistoryRepository extends Repository<WorkoutSet, Long> {
 
     /** 근육(주동근)별 마지막 운동일. 오늘 포함 — 회복 제외에 쓴다 */
@@ -23,6 +24,7 @@ public interface TrainingHistoryRepository extends Repository<WorkoutSet, Long> 
                and w.exerciseId = e.id
                and s.userId = :userId
                and w.isWarmup = false
+               and w.roundNo <> 0
                and s.performedOn <= :today
              group by e.primaryMuscle, e.deltRegion
             """)
@@ -37,6 +39,7 @@ public interface TrainingHistoryRepository extends Repository<WorkoutSet, Long> 
                and s.userId = :userId
                and s.performedOn >= :from
                and s.performedOn <= :to
+               and w.roundNo <> 0
              group by w.exerciseId
             """)
     List<ExerciseDaysRow> exerciseDays(@Param("userId") Long userId,
@@ -61,6 +64,7 @@ public interface TrainingHistoryRepository extends Repository<WorkoutSet, Long> 
                and s.userId = :userId
                and s.performedOn = :date
                and w.isWarmup = false
+               and w.roundNo <> 0
              group by w.exerciseId
             """)
     List<ExerciseDaysRow> setsOn(@Param("userId") Long userId, @Param("date") LocalDate date);

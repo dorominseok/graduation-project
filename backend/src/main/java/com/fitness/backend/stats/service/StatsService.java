@@ -113,7 +113,11 @@ public class StatsService {
 
         // 종목 등장 순서는 저장 순서다 — 화면의 종목 목록과 같은 차례로 보여야 한다.
         Map<Long, List<WorkoutSet>> byExercise = new LinkedHashMap<>();
+        // GTG는 뺀다(결정 기록 D-23) — 1RM 추이와 같은 기준
         for (WorkoutSet set : setRepository.findBySessionIdOrderByRecordedAtAsc(sessionId)) {
+            if (set.isGtg()) {
+                continue;
+            }
             byExercise.computeIfAbsent(set.getExerciseId(), key -> new ArrayList<>()).add(set);
         }
 

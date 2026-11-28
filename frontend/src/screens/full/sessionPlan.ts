@@ -34,7 +34,7 @@ export interface SetRow {
  */
 export interface ExerciseCard {
   exerciseId: number
-  /** 하루 기록 안의 회차. 나누지 않았으면 1 */
+  /** 하루 기록 안의 회차. 나누지 않았으면 1, 0은 GTG */
   round: number
   name: string
   measureType: MeasureType
@@ -48,14 +48,30 @@ export const DEFAULT_REST_SEC = 90
 /** 하루에 나눌 수 있는 회차 수. 서버(V23)와 같다 */
 export const MAX_ROUND = 20
 
+/**
+ * 그날의 GTG(틈틈이 하는 가벼운 세트) 회차(서버 V24, 결정 기록 D-23). 하루 하나이고 탭은 맨 뒤다. 운동 시간·분석·직전 기록에
+ * 넣지 않는다
+ */
+export const GTG_ROUND = 0
+
+/** 회차를 늘어놓는 순위 — 일반 회차는 번호 순, GTG는 맨 뒤 */
+export function roundRank(round: number): number {
+  return round === GTG_ROUND ? Number.MAX_SAFE_INTEGER : round
+}
+
+/** 탭·머리에 쓰는 회차 이름 */
+export function roundLabel(round: number): string {
+  return round === GTG_ROUND ? 'GTG' : `${round}회차`
+}
+
 /** 카드를 가리키는 열쇠 */
 export function cardKey(card: { exerciseId: number; round: number }): string {
   return `${card.exerciseId}:${card.round}`
 }
 
-/** 회차 순으로 세운다. 회차 안의 순서는 그대로다(안정 정렬) */
+/** 회차 순으로 세운다(GTG는 맨 뒤). 회차 안의 순서는 그대로다(안정 정렬) */
 export function byRound<T extends { round: number }>(cards: T[]): T[] {
-  return [...cards].sort((a, b) => a.round - b.round)
+  return [...cards].sort((a, b) => roundRank(a.round) - roundRank(b.round))
 }
 
 export function emptyRow(): SetRow {
@@ -88,10 +104,10 @@ export function rowsFromLast(sets: LastPerformance['sets']): SetRow[] {
   }))
 }
 
-/** 직전 기록. 프리필은 편의 기능이라 못 읽어도 기록은 계속할 수 있어야 한다 */
-export async function lastPerformanceOf(exerciseId: number): Promise<LastPerformance | null> {
+/** 직전 기록(GTG 카드면 지난 GTG). 프리필은 편의 기능이라 못 읽어도 기록은 계속할 수 있어야 한다 */
+export async function lastPerformanceOf(exerciseId: number, gtg = false): Promise<LastPerformance | null> {
   try {
-    return await exerciseApi.getLastPerformance(exerciseId)
+    return await exerciseApi.getLastPerformance(exerciseId, gtg)
   } catch (err) {
     if (!isApiError(err)) throw err
     return null

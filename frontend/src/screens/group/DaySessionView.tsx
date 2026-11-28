@@ -4,13 +4,14 @@ import type { MeasureType, RoundTimes } from '../../api'
 import { formatDuration } from '../../app/dates'
 import { exerciseImage, hideOnError } from '../full/exerciseImage'
 import { SetGrid } from '../full/SetGrid'
+import { GTG_ROUND, roundLabel } from '../full/sessionPlan'
 import type { GridSet } from '../full/SetGrid'
 import styles from './group.module.css'
 
 /** 하루 기록의 종목 하나 — 그룹 멤버의 하루 기록과 내 "운동 일지 보기"가 같은 모양으로 넘긴다 */
 export interface DayExercise {
   exerciseId: number
-  /** 하루 기록 안의 회차(결정 기록 D-22). 없으면 1 */
+  /** 하루 기록 안의 회차(결정 기록 D-22). 없으면 1, 0은 GTG(D-23) */
   round?: number
   exerciseName: string
   /** 동작 그림 파일 이름(exerciseImage)을 만든다. 없으면 그림 없이 */
@@ -58,11 +59,12 @@ export function DaySessionView({
 }) {
   const setCount = exercises.reduce((sum, e) => sum + e.sets.filter((s) => !s.isWarmup).length, 0)
   const roundOf = (exercise: DayExercise) => exercise.round ?? 1
-  const split = new Set(exercises.map(roundOf)).size > 1
+  // 회차가 둘 이상이거나 GTG가 있으면 머리를 단다 — GTG만 한 날도 GTG인 줄 보이게
+  const split = new Set(exercises.map(roundOf)).size > 1 || exercises.some((exercise) => roundOf(exercise) === GTG_ROUND)
   const roundHead = (round: number) => {
     const times = rounds?.find((it) => it.round === round)
     const meta = times ? metaOf(times.startedAt, times.durationSec) : []
-    return <div className={styles.roundHead}>{[`${round}회차`, ...meta].join(' · ')}</div>
+    return <div className={styles.roundHead}>{[roundLabel(round), ...meta].join(' · ')}</div>
   }
 
   return (

@@ -100,7 +100,7 @@ class WorkoutRoundApiTest {
 
         mvc.perform(patch("/api/v1/workout-sessions/" + session).header(HttpHeaders.AUTHORIZATION, me)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"cardOrder\":[{\"exerciseId\":" + bench + ",\"round\":0}]}"))
+                        .content("{\"cardOrder\":[{\"exerciseId\":" + bench + ",\"round\":21}]}"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -143,10 +143,10 @@ class WorkoutRoundApiTest {
     }
 
     @Test
-    @DisplayName("회차는 1~20, 벗어나면 400")
+    @DisplayName("회차는 0(GTG)~20, 벗어나면 400")
     void roundRange() throws Exception {
         long session = openDay(LocalDate.now(clock).minusDays(1));
-        for (int round : new int[] {0, 21}) {
+        for (int round : new int[] {-1, 21}) {
             mvc.perform(post("/api/v1/workout-sessions/" + session + "/sets").header(HttpHeaders.AUTHORIZATION, me)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(setJson(bench, 40, round)))

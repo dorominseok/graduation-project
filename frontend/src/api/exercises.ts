@@ -108,9 +108,13 @@ export function removeFavorite(exerciseId: number): Promise<void> {
  *
  * 처음 하는 종목이면 서버가 204를 주고 여기서는 `null`이 된다 — 오류가 아니라
  * "채울 기록이 없다"는 정상 상태이므로 호출부는 빈 행으로 시작하면 된다.
+ *
+ * `gtg`면 지난 GTG 세트, 아니면 GTG를 뺀 일반 회차의 세트다(결정 기록 D-23).
  */
-export async function getLastPerformance(exerciseId: number): Promise<LastPerformance | null> {
-  const result = await request<LastPerformance | null>(`/exercises/${exerciseId}/last-performance`)
+export async function getLastPerformance(exerciseId: number, gtg = false): Promise<LastPerformance | null> {
+  const result = await request<LastPerformance | null>(
+    `/exercises/${exerciseId}/last-performance${gtg ? '?gtg=true' : ''}`,
+  )
   return result ?? null
 }
 

@@ -45,6 +45,11 @@ public final class ExerciseOrder {
         return sorted;
     }
 
+    /** 회차를 늘어놓는 순위. 일반 회차는 번호 순, GTG(0)는 맨 뒤(결정 기록 D-23) */
+    public static int roundRank(int round) {
+        return round == WorkoutSet.GTG_ROUND ? Integer.MAX_VALUE : round;
+    }
+
     /** 순서에 나온 종목 id를 처음 나온 차례대로. 회차를 묻지 않는 곳(히스토리 목록의 종목 이름)이 쓴다 */
     public static List<String> exerciseKeys(List<String> order) {
         if (order == null) {
