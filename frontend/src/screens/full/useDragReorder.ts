@@ -58,6 +58,11 @@ interface Options {
   onReorder: (from: number, to: number) => void
   /** 줄을 들어 올렸을 때 — 옆으로 밀기(날짜 넘기기)를 멈추는 데 쓴다 */
   onLift?: () => void
+  /**
+   * 그 줄이 갈 수 있는 자리(처음·끝, 둘 다 포함). 없으면 목록 전체. 기록 화면은 회차 안에서만 옮긴다(결정 기록 D-22) —
+   * 회차가 다른 카드는 세트의 회차를 바꿔야 해서 끌기로 하지 않는다
+   */
+  rangeOf?: (from: number) => readonly [number, number]
 }
 
 const reducedMotion = () =>
@@ -72,7 +77,7 @@ const reducedMotion = () =>
  * <p>손가락·마우스 모두 포인터 이벤트로 받는다. 손가락으로 끄는 동안 화면이 스크롤되지 않게 목록에 수동적이지
  * 않은 {@code touchmove}를 달아 끄는 중에만 막는다 — 처음부터 달려 있어야 브라우저가 막을 수 있는 움직임으로 보낸다.
  */
-export function useDragReorder({ count, onReorder, onLift }: Options) {
+export function useDragReorder({ count, onReorder, onLift, rangeOf }: Options) {
   const [view, setView] = useState<View | null>(null)
   const container = useRef<HTMLElement | null>(null)
   const press = useRef<Press | null>(null)
@@ -80,9 +85,9 @@ export function useDragReorder({ count, onReorder, onLift }: Options) {
   const settleTimer = useRef(0)
   // 끌기가 끝난 뒤 따라오는 누르기(click)를 한 번 삼킨다 — 놓자마자 종목이 열리면 안 된다
   const swallowClick = useRef(false)
-  const callbacks = useRef({ onReorder, onLift })
+  const callbacks = useRef({ onReorder, onLift, rangeOf })
   useLayoutEffect(() => {
-    callbacks.current = { onReorder, onLift }
+    callbacks.current = { onReorder, onLift, rangeOf }
   })
 
   useEffect(
@@ -103,7 +108,9 @@ export function useDragReorder({ count, onReorder, onLift }: Options) {
       .map((el) => el.getBoundingClientRect())
     const tops = rects.map((rect) => rect.top - boxTop)
     const heights = rects.map((rect) => rect.height)
-    const gap = count > 1 ? Math.max(0, tops[1] - (tops[0] + heights[0])) : 0
+    // 줄 사이에 회차 머리 같은 것이 끼면 그 틈은 넓다 — 가장 좁은 틈이 줄 간격이다
+    const gaps = tops.slice(1).map((top, k) => Math.max(0, top - (tops[k] + heights[k])))
+    const gap = gaps.length > 0 ? Math.min(...gaps) : 0
     return { tops, heights, gap }
   }
 
@@ -126,11 +133,12 @@ export function useDragReorder({ count, onReorder, onLift }: Options) {
     if (!d) return
     const { layout, from } = d
     const scrolled = (container.current?.scrollTop ?? d.startScroll) - d.startScroll
-    // 첫 줄 위, 끝 줄 아래로는 나가지 않는다
-    const min = layout.tops[0] - layout.tops[from]
-    const max = layout.tops[count - 1] + layout.heights[count - 1] - (layout.tops[from] + layout.heights[from])
+    // 갈 수 있는 첫 줄 위, 끝 줄 아래로는 나가지 않는다
+    const [lo, hi] = callbacks.current.rangeOf?.(from) ?? [0, count - 1]
+    const min = layout.tops[lo] - layout.tops[from]
+    const max = layout.tops[hi] + layout.heights[hi] - (layout.tops[from] + layout.heights[from])
     const dy = Math.min(max, Math.max(min, d.pointerY - d.startY + scrolled))
-    d.over = overOf(from, dy, layout)
+    d.over = Math.min(hi, Math.max(lo, overOf(from, dy, layout)))
     setView({ from, over: d.over, dy, dropping: false, shift: layout.heights[from] + layout.gap })
   }
 

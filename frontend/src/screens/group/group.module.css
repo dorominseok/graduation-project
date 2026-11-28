@@ -601,3 +601,13 @@
   background: oklch(92% 0.06 165 / 0.6);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7);
 }
+
+/* 하루 기록 안의 회차 머리(결정 기록 D-22) — "2회차 · 오후 7:12 시작 · 41분" */
+.roundHead {
+  margin-top: var(--space-6);
+  padding: 0 var(--space-4);
+  font-size: var(--font-xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}

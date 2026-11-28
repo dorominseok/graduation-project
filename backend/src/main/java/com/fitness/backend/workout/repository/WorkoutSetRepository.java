@@ -30,14 +30,15 @@ public interface WorkoutSetRepository extends JpaRepository<WorkoutSet, Long> {
      */
     @Modifying
     @Query(value = """
-            insert into workout_sets (session_id, exercise_id, set_no, weight_kg, reps, duration_sec,
+            insert into workout_sets (session_id, exercise_id, round_no, set_no, weight_kg, reps, duration_sec,
                                       is_warmup, target_reps, recorded_at, client_set_id)
-            values (:sessionId, :exerciseId, :setNo, cast(:weightKg as numeric), cast(:reps as smallint),
+            values (:sessionId, :exerciseId, :roundNo, :setNo, cast(:weightKg as numeric), cast(:reps as smallint),
                     cast(:durationSec as integer), :isWarmup, cast(:targetReps as smallint), :recordedAt, :clientSetId)
             on conflict (session_id, client_set_id) do nothing
             """, nativeQuery = true)
     int insertIfAbsent(@Param("sessionId") Long sessionId,
                        @Param("exerciseId") Long exerciseId,
+                       @Param("roundNo") short roundNo,
                        @Param("setNo") short setNo,
                        @Param("weightKg") BigDecimal weightKg,
                        @Param("reps") Short reps,
@@ -47,8 +48,8 @@ public interface WorkoutSetRepository extends JpaRepository<WorkoutSet, Long> {
                        @Param("recordedAt") OffsetDateTime recordedAt,
                        @Param("clientSetId") UUID clientSetId);
 
-    /** {@code setNo} 자동 부여용. 같은 세션 안 같은 종목의 세트 수 + 1이 다음 번호다 */
-    int countBySessionIdAndExerciseId(Long sessionId, Long exerciseId);
+    /** {@code setNo} 자동 부여용. 같은 세션 안 같은 카드(종목, 회차)의 세트 수 + 1이 다음 번호다 */
+    int countBySessionIdAndExerciseIdAndRoundNo(Long sessionId, Long exerciseId, short roundNo);
 
     Optional<WorkoutSet> findByIdAndSessionId(Long id, Long sessionId);
 
@@ -57,11 +58,11 @@ public interface WorkoutSetRepository extends JpaRepository<WorkoutSet, Long> {
     /** 히스토리 목록의 세트 수·종목 목록을 한 번에 채운다. 세션마다 조회하면 N+1이다 */
     List<WorkoutSet> findBySessionIdInOrderByRecordedAtAsc(List<Long> sessionIds);
 
-    /** 직전 수행 기록. {@code setNo} 순서가 곧 수행 순서다 */
-    List<WorkoutSet> findBySessionIdAndExerciseIdOrderBySetNoAsc(Long sessionId, Long exerciseId);
+    /** 직전 수행 기록. 회차 안에서는 {@code setNo} 순서가 곧 수행 순서다 */
+    List<WorkoutSet> findBySessionIdAndExerciseIdOrderByRoundNoAscSetNoAsc(Long sessionId, Long exerciseId);
 
-    List<WorkoutSet> findBySessionIdInAndExerciseIdOrderBySetNoAsc(List<Long> sessionIds, Long exerciseId);
+    List<WorkoutSet> findBySessionIdInAndExerciseIdOrderByRoundNoAscSetNoAsc(List<Long> sessionIds, Long exerciseId);
 
-    /** 종목 단위 삭제. 그 종목의 세트를 한 번에 지운다 */
-    int deleteBySessionIdAndExerciseId(Long sessionId, Long exerciseId);
+    /** 카드 단위 삭제. 그 회차의 그 종목 세트를 한 번에 지운다 */
+    int deleteBySessionIdAndExerciseIdAndRoundNo(Long sessionId, Long exerciseId, short roundNo);
 }

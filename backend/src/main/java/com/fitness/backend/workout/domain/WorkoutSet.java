@@ -46,6 +46,13 @@ public class WorkoutSet {
     @Column(name = "set_no", nullable = false)
     private Short setNo;
 
+    /**
+     * 하루 기록 안의 회차(V23, 결정 기록 D-22). 오전·오후처럼 하루에 다시 운동하면 2회차로 나눠 기록한다. 기존 세트와
+     * 회차를 나누지 않은 기록은 1회차다. 같은 종목도 회차가 다르면 카드가 따로다 — {@code setNo}도 (종목, 회차)마다 센다.
+     */
+    @Column(name = "round_no", nullable = false)
+    private short roundNo = 1;
+
     @Column(name = "weight_kg", precision = 6, scale = 2)
     private BigDecimal weightKg;
 
@@ -78,11 +85,12 @@ public class WorkoutSet {
     @Column(name = "client_set_id", nullable = false)
     private UUID clientSetId;
 
-    private WorkoutSet(Long sessionId, Long exerciseId, Short setNo, BigDecimal weightKg,
+    private WorkoutSet(Long sessionId, Long exerciseId, short roundNo, Short setNo, BigDecimal weightKg,
                        Short reps, Integer durationSec, boolean isWarmup,
                        OffsetDateTime recordedAt, UUID clientSetId) {
         this.sessionId = sessionId;
         this.exerciseId = exerciseId;
+        this.roundNo = roundNo;
         this.setNo = setNo;
         this.weightKg = weightKg;
         this.reps = reps;
@@ -95,7 +103,7 @@ public class WorkoutSet {
     public static WorkoutSet record(Long sessionId, Long exerciseId, Short setNo, BigDecimal weightKg,
                                     Short reps, Integer durationSec, boolean isWarmup,
                                     OffsetDateTime recordedAt, UUID clientSetId) {
-        return new WorkoutSet(sessionId, exerciseId, setNo, weightKg, reps,
+        return new WorkoutSet(sessionId, exerciseId, (short) 1, setNo, weightKg, reps,
                 durationSec, isWarmup, recordedAt, clientSetId);
     }
 

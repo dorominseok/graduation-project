@@ -105,6 +105,31 @@
   gap: var(--space-10);
 }
 
+/* 회차 머리 — 하루 기록 안을 회차로 나눴을 때(결정 기록 D-22). 카드 사이의 작은 소제목 */
+.roundHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  flex-shrink: 0;
+  padding: var(--space-4) var(--space-4) 0;
+}
+
+.roundHead:not(:first-child) {
+  margin-top: var(--space-12);
+}
+
+.roundTitle {
+  font-size: var(--font-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.roundMeta {
+  font-size: var(--font-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
 /* 휴식 타이머가 떠 있으면 마지막 버튼(세트 추가 등)이 그 밑에 깔린다. 타이머 높이만큼 비운다.
    두 클래스를 겹쳐 쓰는 것은 아래 .setScroll이 파일에서 더 뒤에 있어, 한 클래스로만 쓰면
    그 padding이 이 여백을 덮어쓰기 때문이다 */

@@ -13,6 +13,7 @@ import com.fitness.backend.workout.domain.WorkoutSession;
 import com.fitness.backend.workout.domain.WorkoutSet;
 import com.fitness.backend.workout.repository.WorkoutSessionRepository;
 import com.fitness.backend.workout.repository.WorkoutSetRepository;
+import com.fitness.backend.workout.web.WorkoutDtos;
 import com.fitness.backend.workout.web.WorkoutDtos.CalendarDay;
 import com.fitness.backend.workout.web.WorkoutDtos.CalendarResponse;
 import com.fitness.backend.workout.web.WorkoutDtos.CreateSetRequest;
@@ -26,6 +27,7 @@ import com.fitness.backend.workout.web.WorkoutDtos.LastPerformanceResponse;
 import com.fitness.backend.workout.web.WorkoutDtos.LastPerformanceSet;
 import com.fitness.backend.workout.web.WorkoutDtos.OpenDayRequest;
 import com.fitness.backend.workout.web.WorkoutDtos.OpenDayResult;
+import com.fitness.backend.workout.web.WorkoutDtos.RoundTimes;
 import com.fitness.backend.workout.web.WorkoutDtos.SessionResponse;
 import com.fitness.backend.workout.web.WorkoutDtos.SessionSummary;
 import com.fitness.backend.workout.web.WorkoutDtos.SetInGroup;
@@ -41,11 +43,13 @@ import java.time.OffsetDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
@@ -146,16 +150,17 @@ public class WorkoutService {
         validateFailTarget(measureType, request.warmupOrDefault(), request.reps(), request.targetReps());
 
         // 순번은 서버가 매긴다. 클라이언트가 정하게 두면 같은 번호를 두 번 보내
-        // 1세트가 두 줄이 된다 — 화면이 세트를 셀 근거가 없어진다.
+        // 1세트가 두 줄이 된다 — 화면이 세트를 셀 근거가 없어진다. 카드(종목, 회차)마다 센다
+        short round = request.roundOrDefault();
         short setNo = (short) (setRepository
-                .countBySessionIdAndExerciseId(sessionId, request.exerciseId()) + 1);
+                .countBySessionIdAndExerciseIdAndRoundNo(sessionId, request.exerciseId(), round) + 1);
 
         // 측정 유형이 쓰지 않는 값은 담지 않는다. 맨몸 운동에 중량이 들어가면
         // 볼륨 집계가 부풀려져 부족한 부위를 충분한 것으로 오판한다.
         //
         // 같은 키가 거의 동시에 둘 들어오면 위의 조회는 둘 다 "없음"을 본다. UNIQUE 제약이 최종 방어선이고,
         // 충돌한 쪽은 넣지 않고 먼저 저장된 세트를 돌려준다.
-        boolean created = setRepository.insertIfAbsent(sessionId, request.exerciseId(), setNo,
+        boolean created = setRepository.insertIfAbsent(sessionId, request.exerciseId(), round, setNo,
                 measureType.requiresWeight() ? request.weightKg() : null,
                 measureType.requiresReps() ? toShort(request.reps()) : null,
                 measureType.requiresDuration() ? request.durationSec() : null,
@@ -173,6 +178,8 @@ public class WorkoutService {
      * 값이 있어야 하고({@code 400}), 쓰지 않는 값은 버리며, 같은 {@code clientSetId}는 다시 넣지 않는다.
      * 저장 시각은 {@link ImportedSetTimes}가 정한다.
      *
+     * <p>그날 세트가 이미 있으면 다음 회차로 넣는다(V23, 결정 기록 D-22) — 앞서 한 운동과 카드가 섞이지 않게.
+     *
      * <p>그날 세트가 하나도 없었으면 {@code minutes}를 그날 운동 시간으로 둔다(결정 5) — 가져온 세트는 몇 초 사이에
      * 저장돼 산출 시간이 1분 남짓이 된다. 이미 기록이 있던 날은 그 시간을 덮지 않는다.
      */
@@ -189,6 +196,9 @@ public class WorkoutService {
         OffsetDateTime start = ImportedSetTimes.start(date, clock.getZone(),
                 existing.isEmpty() ? null : existing.get(existing.size() - 1).getRecordedAt(), sets.size(), now);
 
+        short round = (short) (existing.isEmpty() ? 1 : Math.min(WorkoutDtos.MAX_ROUND,
+                existing.stream().mapToInt(WorkoutSet::getRoundNo).max().orElse(0) + 1));
+
         Map<Long, Exercise> exercises = new HashMap<>();
         int added = 0;
         for (int i = 0; i < sets.size(); i++) {
@@ -199,11 +209,12 @@ public class WorkoutService {
             MeasureType measureType = exercise.getMeasureType();
             validateMeasureInput(measureType, set.weightKg(), set.reps(), set.durationSec());
 
-            short setNo = (short) (setRepository.countBySessionIdAndExerciseId(session.getId(), exercise.getId()) + 1);
+            short setNo = (short) (setRepository.countBySessionIdAndExerciseIdAndRoundNo(
+                    session.getId(), exercise.getId(), round) + 1);
             // 실패 세트의 목표는 맞을 때만 둔다 — 바꾸기로 시간 종목을 골랐으면 목표 없이 본세트로
             boolean failFits = set.targetReps() != null && measureType.requiresReps() && !set.warmup()
                     && set.reps() != null && set.targetReps() > set.reps();
-            added += setRepository.insertIfAbsent(session.getId(), exercise.getId(), setNo,
+            added += setRepository.insertIfAbsent(session.getId(), exercise.getId(), round, setNo,
                     measureType.requiresWeight() ? set.weightKg() : null,
                     measureType.requiresReps() ? toShort(set.reps()) : null,
                     measureType.requiresDuration() ? set.durationSec() : null,
@@ -261,6 +272,8 @@ public class WorkoutService {
      *
      * <p>기록이 없으면 빈 값이고 컨트롤러가 204로 바꾼다 — 오류가 아니라
      * "처음 하는 종목"이라는 정상 상태다.
+     *
+     * <p>그날 그 종목을 여러 회차에 했으면 마지막 회차의 세트를 준다(결정 기록 D-22).
      */
     public Optional<LastPerformanceResponse> findLastPerformance(Long userId, Long exerciseId) {
         Exercise exercise = exerciseRepository.findVisible(exerciseId, userId)
@@ -273,8 +286,11 @@ public class WorkoutService {
         }
 
         WorkoutSession session = sessions.get(0);
-        List<LastPerformanceSet> sets = setRepository
-                .findBySessionIdAndExerciseIdOrderBySetNoAsc(session.getId(), exerciseId).stream()
+        List<WorkoutSet> all = setRepository
+                .findBySessionIdAndExerciseIdOrderByRoundNoAscSetNoAsc(session.getId(), exerciseId);
+        int lastRound = all.stream().mapToInt(WorkoutSet::getRoundNo).max().orElse(1);
+        List<LastPerformanceSet> sets = all.stream()
+                .filter(set -> set.getRoundNo() == lastRound)
                 .map(LastPerformanceSet::of)
                 .toList();
 
@@ -295,7 +311,7 @@ public class WorkoutService {
         List<Long> sessionIds = page.getContent().stream().map(WorkoutSession::getId).toList();
         Map<Long, List<LastPerformanceSet>> setsBySession = sessionIds.isEmpty()
                 ? Map.of()
-                : setRepository.findBySessionIdInAndExerciseIdOrderBySetNoAsc(sessionIds, exerciseId).stream()
+                : setRepository.findBySessionIdInAndExerciseIdOrderByRoundNoAscSetNoAsc(sessionIds, exerciseId).stream()
                         .collect(Collectors.groupingBy(WorkoutSet::getSessionId,
                                 Collectors.mapping(LastPerformanceSet::of, Collectors.toList())));
         return page.map(session -> new ExerciseHistoryDay(session.getId(), session.getPerformedOn(),
@@ -358,10 +374,15 @@ public class WorkoutService {
             session.changeDurationOverrideSec(override == 0 ? null : override);
         }
 
-        if (request.exerciseOrder() != null) {
-            // 종목 id만 담는다. 세트가 없는 종목(화면의 계획 종목)도 받는다 — 그 종목에 세트가 생기면 그 자리에 온다.
+        if (request.cardOrder() != null) {
+            // (종목, 회차)만 담는다. 세트가 없는 카드(화면의 계획 종목)도 받는다 — 그 카드에 세트가 생기면 그 자리에 온다.
             // 남의 종목 id가 섞여도 내 기록에는 그 종목의 세트가 없어 읽을 때 걸러진다
-            session.changeExerciseOrder(request.exerciseOrder());
+            session.changeCardOrder(request.cardOrder().stream()
+                    .map(card -> ExerciseOrder.key(card.exerciseId(), card.round()))
+                    .toList());
+        } else if (request.exerciseOrder() != null) {
+            // 회차 전의 화면이 보내는 종목 순서 — 모두 1회차다
+            session.changeCardOrder(request.exerciseOrder().stream().map(id -> ExerciseOrder.key(id, 1)).toList());
         }
 
         return toResponse(session, setRepository.findBySessionIdOrderByRecordedAtAsc(sessionId));
@@ -420,21 +441,21 @@ public class WorkoutService {
     }
 
     /**
-     * 종목 단위 삭제. 그 종목의 세트를 한 번에 지운다.
+     * 카드 단위 삭제. 그 회차의 그 종목 세트를 한 번에 지운다. 다른 회차의 같은 종목은 남는다.
      *
      * <p>세트 삭제만으로도 같은 결과를 낼 수 있지만, 5세트를 지우려면
      * 요청이 다섯 번 나가고 중간에 실패하면 일부만 지워진 상태가 남는다.
      * 기록 화면에서 "이 종목 빼기"는 세트 하나를 지우는 것보다 흔한 동작이다.
      */
     @Transactional
-    public void deleteExercise(Long userId, Long sessionId, Long exerciseId) {
+    public void deleteExercise(Long userId, Long sessionId, Long exerciseId, int round) {
         WorkoutSession session = mustFindSession(userId, sessionId);
-        int deleted = setRepository.deleteBySessionIdAndExerciseId(sessionId, exerciseId);
+        int deleted = setRepository.deleteBySessionIdAndExerciseIdAndRoundNo(sessionId, exerciseId, (short) round);
         if (deleted == 0) {
             throw new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "이 기록에 해당 종목이 없습니다.");
         }
         // 다시 넣으면 화면처럼 맨 뒤에 오게 순서에서도 뺀다
-        session.dropFromExerciseOrder(exerciseId);
+        session.dropFromCardOrder(exerciseId, round);
     }
 
     private WorkoutSet mustFindSet(Long sessionId, Long setId) {
@@ -445,11 +466,12 @@ public class WorkoutService {
     private SessionSummary toSummary(WorkoutSession session, List<WorkoutSet> sets,
                                      Map<Long, Exercise> exercises) {
         // sets가 저장 시각 순이므로 distinct()가 곧 수행 순서다. 사용자가 정한 순서가 있으면 그것이 앞선다
+        // 회차를 묻지 않는다 — 그날 한 종목을 처음 나온 카드 자리에 한 번씩
         List<ExerciseRef> refs = ExerciseOrder.apply(sets.stream()
                 .map(WorkoutSet::getExerciseId)
                 .distinct()
                 .map(id -> new ExerciseRef(id, exercises.containsKey(id) ? exercises.get(id).getNameKo() : null))
-                .toList(), ExerciseRef::id, session.getExerciseOrder());
+                .toList(), ref -> String.valueOf(ref.id()), ExerciseOrder.exerciseKeys(session.getCardOrder()));
 
         return new SessionSummary(session.getId(), session.getPerformedOn(),
                 times(session, sets).effectiveSec(session), sets.size(), refs.size(), refs);
@@ -491,6 +513,20 @@ public class WorkoutService {
         }
     }
 
+    /** 회차마다 첫 세트 시각과 운동 시간. 세트가 있는 회차만, 회차 순서대로 */
+    private List<RoundTimes> roundTimes(WorkoutSession session, List<WorkoutSet> sets) {
+        Map<Integer, List<WorkoutSet>> byRound = new TreeMap<>();
+        for (WorkoutSet set : sets) {
+            byRound.computeIfAbsent((int) set.getRoundNo(), key -> new ArrayList<>()).add(set);
+        }
+        return byRound.entrySet().stream()
+                .map(entry -> {
+                    DayTimes times = times(session, entry.getValue());
+                    return new RoundTimes(entry.getKey(), times.startedAt(), times.durationSec());
+                })
+                .toList();
+    }
+
     /** 세트 저장 시각으로 그날의 시작·끝 시각과 운동 시간을 계산한다 */
     private DayTimes times(WorkoutSession session, List<WorkoutSet> sets) {
         if (sets.isEmpty()) {
@@ -513,31 +549,38 @@ public class WorkoutService {
      * 하루 기록과 세트를 상세 응답의 형태로 묶는다.
      *
      * <p>세트가 저장 시각 오름차순으로 들어오므로 {@link LinkedHashMap}에 쌓으면
-     * 종목 순서가 곧 <b>수행 순서</b>가 된다(각 종목의 가장 이른 저장 시각 순). 사용자가 순서를 바꿨으면
-     * 그 순서가 앞선다({@link ExerciseOrder}).
+     * 카드 순서가 곧 <b>수행 순서</b>가 된다(각 카드의 가장 이른 저장 시각 순). 사용자가 순서를 바꿨으면
+     * 그 순서가 앞선다({@link ExerciseOrder}). 카드는 (종목, 회차)이고, 마지막에 회차 순으로 다시 세운다 —
+     * 회차 안의 순서는 그대로다.
      */
     private SessionResponse toResponse(WorkoutSession session, List<WorkoutSet> sets) {
         return toResponse(session, sets, loadExercises(sets));
     }
 
     private SessionResponse toResponse(WorkoutSession session, List<WorkoutSet> sets, Map<Long, Exercise> exercises) {
-        Map<Long, List<WorkoutSet>> byExercise = new LinkedHashMap<>();
+        Map<String, List<WorkoutSet>> byCard = new LinkedHashMap<>();
         for (WorkoutSet set : sets) {
-            byExercise.computeIfAbsent(set.getExerciseId(), key -> new ArrayList<>()).add(set);
+            byCard.computeIfAbsent(ExerciseOrder.key(set.getExerciseId(), set.getRoundNo()), key -> new ArrayList<>())
+                    .add(set);
         }
 
-        List<ExerciseGroup> groups = ExerciseOrder.apply(byExercise.entrySet().stream()
-                .map(entry -> {
-                    Exercise exercise = exercises.get(entry.getKey());
-                    return new ExerciseGroup(entry.getKey(),
+        List<ExerciseGroup> ordered = ExerciseOrder.apply(byCard.values().stream()
+                .map(cardSets -> {
+                    WorkoutSet first = cardSets.get(0);
+                    Exercise exercise = exercises.get(first.getExerciseId());
+                    return new ExerciseGroup(first.getExerciseId(), first.getRoundNo(),
                             exercise == null ? null : exercise.getNameKo(),
                             exercise == null ? null : exercise.getNameEn(),
                             exercise == null ? null : exercise.getMeasureType(),
-                            entry.getValue().stream().map(SetInGroup::of).toList());
+                            cardSets.stream().map(SetInGroup::of).toList());
                 })
-                .toList(), ExerciseGroup::exerciseId, session.getExerciseOrder());
+                .toList(), group -> ExerciseOrder.key(group.exerciseId(), group.round()), session.getCardOrder());
+        // 안정 정렬 — 회차 안의 순서는 그대로
+        List<ExerciseGroup> groups = ordered.stream()
+                .sorted(Comparator.comparingInt(ExerciseGroup::round))
+                .toList();
 
-        return SessionResponse.of(session, times(session, sets), groups);
+        return SessionResponse.of(session, times(session, sets), groups, roundTimes(session, sets));
     }
 
     /** 종목을 한 번에 읽는다. 세트마다 조회하면 세트 수만큼 쿼리가 나간다 */

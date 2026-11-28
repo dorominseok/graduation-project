@@ -74,6 +74,7 @@ function DayOverview({ sessionId }: { sessionId: number }) {
               startedAt={session.startedAt}
               durationSec={session.effectiveDurationSec}
               exercises={session.exercises}
+              rounds={session.rounds}
             />
           )}
         </div>

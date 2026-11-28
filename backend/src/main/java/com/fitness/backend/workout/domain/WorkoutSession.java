@@ -61,12 +61,12 @@ public class WorkoutSession extends BaseTimeEntity {
     private String memo;
 
     /**
-     * 사용자가 정한 종목 순서(종목 id). 없으면 세트 저장 시각 순이다. 여기 있는 종목이 이 순서대로 먼저, 없는 종목은
-     * 그 뒤에 원래 순서로 온다({@link ExerciseOrder}). 세트가 없는 종목의 id가 남아 있어도 읽을 때 걸러진다
+     * 사용자가 정한 카드 순서(V23 — 카드는 (종목, 회차), {@code "종목id:회차"}). 없으면 세트 저장 시각 순이다. 여기 있는 카드가
+     * 이 순서대로 먼저, 없는 카드는 그 뒤에 원래 순서로 온다({@link ExerciseOrder}). 세트가 없는 카드가 남아 있어도 읽을 때 걸러진다
      */
     @JdbcTypeCode(SqlTypes.ARRAY)
-    @Column(name = "exercise_order", columnDefinition = "bigint[]")
-    private List<Long> exerciseOrder;
+    @Column(name = "card_order", columnDefinition = "text[]")
+    private List<String> cardOrder;
 
     /** 그날 루틴을 잇는다. 루틴과 하루 기록은 날짜로 1:1이다 */
     public void linkRoutine(Long routineId) {
@@ -82,16 +82,17 @@ public class WorkoutSession extends BaseTimeEntity {
         this.performedOn = performedOn;
     }
 
-    /** 종목 순서를 정한다. 겹친 id는 앞의 것만 남긴다. 비우면 세트 저장 시각 순으로 돌아간다 */
-    public void changeExerciseOrder(List<Long> order) {
-        List<Long> distinct = order == null ? List.of() : order.stream().distinct().toList();
-        this.exerciseOrder = distinct.isEmpty() ? null : new ArrayList<>(distinct);
+    /** 카드 순서를 정한다({@link ExerciseOrder#key}). 겹친 카드는 앞의 것만 남긴다. 비우면 세트 저장 시각 순으로 돌아간다 */
+    public void changeCardOrder(List<String> order) {
+        List<String> distinct = order == null ? List.of() : order.stream().distinct().toList();
+        this.cardOrder = distinct.isEmpty() ? null : new ArrayList<>(distinct);
     }
 
-    /** 그 종목을 순서에서 뺀다 — 종목을 통째로 지울 때. 다시 넣으면 맨 뒤로 온다 */
-    public void dropFromExerciseOrder(Long exerciseId) {
-        if (exerciseOrder != null && exerciseOrder.contains(exerciseId)) {
-            changeExerciseOrder(exerciseOrder.stream().filter(id -> !id.equals(exerciseId)).toList());
+    /** 그 카드를 순서에서 뺀다 — 카드를 통째로 지울 때. 다시 넣으면 맨 뒤로 온다 */
+    public void dropFromCardOrder(Long exerciseId, int round) {
+        String key = ExerciseOrder.key(exerciseId, round);
+        if (cardOrder != null && cardOrder.contains(key)) {
+            changeCardOrder(cardOrder.stream().filter(it -> !it.equals(key)).toList());
         }
     }
 

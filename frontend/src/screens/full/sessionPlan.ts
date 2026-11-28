@@ -1,5 +1,5 @@
 import { exerciseApi, isApiError } from '../../api'
-import type { LastPerformance, MeasureType, Routine, RoutineItem, WorkoutSession } from '../../api'
+import type { CardRef, LastPerformance, MeasureType, Routine, RoutineItem, WorkoutSession } from '../../api'
 import { activeItems, repRangeLabel } from '../routine/format'
 
 /**
@@ -29,8 +29,13 @@ export interface SetRow {
   savedId: number | null
 }
 
+/**
+ * 카드 하나 — (종목, 회차). 하루 기록 안을 회차로 나누면(결정 기록 D-22) 같은 종목도 회차가 다르면 카드가 따로다.
+ */
 export interface ExerciseCard {
   exerciseId: number
+  /** 하루 기록 안의 회차. 나누지 않았으면 1 */
+  round: number
   name: string
   measureType: MeasureType
   rows: SetRow[]
@@ -39,6 +44,19 @@ export interface ExerciseCard {
 }
 
 export const DEFAULT_REST_SEC = 90
+
+/** 하루에 나눌 수 있는 회차 수. 서버(V23)와 같다 */
+export const MAX_ROUND = 20
+
+/** 카드를 가리키는 열쇠 */
+export function cardKey(card: { exerciseId: number; round: number }): string {
+  return `${card.exerciseId}:${card.round}`
+}
+
+/** 회차 순으로 세운다. 회차 안의 순서는 그대로다(안정 정렬) */
+export function byRound<T extends { round: number }>(cards: T[]): T[] {
+  return [...cards].sort((a, b) => a.round - b.round)
+}
 
 export function emptyRow(): SetRow {
   return {
@@ -84,6 +102,7 @@ export async function lastPerformanceOf(exerciseId: number): Promise<LastPerform
 export function savedCards(session: WorkoutSession): ExerciseCard[] {
   return session.exercises.map((group) => ({
     exerciseId: group.exerciseId,
+    round: group.round ?? 1,
     name: group.exerciseName,
     measureType: group.measureType,
     routineTarget: null,
@@ -132,8 +151,10 @@ async function routineCard(item: RoutineItem, saved: ExerciseCard | undefined): 
     planRows.push(source ? rowsFromLast([{ ...source, isWarmup: false }])[0] : emptyRow())
   }
 
+  // 오늘의 루틴은 1회차다
   return {
     exerciseId: item.exerciseId,
+    round: 1,
     name: item.exerciseName,
     measureType: item.measureType,
     routineTarget: routineTargetOf(item),
@@ -168,11 +189,12 @@ export function loadDraft(userId: number, performedOn: string): Draft | null {
     if (!raw) return null
     const draft = JSON.parse(raw) as Draft
     if (draft.savedOn !== toDateString(new Date()) || !Array.isArray(draft.cards)) return null
-    // 실패 세트(2026-11-28) 전에 남긴 임시 저장에는 목표 칸이 없다
+    // 실패 세트(2026-11-28) 전에 남긴 임시 저장에는 목표 칸이, 회차(D-22) 전에 남긴 것에는 회차가 없다
     return {
       ...draft,
       cards: draft.cards.map((card) => ({
         ...card,
+        round: card.round ?? 1,
         rows: card.rows.map((row) => ({ ...row, targetReps: row.targetReps ?? null })),
       })),
     }
@@ -203,18 +225,19 @@ export function saveDraft(userId: number, performedOn: string, routineKey: strin
 }
 
 /**
- * 사용자가 끌어서 정한 순서(서버의 `exerciseOrder`)대로 놓는다. 거기 없는 카드는 뒤에 지금 순서대로.
+ * 사용자가 끌어서 정한 순서(서버의 `cardOrder`)대로 놓는다. 거기 없는 카드는 뒤에 지금 순서대로.
  * 임시 저장이 있으면 그 순서가 이미 이 기기에서 정한 것이라 쓰지 않는다 — 다른 기기에서 열거나 다음 날 지난 기록을
  * 열 때 쓴다(임시 저장은 그날 하루만이다)
  */
-function byExerciseOrder(cards: ExerciseCard[], order: number[] | undefined): ExerciseCard[] {
+function byCardOrder(cards: ExerciseCard[], order: CardRef[] | undefined): ExerciseCard[] {
   if (!order || order.length === 0) return cards
-  const rank = new Map<number, number>()
-  order.forEach((id, index) => {
-    if (!rank.has(id)) rank.set(id, index)
+  const rank = new Map<string, number>()
+  order.forEach((card, index) => {
+    if (!rank.has(cardKey(card))) rank.set(cardKey(card), index)
   })
   // 정렬은 안정적이라 순서에 없는 카드끼리는 지금 순서가 지켜진다
-  return [...cards].sort((a, b) => (rank.get(a.exerciseId) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.exerciseId) ?? Number.MAX_SAFE_INTEGER))
+  const rankOf = (card: ExerciseCard) => rank.get(cardKey(card)) ?? Number.MAX_SAFE_INTEGER
+  return [...cards].sort((a, b) => rankOf(a) - rankOf(b))
 }
 
 /**
@@ -227,6 +250,7 @@ function byExerciseOrder(cards: ExerciseCard[], order: number[] | undefined): Ex
  * </ol>
  *
  * 어느 쪽이든 서버에 저장된 세트는 빠짐없이 들어간다. 다른 기기에서 체크한 세트도 보여야 한다.
+ * 카드는 (종목, 회차)로 맞추고, 마지막에 회차 순으로 세운다.
  */
 export async function buildCards(
   session: WorkoutSession,
@@ -234,44 +258,46 @@ export async function buildCards(
   draft: Draft | null,
   restoreRoutine = false,
 ): Promise<ExerciseCard[]> {
-  const saved = new Map(savedCards(session).map((card) => [card.exerciseId, card]))
+  const saved = new Map(savedCards(session).map((card) => [cardKey(card), card]))
   // 저장 응답이 오기 전에 화면을 떠나면 그 줄이 체크 전 상태로 임시 저장에 남는다. 서버에 있는 줄은
   // 빼서 같은 세트가 두 번 나오지 않게 한다
   const savedIds = new Set(session.exercises.flatMap((group) => group.sets.map((set) => set.clientSetId)))
   const unsaved = (rows: SetRow[]) => rows.filter((row) => !savedIds.has(row.clientSetId))
-  const take = (exerciseId: number) => {
-    const card = saved.get(exerciseId)
-    saved.delete(exerciseId)
+  const take = (key: string) => {
+    const card = saved.get(key)
+    saved.delete(key)
     return card
   }
 
   if (draft && draft.routineKey === routineKeyOf(routine)) {
     const cards = draft.cards.map((card) => ({
       ...card,
-      rows: [...(take(card.exerciseId)?.rows ?? []), ...unsaved(card.rows)],
+      rows: [...(take(cardKey(card))?.rows ?? []), ...unsaved(card.rows)],
     }))
-    const shown = new Set(cards.map((card) => card.exerciseId))
+    const shown = new Set(cards.map(cardKey))
     const restored =
       restoreRoutine && routine
         ? await Promise.all(
             activeItems(routine)
-              .filter((item) => !shown.has(item.exerciseId))
-              .map((item) => routineCard(item, take(item.exerciseId))),
+              .filter((item) => !shown.has(cardKey({ exerciseId: item.exerciseId, round: 1 })))
+              .map((item) => routineCard(item, take(cardKey({ exerciseId: item.exerciseId, round: 1 })))),
           )
         : []
-    return [...cards, ...restored, ...saved.values()]
+    return byRound([...cards, ...restored, ...saved.values()])
   }
 
   const routineCards = routine
-    ? await Promise.all(activeItems(routine).map((item) => routineCard(item, take(item.exerciseId))))
+    ? await Promise.all(
+        activeItems(routine).map((item) => routineCard(item, take(cardKey({ exerciseId: item.exerciseId, round: 1 })))),
+      )
     : []
-  const cards = byExerciseOrder([...routineCards, ...saved.values()], session.exerciseOrder)
+  const cards = byCardOrder([...routineCards, ...saved.values()], session.cardOrder)
 
   // 루틴이 바뀌어 다시 만들었어도, 루틴 밖에서 추가해 둔 종목은 살린다
   for (const extra of draft?.cards.filter((card) => card.routineTarget === null) ?? []) {
-    const existing = cards.find((card) => card.exerciseId === extra.exerciseId)
+    const existing = cards.find((card) => cardKey(card) === cardKey(extra))
     if (existing) existing.rows = [...existing.rows, ...unsaved(extra.rows)]
     else cards.push({ ...extra, rows: unsaved(extra.rows) })
   }
-  return cards
+  return byRound(cards)
 }

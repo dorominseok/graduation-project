@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import com.fitness.backend.workout.web.WorkoutDtos.RoundTimes;
 
 /** 친구 그룹 API의 요청·응답. */
 public final class GroupDtos {
@@ -140,18 +141,21 @@ public final class GroupDtos {
      * 내리지 않고 필드 자체를 두지 않는다 — {@code null}이면 "메모가 없다"로 읽힌다.
      *
      * @param durationSec 화면에 보이는 운동 시간(보정값 우선). 시간 없는 사후 입력은 {@code null}
+     * @param rounds      회차마다 첫 세트 시각과 시간(V23). 세트가 있는 회차만
      */
     public record MemberSession(Long id,
                                 OffsetDateTime startedAt,
                                 OffsetDateTime endedAt,
                                 Integer durationSec,
                                 List<MemberExercise> exercises,
+                                List<RoundTimes> rounds,
                                 int cheerCount,
                                 boolean cheeredByMe) {
     }
 
-    /** 종목별 세트. 수행 순서다 */
+    /** 카드(종목, 회차)별 세트. 회차 순, 회차 안은 수행 순서다 */
     public record MemberExercise(Long exerciseId,
+                                 int round,
                                  String exerciseName,
                                  /** 동작 그림 파일 이름을 만든다(화면의 exerciseImage). 그림이 없는 종목은 null */
                                  String exerciseNameEn,
