@@ -1694,12 +1694,15 @@ export function SessionScreen() {
             </button>
           )}
           {/* 그룹 멤버의 하루 기록과 같은 화면을 내 기록으로. 그룹이 없어도, 그룹 › 내 달력을 거치지 않아도 온다.
-              방문 기록을 쌓아 뒤로 가면 이 기록 화면이다 */}
+              방문 기록을 쌓아 뒤로 가면 이 기록 화면이다. 회차 탭이 있으면 보던 회차로 연다(결정 기록 D-24) */}
           <button
             type="button"
             className={styles.menuItem}
             disabled={!session}
-            onClick={() => session && navigate(paths.sessionOverview(session.id))}
+            onClick={() =>
+              session &&
+              navigate(`${paths.sessionOverview(session.id)}${showRoundTabs ? `?round=${viewRound}` : ''}`)
+            }
           >
             <span className={styles.menuItemTitle}>운동 일지 보기</span>
             <span className={styles.menuItemNote}>이날 운동을 종목 그림과 세트로 한 장에 모아 봐요</span>
