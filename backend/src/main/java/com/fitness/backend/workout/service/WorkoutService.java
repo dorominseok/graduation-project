@@ -196,8 +196,10 @@ public class WorkoutService {
         OffsetDateTime start = ImportedSetTimes.start(date, clock.getZone(),
                 existing.isEmpty() ? null : existing.get(existing.size() - 1).getRecordedAt(), sets.size(), now);
 
-        short round = (short) (existing.isEmpty() ? 1 : Math.min(WorkoutDtos.MAX_ROUND,
-                existing.stream().mapToInt(WorkoutSet::getRoundNo).max().orElse(0) + 1));
+        // 같은 날 기록이 있으면 다음 회차로. GTG(0)는 회차 번호를 세지 않는다
+        short round = (short) Math.min(WorkoutDtos.MAX_ROUND, existing.stream()
+                .filter(set -> !set.isGtg())
+                .mapToInt(WorkoutSet::getRoundNo).max().orElse(0) + 1);
 
         Map<Long, Exercise> exercises = new HashMap<>();
         int added = 0;
@@ -273,21 +275,24 @@ public class WorkoutService {
      * <p>기록이 없으면 빈 값이고 컨트롤러가 204로 바꾼다 — 오류가 아니라
      * "처음 하는 종목"이라는 정상 상태다.
      *
-     * <p>그날 그 종목을 여러 회차에 했으면 마지막 회차의 세트를 준다(결정 기록 D-22).
+     * <p>그날 그 종목을 여러 회차에 했으면 마지막 회차의 세트를 준다(결정 기록 D-22). GTG는 따로다(D-23) — {@code gtg}면
+     * 지난 GTG 세트, 아니면 GTG를 뺀 일반 회차에서 찾는다. GTG는 일부러 가볍게 해서 본 운동을 채우면 안 된다.
      */
-    public Optional<LastPerformanceResponse> findLastPerformance(Long userId, Long exerciseId) {
+    public Optional<LastPerformanceResponse> findLastPerformance(Long userId, Long exerciseId, boolean gtg) {
         Exercise exercise = exerciseRepository.findVisible(exerciseId, userId)
                 .orElseThrow(() -> new ApiException(ErrorCode.RESOURCE_NOT_FOUND, "종목을 찾을 수 없습니다."));
 
         List<WorkoutSession> sessions = sessionRepository.findLastPerformed(
-                userId, exerciseId, LocalDate.now(clock), PageRequest.of(0, 1));
+                userId, exerciseId, LocalDate.now(clock), gtg, PageRequest.of(0, 1));
         if (sessions.isEmpty()) {
             return Optional.empty();
         }
 
         WorkoutSession session = sessions.get(0);
         List<WorkoutSet> all = setRepository
-                .findBySessionIdAndExerciseIdOrderByRoundNoAscSetNoAsc(session.getId(), exerciseId);
+                .findBySessionIdAndExerciseIdOrderByRoundNoAscSetNoAsc(session.getId(), exerciseId).stream()
+                .filter(set -> set.isGtg() == gtg)
+                .toList();
         int lastRound = all.stream().mapToInt(WorkoutSet::getRoundNo).max().orElse(1);
         List<LastPerformanceSet> sets = all.stream()
                 .filter(set -> set.getRoundNo() == lastRound)
@@ -513,9 +518,9 @@ public class WorkoutService {
         }
     }
 
-    /** 회차마다 첫 세트 시각과 운동 시간. 세트가 있는 회차만, 회차 순서대로 */
+    /** 회차마다 첫 세트 시각과 운동 시간. 세트가 있는 회차만, 회차 순서대로(GTG는 맨 뒤, 시각·시간 없음) */
     private List<RoundTimes> roundTimes(WorkoutSession session, List<WorkoutSet> sets) {
-        Map<Integer, List<WorkoutSet>> byRound = new TreeMap<>();
+        Map<Integer, List<WorkoutSet>> byRound = new TreeMap<>(Comparator.comparingInt(ExerciseOrder::roundRank));
         for (WorkoutSet set : sets) {
             byRound.computeIfAbsent((int) set.getRoundNo(), key -> new ArrayList<>()).add(set);
         }
@@ -527,12 +532,19 @@ public class WorkoutService {
                 .toList();
     }
 
-    /** 세트 저장 시각으로 그날의 시작·끝 시각과 운동 시간을 계산한다 */
+    /**
+     * 세트 저장 시각으로 그날의 시작·끝 시각과 운동 시간을 계산한다. GTG 세트는 넣지 않는다(결정 기록 D-23) — 하루 내내
+     * 틈틈이 한 세트라 넣으면 아침부터 밤까지가 운동 시간이 된다.
+     */
     private DayTimes times(WorkoutSession session, List<WorkoutSet> sets) {
-        if (sets.isEmpty()) {
+        List<OffsetDateTime> recordedAts = sets.stream()
+                .filter(set -> !set.isGtg())
+                .map(WorkoutSet::getRecordedAt)
+                .sorted()
+                .toList();
+        if (recordedAts.isEmpty()) {
             return new DayTimes(null, null, null);
         }
-        List<OffsetDateTime> recordedAts = sets.stream().map(WorkoutSet::getRecordedAt).sorted().toList();
         return new DayTimes(recordedAts.get(0), recordedAts.get(recordedAts.size() - 1),
                 SessionDuration.of(recordedAts, session.getPerformedOn(), clock.getZone(),
                         analysisProperties.durationPolicy()));
@@ -575,9 +587,9 @@ public class WorkoutService {
                             cardSets.stream().map(SetInGroup::of).toList());
                 })
                 .toList(), group -> ExerciseOrder.key(group.exerciseId(), group.round()), session.getCardOrder());
-        // 안정 정렬 — 회차 안의 순서는 그대로
+        // 안정 정렬 — 회차 안의 순서는 그대로. GTG는 맨 뒤
         List<ExerciseGroup> groups = ordered.stream()
-                .sorted(Comparator.comparingInt(ExerciseGroup::round))
+                .sorted(Comparator.comparingInt(group -> ExerciseOrder.roundRank(group.round())))
                 .toList();
 
         return SessionResponse.of(session, times(session, sets), groups, roundTimes(session, sets));

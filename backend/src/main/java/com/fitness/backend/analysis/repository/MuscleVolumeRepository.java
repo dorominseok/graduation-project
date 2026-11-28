@@ -21,6 +21,7 @@ public interface MuscleVolumeRepository extends Repository<WorkoutSet, Long> {
      *
      * <p>세 가지 조건이 전부 판정의 전제다.
      * <ul>
+     *   <li>GTG(회차 0)는 뺀다 — 본 운동이 아니다(결정 기록 D-23)</li>
      *   <li>{@code isWarmup = false} — 워밍업을 세면 볼륨이 부풀어 부족이 최적으로 뒤집힌다</li>
      *   <li>{@code performedOn} 기준 — 저장 시각이 아니다. 어제 운동을 오늘 입력해도 어제로 센다</li>
      *   <li>오늘 체크한 세트도 센다 — 종료가 없으므로 체크한 세트가 곧 한 운동이다</li>
@@ -37,6 +38,7 @@ public interface MuscleVolumeRepository extends Repository<WorkoutSet, Long> {
                and w.exerciseId = e.id
                and s.userId = :userId
                and w.isWarmup = false
+               and w.roundNo <> 0
                and s.performedOn >= :from
                and s.performedOn <= :to
              group by e.primaryMuscle, e.deltRegion
@@ -57,6 +59,7 @@ public interface MuscleVolumeRepository extends Repository<WorkoutSet, Long> {
                and w.exerciseId = e.id
                and s.userId = :userId
                and w.isWarmup = false
+               and w.roundNo <> 0
                and s.performedOn >= :from
                and s.performedOn <= :to
              group by e.primaryMuscle, e.deltRegion, s.performedOn

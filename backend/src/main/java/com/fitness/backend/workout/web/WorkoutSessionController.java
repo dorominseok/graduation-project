@@ -222,7 +222,7 @@ public class WorkoutSessionController {
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
             @PathVariable Long sessionId,
             @PathVariable Long exerciseId,
-            @RequestParam(defaultValue = "1") @Min(1) @Max(WorkoutDtos.MAX_ROUND) int round) {
+            @RequestParam(defaultValue = "1") @Min(0) @Max(WorkoutDtos.MAX_ROUND) int round) {
         workoutService.deleteExercise(principal.userId(), sessionId, exerciseId, round);
         return ResponseEntity.noContent().build();
     }

@@ -74,8 +74,8 @@ public final class WorkoutDtos {
             Boolean isWarmup,
             @Max(value = Short.MAX_VALUE, message = "32767 이하여야 합니다.")
             @Min(value = 2, message = "2 이상이어야 합니다.") Integer targetReps,
-            /** 하루 기록 안의 회차(V23, 결정 기록 D-22). 생략하면 1회차 */
-            @Min(value = 1, message = "1 이상이어야 합니다.")
+            /** 하루 기록 안의 회차(V23, 결정 기록 D-22). 생략하면 1회차, 0은 GTG(V24, D-23) */
+            @Min(value = 0, message = "0 이상이어야 합니다.")
             @Max(value = MAX_ROUND, message = MAX_ROUND + " 이하여야 합니다.") Integer round) {
 
         public boolean warmupOrDefault() {
@@ -87,7 +87,7 @@ public final class WorkoutDtos {
         }
     }
 
-    /** 하루에 나눌 수 있는 회차 수. DB 제약(V23)과 같다 */
+    /** 하루에 나눌 수 있는 회차 수. DB 제약(V23·V24, 0은 GTG)과 같다 */
     public static final int MAX_ROUND = 20;
 
     /** 세트 한 건. 세트 저장의 응답 */
@@ -187,7 +187,7 @@ public final class WorkoutDtos {
      */
     public record CardRef(@NotNull(message = "필수 항목입니다.") Long exerciseId,
                           @NotNull(message = "필수 항목입니다.")
-                          @Min(value = 1, message = "1 이상이어야 합니다.")
+                          @Min(value = 0, message = "0 이상이어야 합니다.")
                           @Max(value = MAX_ROUND, message = MAX_ROUND + " 이하여야 합니다.") Integer round) {
 
         static CardRef parse(String key) {
@@ -201,7 +201,7 @@ public final class WorkoutDtos {
     /**
      * 회차 하나의 시각과 시간. 하루 기록의 {@link DayTimes}와 같은 계산을 그 회차의 세트로 한다.
      *
-     * @param durationSec 그 회차의 운동 시간. 사후 입력만 있으면 null
+     * @param durationSec 그 회차의 운동 시간. 사후 입력만 있으면 null. GTG(0)는 운동 시간에 넣지 않아 시각·시간 모두 null
      */
     public record RoundTimes(int round, OffsetDateTime startedAt, Integer durationSec) {
     }

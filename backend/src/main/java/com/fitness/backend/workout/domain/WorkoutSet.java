@@ -53,6 +53,12 @@ public class WorkoutSet {
     @Column(name = "round_no", nullable = false)
     private short roundNo = 1;
 
+    /**
+     * GTG(틈틈이 하는 가벼운 세트)의 회차 번호(V24, 결정 기록 D-23). 하루 하나다. 운동 시간·부위별 볼륨·회복·루틴·1RM·
+     * 직전 기록·운동한 날 수에 넣지 않는다 — 쿼리는 {@code w.roundNo <> 0}으로 거른다.
+     */
+    public static final short GTG_ROUND = 0;
+
     @Column(name = "weight_kg", precision = 6, scale = 2)
     private BigDecimal weightKg;
 
@@ -132,5 +138,10 @@ public class WorkoutSet {
         if (this.isWarmup) {
             this.targetReps = null;
         }
+    }
+
+    /** 그날 GTG 회차의 세트인지 */
+    public boolean isGtg() {
+        return roundNo == GTG_ROUND;
     }
 }

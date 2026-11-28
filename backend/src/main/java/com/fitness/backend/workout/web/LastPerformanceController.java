@@ -37,7 +37,10 @@ public class LastPerformanceController {
         this.workoutService = workoutService;
     }
 
-    /** 그 종목을 마지막으로 수행한 기록. 처음 하는 종목이면 {@code 204}다. */
+    /**
+     * 그 종목을 마지막으로 수행한 기록. 처음 하는 종목이면 {@code 204}다. {@code gtg=true}면 지난 GTG 세트로(결정 기록 D-23) —
+     * 기본은 GTG를 뺀 일반 회차다.
+     */
     @Operation(summary = "직전 수행 기록 (프리필용)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "마지막으로 그 종목을 한 날의 세트"),
@@ -47,8 +50,9 @@ public class LastPerformanceController {
     @GetMapping("/{exerciseId}/last-performance")
     public ResponseEntity<LastPerformanceResponse> lastPerformance(
             @AuthenticationPrincipal JwtProvider.AuthenticatedUser principal,
-            @PathVariable Long exerciseId) {
-        return workoutService.findLastPerformance(principal.userId(), exerciseId)
+            @PathVariable Long exerciseId,
+            @RequestParam(defaultValue = "false") boolean gtg) {
+        return workoutService.findLastPerformance(principal.userId(), exerciseId, gtg)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
