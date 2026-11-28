@@ -11,3 +11,60 @@
   overflow-y: auto;
   overscroll-behavior-y: contain;
 }
+
+/* ── 운동 일지 이미지(결정 기록 D-24). 저장용 일지는 화면 밖에 그려 굽는다 — 이미지 안에서는 제자리에 놓인다 */
+.captureSheet {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  pointer-events: none;
+  background: var(--page-bg);
+}
+
+/* 유리 테마는 앱 배경과 같은 결을 깐다 — 반투명 카드가 흰 바탕에 묻히지 않게 */
+:global(:root[data-theme='glass']) .captureSheet {
+  background:
+    radial-gradient(95% 30% at 50% -8%, rgb(255 255 255 / 0.75), transparent 72%),
+    radial-gradient(72% 40% at -8% 12%, var(--g-b1), transparent 68%),
+    radial-gradient(66% 38% at 110% 34%, var(--g-b2), transparent 70%),
+    radial-gradient(80% 44% at 104% 98%, var(--g-b3), transparent 68%),
+    linear-gradient(170deg, var(--g-base-a), var(--g-base-b));
+}
+
+.captureTitle {
+  padding: 0 var(--space-4);
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.captureFooter {
+  padding: 0 var(--space-4);
+  text-align: right;
+  font-size: var(--font-xs);
+  font-weight: var(--weight-bold);
+  color: var(--text-tertiary);
+}
+
+.previewTitle {
+  font-size: var(--font-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+/* 긴 일지도 시트 안에서 다 보이게 — 높이를 넘으면 줄여 보인다(저장되는 이미지는 원래 크기) */
+.previewImage {
+  display: block;
+  max-width: 100%;
+  max-height: 58vh;
+  margin: 0 auto;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  box-shadow: 0 2px 12px oklch(30% 0.04 270 / 0.14);
+}
