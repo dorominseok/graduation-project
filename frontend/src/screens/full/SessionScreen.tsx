@@ -1,7 +1,7 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import type { TouchEvent as ReactTouchEvent } from 'react'
-import { BottomSheet, RestBar, useRestTimer, useToast } from '../../components'
+import { BottomSheet, RestBar, SegmentedTabs, useRestTimer, useToast } from '../../components'
 import { isApiError, routineApi, statsApi, workoutApi } from '../../api'
 import type { Exercise, MeasureType, MuscleGroupKey, Routine, SessionIntensity, WorkoutSession } from '../../api'
 import { useAuth } from '../../auth'
@@ -171,6 +171,8 @@ export function SessionScreen() {
   const [moreOpen, setMoreOpen] = useState(false)
   // ⋮ → 회차 추가로 연 회차. 종목을 넣기 전에는 이 화면에만 있다 — 세트가 생기면 서버에 그 회차로 저장된다
   const [extraRound, setExtraRound] = useState<number | null>(null)
+  // 회차 탭에서 고른 회차. 고르지 않았으면(처음 열 때, 날짜를 옮겼을 때) 마지막 회차다
+  const [selectedRound, setSelectedRound] = useState<number | null>(null)
 
   // 일괄 수정도 같은 이유로 시트다.
   const [batchOpen, setBatchOpen] = useState(false)
@@ -237,6 +239,7 @@ export function SessionScreen() {
         setRoutineKey(routineKeyOf(routine))
         setCards(built)
         setExtraRound(null)
+        setSelectedRound(null)
       } catch (err) {
         if (isApiError(err)) showToast({ message: err.message, tone: 'danger' })
       } finally {
@@ -298,13 +301,19 @@ export function SessionScreen() {
     return () => window.clearTimeout(timer)
   }, [flashId])
 
-  // 회차(결정 기록 D-22). 목록 아래 "+ 종목 추가"는 마지막 회차에 넣는다 — ⋮ → 회차 추가로 연 빈 회차도 마지막 회차다.
-  // 회차가 하나뿐이면 회차 머리를 달지 않는다(지금까지와 같은 모양)
-  const currentRound = Math.max(1, extraRound ?? 1, ...cards.map((card) => card.round))
-  const roundsShown = [...new Set([...cards.map((card) => card.round), ...(extraRound !== null ? [extraRound] : [])])].sort(
-    (a, b) => a - b,
-  )
-  const showRoundHeads = roundsShown.length > 1
+  // 회차(결정 기록 D-22). 회차가 둘 이상이면 머리줄 아래에 회차 탭을 달고, 고른 회차의 카드만 보인다 — "+ 종목 추가"도
+  // 그 회차에 넣는다. ⋮ → 회차 추가로 연 빈 회차도 탭이 된다. 회차가 하나뿐이면 탭이 없다(지금까지와 같은 모양)
+  const lastCardRound = Math.max(1, ...cards.map((card) => card.round))
+  // 종목을 다 빼서 빈 날이 되면 빈 회차도 접는다 — 새로 넣는 종목은 1회차
+  const openRounds = extraRound !== null && cards.length > 0 ? [extraRound] : []
+  const roundsShown = [...new Set([...cards.map((card) => card.round), ...openRounds])].sort((a, b) => a - b)
+  const showRoundTabs = roundsShown.length > 1
+  const viewRound =
+    selectedRound !== null && roundsShown.includes(selectedRound)
+      ? selectedRound
+      : (roundsShown[roundsShown.length - 1] ?? 1)
+  // 목록에 보이는 카드. 탭이 없으면 전부다
+  const visibleCards = showRoundTabs ? cards.filter((card) => card.round === viewRound) : cards
 
   /**
    * 종목을 카드로 넣는다. 같은 날 다른 회차에서 한 종목이면 그 카드의 값으로, 아니면 직전 기록으로 행을 채운다. 둘 다 없으면
@@ -354,30 +363,33 @@ export function SessionScreen() {
     setPickerStep({ category: null, group: null })
     // 이 회차에 이미 있는 종목이면 카드를 하나 더 만들지 않고 그 카드를 연다. 전에는 같은 종목 카드가 하나 더 생겼지만
     // 열면 앞 카드가 열려 쓸 수 없었다(2026-11-28)
-    const existing = cards.find((card) => card.exerciseId === exercise.id && card.round === currentRound)
+    const existing = cards.find((card) => card.exerciseId === exercise.id && card.round === viewRound)
     if (existing) {
       setPickerOpen(false)
       openCard(existing)
       return
     }
     const earlier = [...cards].reverse().find((card) => card.exerciseId === exercise.id)
-    const round = currentRound
+    const round = viewRound
     // 넣었다는 표시는 목록의 "추가됨" 알약 하나다. 화면 아래 알림과 시트 머리줄의 개수는 두지 않는다
     // (사용자 의견 2026-11-18 — 연달아 넣을 때 번거롭고, 알약으로 충분하다)
     addQueue.current = addQueue.current
       .then(() => addExercise(exercise, round, earlier ? earlier.rows : null))
       .catch((err: unknown) => console.error('종목 추가 실패', err))
   }
-  // "추가됨"은 지금 넣는 회차의 종목에만 — 앞 회차에 한 종목도 이 회차에 다시 넣을 수 있다
-  const addedIds = useMemo(
-    () => new Set(cards.filter((card) => card.round === currentRound).map((card) => card.exerciseId)),
-    [cards, currentRound],
-  )
+  // "추가됨"은 지금 넣는 회차의 종목에만 — 다른 회차에 한 종목도 이 회차에 다시 넣을 수 있다
+  const addedIds = new Set(cards.filter((card) => card.round === viewRound).map((card) => card.exerciseId))
 
-  /** ⋮ → 회차 추가. 지금 회차에 종목이 있으면 다음 회차를 열고, 바로 종목 추가 창을 띄운다 */
+  /**
+   * ⋮ → 회차 추가. 종목이 있는 마지막 회차 다음 회차를 열어 그 탭으로 옮기고, 바로 종목 추가 창을 띄운다. 이미 연 빈 회차가 있으면
+   * 그 회차다. 그날 종목이 하나도 없으면 1회차 그대로 창만 띄운다
+   */
   const addRound = () => {
     setMoreOpen(false)
-    if (cards.some((card) => card.round === currentRound) && currentRound < MAX_ROUND) setExtraRound(currentRound + 1)
+    if (cards.length > 0 && lastCardRound < MAX_ROUND) {
+      setExtraRound(lastCardRound + 1)
+      setSelectedRound(lastCardRound + 1)
+    }
     setPickerStep({ category: null, group: null })
     setPickerOpen(true)
   }
@@ -667,9 +679,13 @@ export function SessionScreen() {
    * 이 순서로 보이게(브라우저 임시 저장은 그날 하루만이다). 세트 없는 계획 종목의 자리도 같이 보낸다
    */
   const moveCard = (from: number, to: number) => {
+    // 끌기는 보이는 카드(고른 회차) 안의 자리다. 한 회차의 카드는 붙어 있어서 전체 목록의 자리로 바꿔 그대로 옮긴다
+    const fromIndex = cards.indexOf(visibleCards[from])
+    const toIndex = cards.indexOf(visibleCards[to])
+    if (fromIndex < 0 || toIndex < 0) return
     const next = [...cards]
-    const [moved] = next.splice(from, 1)
-    next.splice(to, 0, moved)
+    const [moved] = next.splice(fromIndex, 1)
+    next.splice(toIndex, 0, moved)
     setCards(next)
     if (session) {
       workoutApi
@@ -684,15 +700,9 @@ export function SessionScreen() {
     styleOf: reorderStyle,
     liftedIndex,
   } = useDragReorder({
-    count: cards.length,
+    // 고른 회차 안에서만 옮긴다 — 다른 회차로 옮기려면 세트의 회차를 바꿔야 한다
+    count: visibleCards.length,
     onReorder: moveCard,
-    // 회차 안에서만 옮긴다 — 회차를 옮기려면 세트의 회차를 바꿔야 한다
-    rangeOf: (from) => {
-      const round = cards[from].round
-      const first = cards.findIndex((card) => card.round === round)
-      const last = cards.length - 1 - [...cards].reverse().findIndex((card) => card.round === round)
-      return [first, last] as const
-    },
     // 들어 올린 뒤에는 옆으로 밀기(날짜 넘기기)로 보지 않는다
     onLift: () => {
       swipeStart.current = null
@@ -765,6 +775,8 @@ export function SessionScreen() {
   })
   const openedFromList = (location.state as { fromList?: boolean } | null)?.fromList === true
   const backToList = () => {
+    // 목록은 보던 카드의 회차 탭으로 돌아온다 — 주소로 바로 카드를 열었을 때도
+    if (opened) setSelectedRound(opened.round)
     if (openedFromList) navigate(-1)
     // 새로고침·주소로 바로 들어와 쌓아 둔 목록이 없으면 지금 자리를 목록으로 바꾼다
     else setParams(listParams, { replace: true })
@@ -840,8 +852,11 @@ export function SessionScreen() {
     const showStats =
       opened.measureType === 'WEIGHT_REPS' || opened.measureType === 'WEIGHTED_BODYWEIGHT'
     const step = primaryField === 'weightKg' ? STEP_WEIGHT : 1
-    const prevCard = openedIndex > 0 ? cards[openedIndex - 1] : null
-    const nextCard = openedIndex < cards.length - 1 ? cards[openedIndex + 1] : null
+    // ‹ ›와 옆으로 밀기는 같은 회차 안의 카드로만 넘긴다 — 목록의 회차 탭 하나가 한 장이다
+    const roundCards = cards.filter((card) => card.round === opened.round)
+    const roundPos = roundCards.indexOf(opened)
+    const prevCard = roundPos > 0 ? roundCards[roundPos - 1] : null
+    const nextCard = roundPos < roundCards.length - 1 ? roundCards[roundPos + 1] : null
 
     const savedRows = opened.rows.filter((row) => row.savedId !== null)
     const savedWeights = savedRows
@@ -904,7 +919,7 @@ export function SessionScreen() {
                 ‹
               </button>
               {/* 같은 종목을 두 회차에 하면 이름이 같다 — 몇 회차 카드인지 이름 아래에 */}
-              {showRoundHeads ? (
+              {showRoundTabs ? (
                 <div className={styles.dayCenter}>
                   <span className={styles.dayTitle}>{opened.name}</span>
                   <span className={styles.daySub}>{opened.round}회차</span>
@@ -1463,20 +1478,14 @@ export function SessionScreen() {
   // 옆으로 밀면 이전·다음 날(‹ ›와 같다). 옮긴 쪽에서 그날 종목이 밀려 들어온다 — 날짜가 key라 새로 그린다
   const daySlideClass =
     daySlide?.day !== dayKey ? '' : daySlide.direction === 'next' ? styles.slideNext : styles.slidePrev
-  /** 회차 머리 — "2회차 · 오후 7:12 · 41분". 시각은 운동 시간이 있을 때만(나중에 넣은 기록은 저장 시각이 운동한 시각이 아니다) */
-  const roundHead = (round: number) => {
-    const times = session?.rounds?.find((it) => it.round === round)
-    const meta =
-      times?.startedAt && times.durationSec != null
-        ? `${formatClock(times.startedAt)} · ${formatDuration(times.durationSec)}`
-        : null
-    return (
-      <div key={`round-${round}`} className={styles.roundHead}>
-        <span className={styles.roundTitle}>{round}회차</span>
-        {meta && <span className={styles.roundMeta}>{meta}</span>}
-      </div>
-    )
-  }
+  // 고른 회차의 시작 시각·운동 시간 — "오후 7:12 시작 · 41분". 운동 시간이 있을 때만(나중에 넣은 기록은 저장 시각이 운동한
+  // 시각이 아니다). 아직 종목이 없는 회차도 없다
+  const viewTimes = session?.rounds?.find((it) => it.round === viewRound)
+  const roundMeta =
+    viewTimes?.startedAt && viewTimes.durationSec != null
+      ? `${formatClock(viewTimes.startedAt)} 시작 · ${formatDuration(viewTimes.durationSec)}`
+      : null
+  const roundTabs = roundsShown.map((round) => ({ value: String(round), label: `${round}회차` }))
   return (
     <>
       <div
@@ -1519,6 +1528,19 @@ export function SessionScreen() {
           </button>
         </div>
 
+        {/* 회차 탭 — 누를 때만 바꾼다. 옆으로 밀기는 날짜 넘기기라 여기서는 받지 않는다 */}
+        {showRoundTabs && (
+          <div data-no-swipe className={styles.roundTabs}>
+            <SegmentedTabs
+              items={roundTabs}
+              value={String(viewRound)}
+              onChange={(value) => setSelectedRound(Number(value))}
+              aria-label="회차"
+            />
+            {roundMeta && <div className={styles.roundMeta}>{roundMeta}</div>}
+          </div>
+        )}
+
         {cards.length === 0 ? (
           <div key={dayKey} className={`${styles.emptyBox} ${daySlideClass}`} onAnimationEnd={() => setDaySlide(null)}>
             <div>
@@ -1536,7 +1558,9 @@ export function SessionScreen() {
             className={`${styles.listScroll} ${restShowing ? styles.scrollWithRest : ''} ${daySlideClass}`}
             onAnimationEnd={() => setDaySlide(null)}
           >
-            {cards.map((card, cardIndex) => {
+            {visibleCards.map((card, index) => {
+              // 끌기는 보이는 자리(index), 빼기는 전체 목록의 자리(cardIndex)로 가리킨다
+              const cardIndex = cards.indexOf(card)
               const saved = card.rows.filter((row) => row.savedId !== null)
               const planned = card.rows.length - saved.length
               // 수행률은 이 카드의 줄 기준이다. 세트를 더하거나 빼면 분모도 따라간다
@@ -1546,13 +1570,12 @@ export function SessionScreen() {
                   ? `예정 ${planned}세트 · 아직 기록 없음`
                   : `${saved.length}세트 기록${planned > 0 ? ` · ${planned}세트 예정` : ''} · ${done}%`
               return (
-                // 꾹 누르면 들어 올려져 끌어서 순서를 바꾼다. 짧게 누르면 지금처럼 세부 기록으로. 회차가 바뀌는 자리에 회차 머리
-                <Fragment key={`${card.exerciseId}-${card.round}-${cardIndex}`}>
-                {showRoundHeads && (cardIndex === 0 || cards[cardIndex - 1].round !== card.round) && roundHead(card.round)}
+                // 꾹 누르면 들어 올려져 끌어서 순서를 바꾼다. 짧게 누르면 지금처럼 세부 기록으로
                 <div
-                  data-reorder-index={cardIndex}
-                  className={`${styles.exRow} ${liftedIndex === cardIndex ? styles.exRowLifted : ''}`}
-                  style={reorderStyle(cardIndex)}
+                  key={`${card.exerciseId}-${card.round}-${index}`}
+                  data-reorder-index={index}
+                  className={`${styles.exRow} ${liftedIndex === index ? styles.exRowLifted : ''}`}
+                  style={reorderStyle(index)}
                   {...reorderHandlers}
                 >
                   {/* 카드 전체가 세부 기록으로 가는 문이라 따로 화살표를 두지 않는다 */}
@@ -1587,15 +1610,11 @@ export function SessionScreen() {
                     ✕
                   </button>
                 </div>
-                </Fragment>
               )
             })}
 
-            {/* 회차 추가로 연 빈 회차 — 아래 버튼으로 넣는 종목이 여기 들어간다 */}
-            {showRoundHeads && extraRound !== null && !cards.some((card) => card.round === extraRound) && roundHead(extraRound)}
-
             <button type="button" className={styles.addExercise} onClick={() => setPickerOpen(true)}>
-              {showRoundHeads ? `+ ${currentRound}회차에 종목 추가` : '+ 종목 추가'}
+              + 종목 추가
             </button>
           </div>
         )}
@@ -1608,7 +1627,7 @@ export function SessionScreen() {
       <BottomSheet
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        title={<span className={styles.sheetTitle}>{showRoundHeads ? `${currentRound}회차에 종목 추가` : '종목 추가'}</span>}
+        title={<span className={styles.sheetTitle}>{showRoundTabs ? `${viewRound}회차에 종목 추가` : '종목 추가'}</span>}
       >
         <div className={styles.pickerBox}>
           <ExercisePicker
@@ -1626,7 +1645,7 @@ export function SessionScreen() {
       <BottomSheet open={moreOpen} onClose={() => setMoreOpen(false)} title={<span className={styles.sheetTitle}>더 보기</span>}>
         <div className={styles.menuList}>
           {/* 하루 기록은 날짜마다 하나다. 오전·오후처럼 다시 운동하면 그 안을 회차로 나눈다(결정 기록 D-22) */}
-          <button type="button" className={styles.menuItem} disabled={currentRound >= MAX_ROUND} onClick={addRound}>
+          <button type="button" className={styles.menuItem} disabled={lastCardRound >= MAX_ROUND} onClick={addRound}>
             <span className={styles.menuItemTitle}>회차 추가</span>
             <span className={styles.menuItemNote}>같은 날 다시 운동하면 회차를 나눠 기록해요</span>
           </button>

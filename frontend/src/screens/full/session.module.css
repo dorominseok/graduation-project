@@ -105,26 +105,18 @@
   gap: var(--space-10);
 }
 
-/* 회차 머리 — 하루 기록 안을 회차로 나눴을 때(결정 기록 D-22). 카드 사이의 작은 소제목 */
-.roundHead {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-8);
+/* 회차 탭 — 하루 기록 안을 회차로 나눴을 때(결정 기록 D-22). 머리줄 바로 아래에 붙어 목록과 함께 스크롤되지 않는다 */
+.roundTabs {
   flex-shrink: 0;
-  padding: var(--space-4) var(--space-4) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-12) var(--space-20) 0;
 }
 
-.roundHead:not(:first-child) {
-  margin-top: var(--space-12);
-}
-
-.roundTitle {
-  font-size: var(--font-sm);
-  font-weight: var(--weight-bold);
-  color: var(--text-primary);
-}
-
+/* 고른 회차의 시작 시각·운동 시간 */
 .roundMeta {
+  padding: 0 var(--space-4);
   font-size: var(--font-xs);
   color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
